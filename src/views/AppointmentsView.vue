@@ -116,15 +116,6 @@ onMounted(() => {
 
 <template>
   <div class="appointments-view">
-    <section class="card-feature-pink-dark hero-panel">
-      <div>
-        <p class="caption hero-kicker">Appointment Management</p>
-        <h2 class="h3 hero-title">เห็นความหนาแน่นของคิว ก่อนกำหนดวันนัดครั้งต่อไป</h2>
-        <p class="body-sm hero-copy">ใช้มุมมองนี้เพื่อกระจายผู้ป่วยในแต่ละวันให้เหมาะสม และลดวันที่คิวแน่นเกินไปสำหรับคลินิกวาร์ฟาริน</p>
-      </div>
-      <div class="hero-icon"><CalendarRange :size="22" /></div>
-    </section>
-
     <section class="stats-grid">
       <article class="card stat-card">
         <div class="stat-head"><Users :size="18" /><span class="caption">นัดทั้งหมด</span></div>
@@ -235,39 +226,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xl);
-}
-
-.hero-panel {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--spacing-lg);
-}
-
-.hero-kicker,
-.section-meta,
-.stat-copy,
-.search-icon {
-  color: var(--color-slate);
-}
-
-.hero-title {
-  margin-top: var(--spacing-xs);
-}
-
-.hero-copy {
-  margin-top: var(--spacing-sm);
-  max-width: 42rem;
-}
-
-.hero-icon {
-  display: grid;
-  place-items: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: var(--rounded-full);
-  background: var(--color-canvas);
-  color: var(--color-pink-600);
 }
 
 .stats-grid {
