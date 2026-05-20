@@ -120,12 +120,12 @@ onMounted(() => {
       <article class="card stat-card">
         <div class="stat-head"><Users :size="18" /><span class="caption">นัดทั้งหมด</span></div>
         <strong class="stat-value">{{ stats.total }}</strong>
-        <span class="body-sm stat-copy">รายการที่ยัง scheduled</span>
+        <span class="body-sm stat-copy">นัดหมายผ่าน Warfarin Care</span>
       </article>
       <article class="card stat-card">
         <div class="stat-head"><CalendarDays :size="18" /><span class="caption">วันนี้</span></div>
         <strong class="stat-value">{{ stats.today }}</strong>
-        <span class="body-sm stat-copy">คิวตรวจประจำวัน</span>
+        <span class="body-sm stat-copy">นัดหมายวันนี้</span>
       </article>
       <article class="card stat-card">
         <div class="stat-head"><Clock3 :size="18" /><span class="caption">7 วันข้างหน้า</span></div>
@@ -143,8 +143,8 @@ onMounted(() => {
       <section class="card queue-panel">
         <div class="panel-header">
           <div>
-            <h3 class="h5">โหลดนัดหมายรายวัน</h3>
-            <p class="caption section-meta">เลือกวันเพื่อดูจำนวนคนในคิวและรายการนัด</p>
+            <h3 class="h5">ข้อมูลการนัดหมายจำแนกตามวันที่</h3>
+            <p class="caption section-meta">เลือกวันที่เพื่อแสดงรายละเอียด</p>
           </div>
         </div>
 
@@ -175,7 +175,7 @@ onMounted(() => {
       <section class="card schedule-panel">
         <div class="panel-header panel-header-inline">
           <div>
-            <h3 class="h5">รายการนัดในวันที่เลือก</h3>
+            <h3 class="h5">รายละเอียดการนัดในวันที่เลือก</h3>
             <p class="caption section-meta">
               {{ selectedBucket ? `${formatThaiDate(selectedBucket.date)} · ${selectedBucket.count} คน` : 'ยังไม่ได้เลือกวัน' }}
             </p>
