@@ -20,3 +20,10 @@ pub struct AppointmentInput {
   pub appt_type: Option<String>,
   pub notes: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppointmentDayLoad {
+  pub appt_date: String,
+  pub scheduled_count: i64,
+}

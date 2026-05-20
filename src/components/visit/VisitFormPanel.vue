@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { X } from 'lucide-vue-next'
 import DayDoseTable from '#/components/visit/DayDoseTable.vue'
 import DoseOptionsPanel from '#/components/visit/DoseOptionsPanel.vue'
+import type { AppointmentDayLoad } from '#/types/appointment'
 import type { DispensingRecord } from '#/types/dispensing'
 import type { InrRecord } from '#/types/inr'
 import type { PatientDetail } from '#/types/patient'
@@ -39,6 +40,7 @@ const emit = defineEmits<{ (e: 'saved', visitId: number): void; (e: 'updated'): 
 const saving = ref(false)
 const error = ref<string | null>(null)
 const loadingSuggestion = ref(false)
+const loadingAppointmentLoad = ref(false)
 const isEditMode = ref(false)
 const editingVisitId = ref<number | null>(null)
 
@@ -68,6 +70,7 @@ const doseOptionsHint = ref<string | null>(null)
 const availablePills = ref<AvailablePills>({ ...DEFAULT_AVAILABLE_PILLS })
 const allowHalf = ref(true)
 const specialDayPattern = ref<'fri-sun' | 'mon-wed-fri'>('fri-sun')
+const appointmentDayLoad = ref<AppointmentDayLoad | null>(null)
 
 const sideEffectOptionsHigh = [
   { key: 'body_bleeding', label: 'เลือดออกตามร่างกาย' },
@@ -231,6 +234,24 @@ async function fetchSuggestion() {
   }
 }
 
+async function refreshAppointmentDayLoad() {
+  if (!nextAppointment.value) {
+    appointmentDayLoad.value = null
+    return
+  }
+
+  loadingAppointmentLoad.value = true
+  try {
+    appointmentDayLoad.value = await invoke<AppointmentDayLoad>('get_appointment_day_load', {
+      apptDate: nextAppointment.value,
+    })
+  } catch {
+    appointmentDayLoad.value = null
+  } finally {
+    loadingAppointmentLoad.value = false
+  }
+}
+
 function handleSelectDoseOption(index: number) {
   selectedDoseOptionIndex.value = index
   const option = doseOptions.value[index]
@@ -288,8 +309,16 @@ watch(newDoseDetail, () => {
     selectedDoseOptionIndex.value = null
   }
 }, { deep: true })
+watch(nextAppointment, () => {
+  void refreshAppointmentDayLoad()
+})
 
 async function handleSubmit() {
+  if (!nextAppointment.value.trim()) {
+    error.value = 'กรุณาระบุวันนัดครั้งต่อไปก่อนบันทึกการทำคลินิก'
+    return
+  }
+
   saving.value = true
   error.value = null
   try {
@@ -410,7 +439,12 @@ onMounted(() => { if (modelValue.value) void loadDefaults() })
           <div class="form-row">
             <label class="form-field">
               <span class="caption label">นัดครั้งต่อไป</span>
-              <input class="input" type="date" v-model="nextAppointment" />
+              <input class="input" type="date" v-model="nextAppointment" required />
+              <span v-if="loadingAppointmentLoad" class="caption helper-text">กำลังโหลดคิวนัดของวันดังกล่าว...</span>
+              <span v-else-if="appointmentDayLoad" class="caption helper-text">
+                วันที่ {{ formatThaiDate(appointmentDayLoad.apptDate) }} มีนัดแล้ว {{ appointmentDayLoad.scheduledCount }} คน
+              </span>
+              <span v-else class="caption helper-text">เลือกวันนัดเพื่อดูจำนวนผู้ป่วยที่นัดไว้แล้ว</span>
             </label>
           </div>
 
@@ -500,4 +534,5 @@ onMounted(() => { if (modelValue.value) void loadDefaults() })
 .radio-label { display: flex; align-items: center; gap: var(--spacing-xs); cursor: pointer; }
 .checkbox-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-xs); }
 .checkbox-label { display: flex; align-items: center; gap: var(--spacing-xs); cursor: pointer; }
+.helper-text { color: var(--color-slate); }
 </style>

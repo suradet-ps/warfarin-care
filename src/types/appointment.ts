@@ -14,3 +14,8 @@ export interface AppointmentInput {
   apptType?: string
   notes?: string
 }
+
+export interface AppointmentDayLoad {
+  apptDate: string
+  scheduledCount: number
+}

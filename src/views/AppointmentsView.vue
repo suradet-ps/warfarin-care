@@ -1,0 +1,416 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
+import { CalendarDays, CalendarRange, Clock3, Search, Users } from 'lucide-vue-next'
+import type { WfAppointment } from '#/types/appointment'
+import type { ActivePatientSummary } from '#/types/patient'
+import { daysUntil, formatThaiDate, patientFullName } from '#/utils/clinic'
+
+const loading = ref(false)
+const error = ref<string | null>(null)
+const searchQuery = ref('')
+const selectedDate = ref('')
+const appointments = ref<WfAppointment[]>([])
+const summaries = ref<ActivePatientSummary[]>([])
+
+const patientMap = computed(() => new Map(summaries.value.map((summary) => [summary.patient.hn, summary])))
+
+const dateBuckets = computed(() => {
+  const buckets = new Map<string, { date: string; count: number; overdueCount: number; urgentCount: number }>()
+
+  for (const appointment of appointments.value) {
+    const existing = buckets.get(appointment.apptDate) ?? {
+      date: appointment.apptDate,
+      count: 0,
+      overdueCount: 0,
+      urgentCount: 0,
+    }
+
+    existing.count += 1
+    if ((daysUntil(appointment.apptDate) ?? 0) < 0) existing.overdueCount += 1
+    if (appointment.apptType === 'urgent') existing.urgentCount += 1
+    buckets.set(appointment.apptDate, existing)
+  }
+
+  return [...buckets.values()].sort((a, b) => a.date.localeCompare(b.date))
+})
+
+const selectedBucket = computed(() => {
+  if (selectedDate.value) {
+    return dateBuckets.value.find((bucket) => bucket.date === selectedDate.value) ?? null
+  }
+
+  return dateBuckets.value[0] ?? null
+})
+
+const filteredAppointments = computed(() => {
+  const activeDate = selectedBucket.value?.date ?? ''
+  const query = searchQuery.value.trim().toLowerCase()
+
+  return appointments.value
+    .filter((appointment) => (activeDate ? appointment.apptDate === activeDate : true))
+    .filter((appointment) => {
+      if (!query) return true
+      const summary = patientMap.value.get(appointment.hn)
+      const fullName = patientFullName(summary?.hosxpInfo).toLowerCase()
+      return appointment.hn.toLowerCase().includes(query) || fullName.includes(query)
+    })
+    .sort((a, b) => `${a.apptDate}-${a.hn}`.localeCompare(`${b.apptDate}-${b.hn}`))
+})
+
+const stats = computed(() => ({
+  total: appointments.value.length,
+  today: appointments.value.filter((appointment) => (daysUntil(appointment.apptDate) ?? Number.MAX_SAFE_INTEGER) === 0).length,
+  nextSevenDays: appointments.value.filter((appointment) => {
+    const delta = daysUntil(appointment.apptDate)
+    return delta !== null && delta >= 0 && delta <= 7
+  }).length,
+  overdue: appointments.value.filter((appointment) => (daysUntil(appointment.apptDate) ?? 0) < 0).length,
+}))
+
+async function loadAppointments() {
+  loading.value = true
+  error.value = null
+  try {
+    const [pendingAppointments, activeSummaries] = await Promise.all([
+      invoke<WfAppointment[]>('get_pending_appointments'),
+      invoke<ActivePatientSummary[]>('get_active_patient_summaries'),
+    ])
+
+    appointments.value = pendingAppointments
+    summaries.value = activeSummaries
+    if (!selectedDate.value) {
+      selectedDate.value = pendingAppointments[0]?.apptDate ?? ''
+    }
+  } catch (invokeError) {
+    error.value = String(invokeError)
+  } finally {
+    loading.value = false
+  }
+}
+
+function appointmentTypeLabel(apptType?: string) {
+  if (apptType === 'urgent') return 'เร่งด่วน'
+  if (apptType === 'inr_check') return 'ตรวจ INR'
+  return 'ตรวจคลินิก'
+}
+
+function appointmentTypeClass(apptType?: string) {
+  if (apptType === 'urgent') return 'badge-danger'
+  if (apptType === 'inr_check') return 'badge-warning'
+  return 'badge-info'
+}
+
+function appointmentTimingText(apptDate: string) {
+  const delta = daysUntil(apptDate)
+  if (delta === null) return '-'
+  if (delta < 0) return `เกินนัด ${Math.abs(delta)} วัน`
+  if (delta === 0) return 'วันนี้'
+  return `อีก ${delta} วัน`
+}
+
+onMounted(() => {
+  void loadAppointments()
+})
+</script>
+
+<template>
+  <div class="appointments-view">
+    <section class="card-feature-pink-dark hero-panel">
+      <div>
+        <p class="caption hero-kicker">Appointment Management</p>
+        <h2 class="h3 hero-title">เห็นความหนาแน่นของคิว ก่อนกำหนดวันนัดครั้งต่อไป</h2>
+        <p class="body-sm hero-copy">ใช้มุมมองนี้เพื่อกระจายผู้ป่วยในแต่ละวันให้เหมาะสม และลดวันที่คิวแน่นเกินไปสำหรับคลินิกวาร์ฟาริน</p>
+      </div>
+      <div class="hero-icon"><CalendarRange :size="22" /></div>
+    </section>
+
+    <section class="stats-grid">
+      <article class="card stat-card">
+        <div class="stat-head"><Users :size="18" /><span class="caption">นัดทั้งหมด</span></div>
+        <strong class="stat-value">{{ stats.total }}</strong>
+        <span class="body-sm stat-copy">รายการที่ยัง scheduled</span>
+      </article>
+      <article class="card stat-card">
+        <div class="stat-head"><CalendarDays :size="18" /><span class="caption">วันนี้</span></div>
+        <strong class="stat-value">{{ stats.today }}</strong>
+        <span class="body-sm stat-copy">คิวตรวจประจำวัน</span>
+      </article>
+      <article class="card stat-card">
+        <div class="stat-head"><Clock3 :size="18" /><span class="caption">7 วันข้างหน้า</span></div>
+        <strong class="stat-value">{{ stats.nextSevenDays }}</strong>
+        <span class="body-sm stat-copy">สำหรับวางแผนล่วงหน้า</span>
+      </article>
+      <article class="card stat-card overdue-card">
+        <div class="stat-head"><CalendarRange :size="18" /><span class="caption">เกินนัด</span></div>
+        <strong class="stat-value">{{ stats.overdue }}</strong>
+        <span class="body-sm stat-copy">ควรเร่งติดตาม</span>
+      </article>
+    </section>
+
+    <div class="page-grid">
+      <section class="card queue-panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="h5">โหลดนัดหมายรายวัน</h3>
+            <p class="caption section-meta">เลือกวันเพื่อดูจำนวนคนในคิวและรายการนัด</p>
+          </div>
+        </div>
+
+        <div v-if="loading" class="empty-state body-sm">กำลังโหลด...</div>
+        <div v-else-if="error" class="badge badge-danger error-box">{{ error }}</div>
+        <div v-else-if="!dateBuckets.length" class="empty-state body-sm">ยังไม่มีรายการนัดหมายที่รอดำเนินการ</div>
+        <div v-else class="date-bucket-list">
+          <button
+            v-for="bucket in dateBuckets"
+            :key="bucket.date"
+            type="button"
+            class="date-bucket"
+            :class="{ active: selectedBucket?.date === bucket.date }"
+            @click="selectedDate = bucket.date"
+          >
+            <div>
+              <p class="body-sm-medium">{{ formatThaiDate(bucket.date) }}</p>
+              <p class="caption section-meta">{{ bucket.overdueCount > 0 ? `เกินนัด ${bucket.overdueCount} คน` : 'ยังอยู่ในกำหนด' }}</p>
+            </div>
+            <div class="bucket-metrics">
+              <span class="badge badge-info">{{ bucket.count }} คน</span>
+              <span v-if="bucket.urgentCount > 0" class="badge badge-danger">เร่งด่วน {{ bucket.urgentCount }}</span>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section class="card schedule-panel">
+        <div class="panel-header panel-header-inline">
+          <div>
+            <h3 class="h5">รายการนัดในวันที่เลือก</h3>
+            <p class="caption section-meta">
+              {{ selectedBucket ? `${formatThaiDate(selectedBucket.date)} · ${selectedBucket.count} คน` : 'ยังไม่ได้เลือกวัน' }}
+            </p>
+          </div>
+          <div class="search-box">
+            <Search :size="16" class="search-icon" />
+            <input v-model="searchQuery" type="text" class="search-input" placeholder="ค้นหา HN หรือชื่อ" />
+          </div>
+        </div>
+
+        <div v-if="loading" class="empty-state body-sm">กำลังโหลด...</div>
+        <div v-else-if="error" class="empty-state body-sm">โหลดข้อมูลไม่สำเร็จ</div>
+        <div v-else-if="!filteredAppointments.length" class="empty-state body-sm">ไม่พบรายการในวันที่เลือก</div>
+        <div v-else class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ผู้ป่วย</th>
+                <th>ประเภท</th>
+                <th>สถานะวันนัด</th>
+                <th>หมายเหตุ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="appointment in filteredAppointments" :key="appointment.id">
+                <td>
+                  <div class="patient-cell">
+                    <span class="body-sm-medium">{{ patientMap.get(appointment.hn) ? patientFullName(patientMap.get(appointment.hn)?.hosxpInfo) : appointment.hn }}</span>
+                    <span class="caption section-meta">HN {{ appointment.hn }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge" :class="appointmentTypeClass(appointment.apptType)">{{ appointmentTypeLabel(appointment.apptType) }}</span>
+                </td>
+                <td><span class="body-sm">{{ appointmentTimingText(appointment.apptDate) }}</span></td>
+                <td><span class="caption section-meta">{{ appointment.notes || '-' }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.appointments-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.hero-panel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+}
+
+.hero-kicker,
+.section-meta,
+.stat-copy,
+.search-icon {
+  color: var(--color-slate);
+}
+
+.hero-title {
+  margin-top: var(--spacing-xs);
+}
+
+.hero-copy {
+  margin-top: var(--spacing-sm);
+  max-width: 42rem;
+}
+
+.hero-icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--rounded-full);
+  background: var(--color-canvas);
+  color: var(--color-pink-600);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacing-md);
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.stat-head {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--color-slate);
+}
+
+.stat-value {
+  font-size: var(--typography-heading-3-size);
+  font-weight: var(--typography-heading-3-weight);
+  line-height: var(--typography-heading-3-line-height);
+}
+
+.overdue-card {
+  background: var(--color-coral-100);
+}
+
+.page-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+.queue-panel,
+.schedule-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.panel-header-inline {
+  align-items: center;
+}
+
+.date-bucket-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.date-bucket {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--rounded-xl);
+  background: var(--color-canvas);
+  cursor: pointer;
+  text-align: left;
+}
+
+.date-bucket.active {
+  border-color: var(--color-pink-600);
+  background: var(--color-pink-50);
+  box-shadow: var(--elevation-1);
+}
+
+.bucket-metrics {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 16rem;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--rounded-md);
+  background: var(--color-canvas);
+}
+
+.search-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: var(--typography-body-sm-size);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.patient-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 10rem;
+  color: var(--color-slate);
+}
+
+.error-box {
+  width: fit-content;
+}
+
+@media (max-width: 1100px) {
+  .stats-grid,
+  .page-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-header-inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box {
+    min-width: 0;
+  }
+}
+</style>

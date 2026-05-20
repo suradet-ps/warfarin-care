@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { BarChart3, ClipboardCheck, Search, Settings, Users } from 'lucide-vue-next'
+import { BarChart3, CalendarDays, ClipboardCheck, Search, Settings, Users } from 'lucide-vue-next'
 import { useAlertStore } from '#/stores/alerts'
 import { useReviewStore } from '#/stores/review'
 import { useSettingsStore } from '#/stores/settings'
@@ -14,6 +14,7 @@ const settingsStore = useSettingsStore()
 const navItems = [
   { name: 'screening', label: 'คัดกรอง', icon: Search, path: '/screening' },
   { name: 'active', label: 'ผู้ป่วยทั้งหมด', icon: Users, path: '/active' },
+  { name: 'appointments', label: 'การนัดหมาย', icon: CalendarDays, path: '/appointments' },
   { name: 'review', label: 'ตรวจสอบ', icon: ClipboardCheck, path: '/review' },
   { name: 'reports', label: 'รายงาน', icon: BarChart3, path: '/reports' },
   { name: 'settings', label: 'ตั้งค่า', icon: Settings, path: '/settings' },

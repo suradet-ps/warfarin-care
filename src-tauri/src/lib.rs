@@ -7,7 +7,9 @@ pub mod models;
 use anyhow::{Context, Result};
 use commands::{
   alerts::get_patient_alerts,
-  appointments::{get_appointments, schedule_appointment},
+  appointments::{
+    get_appointment_day_load, get_appointments, get_pending_appointments, schedule_appointment,
+  },
   inr::{get_inr_history, get_latest_inr},
   interaction::{
     add_drug_interaction, delete_drug_interaction, get_all_drug_interactions,
@@ -133,6 +135,8 @@ pub fn run() -> tauri::Result<()> {
       enroll_patient,
       update_patient_status,
       get_appointments,
+      get_pending_appointments,
+      get_appointment_day_load,
       get_visit_history,
       get_visit_by_id,
       save_visit,

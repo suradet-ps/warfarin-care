@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { CalendarPlus } from 'lucide-vue-next'
 import StatusBadge from '#/components/shared/StatusBadge.vue'
-import type { AppointmentInput, WfAppointment } from '#/types/appointment'
+import type { AppointmentDayLoad, AppointmentInput, WfAppointment } from '#/types/appointment'
 import { dateInputToday, formatThaiDate, sortAppointments } from '#/utils/clinic'
 
 const props = defineProps<{ hn: string }>()
@@ -14,6 +14,8 @@ const error = ref<string | null>(null)
 const showForm = ref(false)
 const form = ref<AppointmentInput>({ hn: props.hn, apptDate: dateInputToday(), apptType: 'clinic_visit', notes: '' })
 const orderedAppointments = computed(() => sortAppointments(appointments.value))
+const loadingDayLoad = ref(false)
+const appointmentDayLoad = ref<AppointmentDayLoad | null>(null)
 
 async function fetchAppointments() {
   loading.value = true
@@ -42,8 +44,31 @@ async function submitAppointment() {
   }
 }
 
+async function refreshDayLoad() {
+  if (!form.value.apptDate) {
+    appointmentDayLoad.value = null
+    return
+  }
+
+  loadingDayLoad.value = true
+  try {
+    appointmentDayLoad.value = await invoke<AppointmentDayLoad>('get_appointment_day_load', {
+      apptDate: form.value.apptDate,
+    })
+  } catch {
+    appointmentDayLoad.value = null
+  } finally {
+    loadingDayLoad.value = false
+  }
+}
+
+watch(() => form.value.apptDate, () => {
+  void refreshDayLoad()
+})
+
 onMounted(() => {
   void fetchAppointments()
+  void refreshDayLoad()
 })
 </script>
 
@@ -59,7 +84,7 @@ onMounted(() => {
 
     <form v-if="showForm" class="appointment-form card-feature-yellow" @submit.prevent="submitAppointment">
       <div class="form-grid">
-        <label class="form-field"><span class="caption section-meta">&#x0E27;&#x0E31;&#x0E19;&#x0E17;&#x0E35;&#x0E48;&#x0E19;&#x0E31;&#x0E14;</span><input v-model="form.apptDate" class="input" type="date" required /></label>
+        <label class="form-field"><span class="caption section-meta">&#x0E27;&#x0E31;&#x0E19;&#x0E17;&#x0E35;&#x0E48;&#x0E19;&#x0E31;&#x0E14;</span><input v-model="form.apptDate" class="input" type="date" required /><span v-if="loadingDayLoad" class="caption section-meta">กำลังโหลดคิวนัด...</span><span v-else-if="appointmentDayLoad" class="caption section-meta">วันดังกล่าวมีนัดแล้ว {{ appointmentDayLoad.scheduledCount }} คน</span></label>
         <label class="form-field"><span class="caption section-meta">&#x0E1B;&#x0E23;&#x0E30;&#x0E40;&#x0E20;&#x0E17;&#x0E01;&#x0E32;&#x0E23;&#x0E19;&#x0E31;&#x0E14;</span><select v-model="form.apptType" class="input"><option value="clinic_visit">&#x0E15;&#x0E23;&#x0E27;&#x0E08;&#x0E04;&#x0E25;&#x0E34;&#x0E19;&#x0E34;&#x0E01;</option><option value="inr_check">&#x0E15;&#x0E23;&#x0E27;&#x0E08; INR</option><option value="urgent">&#x0E40;&#x0E23;&#x0E48;&#x0E07;&#x0E14;&#x0E48;&#x0E27;&#x0E19;</option></select></label>
       </div>
       <label class="form-field"><span class="caption section-meta">&#x0E2B;&#x0E21;&#x0E32;&#x0E22;&#x0E40;&#x0E2B;&#x0E15;&#x0E38;</span><textarea v-model="form.notes" class="input form-textarea" rows="3" /></label>

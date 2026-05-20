@@ -11,6 +11,8 @@ const pageTitle = computed(() => {
   const map: Record<string, string> = {
     '/screening': 'คัดกรองผู้ป่วย',
     '/active': 'ผู้ป่วยคลินิกวาร์ฟาริน',
+    '/appointments': 'การนัดหมาย',
+    '/review': 'ตรวจสอบการบันทึก',
     '/reports': 'รายงาน',
     '/settings': 'ตั้งค่าระบบ',
   }

@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use uuid::Uuid;
 
 use crate::models::{
-  appointment::{AppointmentInput, WfAppointment},
+  appointment::{AppointmentDayLoad, AppointmentInput, WfAppointment},
   inr::InrRecord,
   interaction::{DrugInteraction, DrugInteractionInput},
   outcome::{OutcomeInput, WfOutcome},
@@ -362,6 +362,16 @@ pub async fn update_patient_status(
 
 /// Inserts a visit record and returns the new row ID.
 pub async fn save_visit(pool: &SqlitePool, input: &VisitInput, machine_id: &str) -> Result<i64> {
+  if input
+    .next_appointment
+    .as_deref()
+    .map(str::trim)
+    .filter(|value| !value.is_empty())
+    .is_none()
+  {
+    bail!("next appointment is required when saving visit");
+  }
+
   let now = Utc::now().to_rfc3339();
   let dose_detail_json = input
     .dose_detail
@@ -438,6 +448,16 @@ pub async fn update_visit(
   input: &VisitInput,
   machine_id: &str,
 ) -> Result<()> {
+  if input
+    .next_appointment
+    .as_deref()
+    .map(str::trim)
+    .filter(|value| !value.is_empty())
+    .is_none()
+  {
+    bail!("next appointment is required when updating visit");
+  }
+
   let now = Utc::now().to_rfc3339();
   let dose_detail_json = input
     .dose_detail
@@ -982,6 +1002,25 @@ pub async fn get_pending_appointments(pool: &SqlitePool) -> Result<Vec<WfAppoint
       })
       .collect(),
   )
+}
+
+pub async fn get_appointment_day_load(
+  pool: &SqlitePool,
+  appt_date: &str,
+) -> Result<AppointmentDayLoad> {
+  let scheduled_count = sqlx::query_scalar::<_, i64>(
+    "SELECT COUNT(DISTINCT hn) FROM wf_appointments \
+      WHERE appt_date = ? AND status = 'scheduled' AND deleted_at IS NULL",
+  )
+  .bind(appt_date)
+  .fetch_one(pool)
+  .await
+  .context("failed to query appointment day load")?;
+
+  Ok(AppointmentDayLoad {
+    appt_date: appt_date.to_string(),
+    scheduled_count,
+  })
 }
 
 // wf_outcomes
