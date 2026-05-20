@@ -18,7 +18,7 @@ import { createRegimenOptionSnapshot } from '#/utils/regimen'
 const props = defineProps<{ visit: WfVisit; patient: PatientDetail; ttr: number | null }>()
 
 const settingsStore = useSettingsStore()
-const hospitalName = ref('โรงพยาบาลสระโบสถ์')
+const hospitalName = ref('Warfarin Care')
 
 void settingsStore.loadSettings().then(() => {
   hospitalName.value = settingsStore.hospitalName || hospitalName.value

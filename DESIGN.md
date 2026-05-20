@@ -1,8 +1,8 @@
-# Warfarin Clinic Design System — v2.0
+# Warfarin Care Design System — v2.0
 
 ## Overview
 
-Warfarin Clinic is a Tauri desktop application for managing anticoagulation therapy at Sabot Hospital. The visual identity is built around a **layered pink heart** — a three-ring pink heart icon rendered at every brand touchpoint. The entire color system is derived from the primary brand pink `#EC4899`, with semantic and INR-status palettes tuned for clinical precision and WCAG AA+ compliance.
+Warfarin Care is a Tauri desktop application for managing anticoagulation therapy. The visual identity is built around a **layered pink heart** — a three-ring pink heart icon rendered at every brand touchpoint. The entire color system is derived from the primary brand pink `#EC4899`, with semantic and INR-status palettes tuned for clinical precision and WCAG AA+ compliance.
 
 **Design Principles:**
 - Pink heart icon as the sole brand mark — appears in sidebar logo, splash screen, and print header

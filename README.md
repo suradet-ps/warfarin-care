@@ -1,4 +1,4 @@
-# Warfarin Clinic Management System
+# Warfarin Care
 
 [![Tauri v2](https://img.shields.io/badge/Tauri-2-blue?style=flat&logo=tauri)](https://tauri.app)
 [![Vue v3](https://img.shields.io/badge/Vue-3-green?style=flat&logo=vue.js)](https://vuejs.org)
@@ -10,7 +10,7 @@
 [![Lucide Icons](https://img.shields.io/badge/Lucide-Icons-blue)](https://lucide.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A desktop application for managing a warfarin anticoagulation clinic at Sabot Hospital. Built with Tauri 2.10 (Rust) + Vue 3.5 (TypeScript), bridging HOSxP's MySQL database (read-only) with a local SQLite database for clinic-specific tracking.
+A desktop application for managing a warfarin anticoagulation clinic. Built with Tauri 2.10 (Rust) + Vue 3.5 (TypeScript), bridging HOSxP's MySQL database (read-only) with a local SQLite database for clinic-specific tracking.
 
 ## Features
 
@@ -45,8 +45,8 @@ A desktop application for managing a warfarin anticoagulation clinic at Sabot Ho
 
 ```bash
 # Clone the repository
-git clone https://github.com/suradet-ps/sabot-warfarin-clinic.git
-cd sabot-warfarin-clinic
+git clone https://github.com/suradet-ps/warfarin-care.git
+cd warfarin-care
 
 # Install dependencies
 bun install
@@ -116,7 +116,7 @@ Time in Therapeutic Range (TTR) is calculated using the **Rosendaal linear inter
 
 TTR ≥ 65% is considered acceptable (AHA/ACC guideline).
 
-## Warfarin Drug Codes (Sabot Hospital)
+## Warfarin Drug Codes
 
 | icode | Name | Strength |
 |-------|------|---------|

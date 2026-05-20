@@ -1,8 +1,8 @@
-# Warfarin Clinic Management System — Agent Specification
+# Warfarin Care — Agent Specification
 
 ## Project Overview
 
-A Tauri 2.10 (Rust) + Vue 3.5 (TypeScript) + lucide-vue-next desktop application for managing a warfarin anticoagulation clinic at Sabot Hospital. The system bridges HosXP's MySQL database (read-only) with a local SQLite database for clinic-specific tracking, INR trending, dose management, and physician communication slips.
+A Tauri 2.10 (Rust) + Vue 3.5 (TypeScript) + lucide-vue-next desktop application for managing a warfarin anticoagulation clinic. The system bridges HosXP's MySQL database (read-only) with a local SQLite database for clinic-specific tracking, INR trending, dose management, and physician communication slips.
 
 ---
 
@@ -117,7 +117,7 @@ lab_order_result      VARCHAR
 > **INR lab_items_code = `751`**
 > Always query BOTH `lab_order` (via `lab_head`) AND `lab_app_order` (via `lab_app_head`) and merge results by date, deduplicated, to get the complete INR history for a patient.
 
-### Warfarin Drug Codes (Sabot Hospital)
+### Warfarin Drug Codes
 
 | icode | Name (drugitems.name) | Strength (drugitems.strength) |
 |-------|----------------------|-------------------------------|
@@ -131,7 +131,7 @@ lab_order_result      VARCHAR
 
 ### Local SQLite Schema
 
-#### `wf_patients` — Enrolled Warfarin Clinic Patients
+#### `wf_patients` — Enrolled Warfarin Care Patients
 ```sql
 CREATE TABLE wf_patients (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -150,7 +150,7 @@ CREATE TABLE wf_patients (
 );
 ```
 
-#### `wf_visits` — Warfarin Clinic Visit Records
+#### `wf_visits` — Warfarin Care Visit Records
 ```sql
 CREATE TABLE wf_visits (
     id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -406,8 +406,7 @@ CREATE TABLE wf_drug_interactions (
 
 ```
 ┌─────────────────────────────────────────────┐
-│  [HOSPITAL LOGO]  Warfarin Clinic           │
-│  โรงพยาบาลสระโบสถ์                          │
+│  [HOSPITAL LOGO]  Warfarin Care            │
 ├─────────────────────────────────────────────┤
 │  ชื่อ-สกุล: [Name]          HN: [HN]        │
 │  อายุ: [Age]   เพศ: [Sex]   วันที่: [Date]  │
@@ -722,7 +721,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 ## Project File Structure
 
 ```
-warfarin-clinic/
+warfarin-care/
 ├── src-tauri/
 │   ├── src/
 │   │   ├── main.rs

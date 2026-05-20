@@ -26,7 +26,7 @@ use crate::models::{
   patient::{HosxpPatient, PatientDrugRecord, SearchFilters, SearchResponse},
 };
 
-/// Warfarin drug item codes at Sabot Hospital.
+/// Warfarin drug item codes.
 pub const WARFARIN_ICODES: [&str; 3] = ["1600014", "1600013", "1600024"];
 /// INR lab items code.
 pub const INR_LAB_ITEM_CODE: &str = "751";

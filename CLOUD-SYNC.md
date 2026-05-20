@@ -324,7 +324,7 @@ Add these new functions to the existing `encrypt.rs` module (keep existing code 
 
 ```rust
 /// Static salt baked into the binary. Change this value for each new application.
-const APP_SALT: &[u8] = b"sabot-warfarin-clinic-aes-v1";
+const APP_SALT: &[u8] = b"warfarin-care-aes-v1";
 
 /// Derive a 32-byte AES-256 key from machine_id + static salt.
 /// Uses a simple but deterministic byte-mixing approach sufficient for an

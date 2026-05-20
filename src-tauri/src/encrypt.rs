@@ -8,8 +8,8 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
-const APP_SALT: &[u8] = b"sabot-warfarin-clinic-aes-v1";
-const HKDF_INFO: &[u8] = b"sabot-anon-key-v1";
+const APP_SALT: &[u8] = b"warfarin-care-aes-v1";
+const HKDF_INFO: &[u8] = b"warfarin-care-anon-key-v1";
 const NONCE_SIZE: usize = 12;
 const KEY_SIZE: usize = 32;
 

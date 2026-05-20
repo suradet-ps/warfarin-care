@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS wf_drug_interactions (
 -- Note: wf_settings already uses key-value, we just populate different keys
 INSERT OR IGNORE INTO wf_settings (key, value) VALUES
     -- Hospital info (replacing single hospital_name key)
-    ('hospital_name', 'โรงพยาบาลสระโบสถ์'),
+    ('hospital_name', 'Warfarin Care'),
     ('hospital_logo', ''),
     -- Default INR ranges by indication
     ('default_inr_af_low', '2.0'),

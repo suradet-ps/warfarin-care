@@ -1,13 +1,13 @@
-# Contributing to Warfarin Clinic Management System
+# Contributing to Warfarin Care
 
-Thank you for your interest in contributing to this project. This document provides guidelines for contributing to the Warfarin Clinic Management System.
+Thank you for your interest in contributing to this project. This document provides guidelines for contributing to Warfarin Care.
 
 ## Quick Start
 
 ```bash
 # Clone the repository
-git clone https://github.com/suradet-ps/sabot-warfarin-clinic.git
-cd sabot-warfarin-clinic
+git clone https://github.com/suradet-ps/warfarin-care.git
+cd warfarin-care
 
 # Install dependencies
 bun install

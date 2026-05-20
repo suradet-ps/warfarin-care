@@ -1,4 +1,4 @@
--- Supabase Schema for Warfarin Clinic Cloud Sync
+-- Supabase Schema for Warfarin Care Cloud Sync
 -- Source of Truth: SQLite migrations (0001-0008)
 -- Last Updated: 2026-05-09
 

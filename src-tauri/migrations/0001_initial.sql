@@ -1,4 +1,4 @@
--- Warfarin Clinic: Initial Schema
+-- Warfarin Care: Initial Schema
 CREATE TABLE IF NOT EXISTS wf_patients (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     hn                  TEXT NOT NULL UNIQUE,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS wf_settings (
 );
 
 INSERT OR IGNORE INTO wf_settings (key, value) VALUES
-    ('hospital_name', 'โรงพยาบาลสระโบสถ์'),
+    ('hospital_name', 'Warfarin Care'),
     ('default_inr_af_low', '2.0'),
     ('default_inr_af_high', '3.0'),
     ('default_inr_dvt_low', '2.0'),

@@ -36,7 +36,7 @@ export const useSettingsStore = defineStore('settings', () => {
     password: '',
   })
   const hasStoredConfig = ref(false)
-  const hospitalName = ref('โรงพยาบาลสระโบสถ์')
+  const hospitalName = ref('Warfarin Care')
   const staffList = ref<string[]>([])
   const isConnected = ref(false)
   const drugInteractions = ref<DrugInteraction[]>([])
