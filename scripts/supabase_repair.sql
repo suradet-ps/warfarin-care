@@ -64,4 +64,13 @@ CREATE INDEX IF NOT EXISTS idx_wf_appointments_hn ON wf_appointments(hn);
 CREATE INDEX IF NOT EXISTS idx_wf_outcomes_hn ON wf_outcomes(hn);
 CREATE INDEX IF NOT EXISTS idx_wf_patient_status_history_hn ON wf_patient_status_history(hn);
 
+-- Remote Supabase does not store the local SQLite visit `id`, so existing
+-- `source_visit_id` values cannot be backfilled to `source_visit_sync_id`
+-- safely on the server. This migration only prepares the schema for new syncs.
+ALTER TABLE wf_appointments ADD COLUMN IF NOT EXISTS source_visit_sync_id UUID;
+DROP INDEX IF EXISTS idx_wf_appointments_source_visit_id;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wf_appointments_source_visit_sync_id
+  ON wf_appointments(source_visit_sync_id)
+  WHERE source_visit_sync_id IS NOT NULL;
+
 COMMIT;

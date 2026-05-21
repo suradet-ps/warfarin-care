@@ -74,6 +74,7 @@ pub struct WfAppointmentSync {
   pub status: String,
   pub notes: Option<String>,
   pub source_visit_id: Option<i64>,
+  pub source_visit_sync_id: Option<String>,
   pub generated_from_visit: i64,
   pub created_at: String,
   pub updated_at: String,

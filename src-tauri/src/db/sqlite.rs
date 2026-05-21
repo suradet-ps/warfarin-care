@@ -140,6 +140,12 @@ fn new_sync_id() -> String {
   Uuid::new_v4().to_string()
 }
 
+struct VisitAppointmentLinkContext {
+  hn: String,
+  next_appointment: Option<String>,
+  sync_id: Option<String>,
+}
+
 // Pool initialisation
 
 /// Opens (or creates) the SQLite database and runs embedded migrations.
@@ -391,6 +397,7 @@ pub async fn save_visit(pool: &SqlitePool, input: &VisitInput, machine_id: &str)
     .as_ref()
     .map(|option| serde_json::to_string(option).unwrap_or_default());
   let dose_changed = i32::from(input.dose_changed);
+  let visit_sync_id = new_sync_id();
 
   let mut tx = pool
     .begin()
@@ -425,14 +432,14 @@ pub async fn save_visit(pool: &SqlitePool, input: &VisitInput, machine_id: &str)
   .bind(&input.created_by)
   .bind(&now)
   .bind(&now)
-  .bind(new_sync_id())
+  .bind(&visit_sync_id)
   .bind(machine_id)
   .execute(&mut *tx)
   .await
   .context("failed to save visit")?
   .last_insert_rowid();
 
-  sync_visit_appointment(&mut tx, input, id, &now, machine_id).await?;
+  sync_visit_appointment(&mut tx, input, id, &visit_sync_id, &now, machine_id).await?;
 
   tx.commit()
     .await
@@ -482,6 +489,11 @@ pub async fn update_visit(
     .begin()
     .await
     .context("failed to begin visit update transaction")?;
+  let existing_link = get_visit_appointment_link_context(&mut tx, visit_id).await?;
+  let visit_sync_id = existing_link
+    .as_ref()
+    .and_then(|context| context.sync_id.clone())
+    .unwrap_or_else(new_sync_id);
 
   let result = sqlx::query(
     "UPDATE wf_visits SET \
@@ -510,7 +522,7 @@ pub async fn update_visit(
   .bind(&input.adherence)
   .bind(&now)
   .bind(machine_id)
-  .bind(new_sync_id())
+  .bind(&visit_sync_id)
   .bind(visit_id)
   .execute(&mut *tx)
   .await
@@ -520,8 +532,15 @@ pub async fn update_visit(
     bail!("visit not found: {visit_id}");
   }
 
-  unlink_or_delete_visit_appointment(&mut tx, visit_id, &now, machine_id).await?;
-  sync_visit_appointment(&mut tx, input, visit_id, &now, machine_id).await?;
+  unlink_or_delete_visit_appointment(
+    &mut tx,
+    visit_id,
+    existing_link.as_ref(),
+    &now,
+    machine_id,
+  )
+  .await?;
+  sync_visit_appointment(&mut tx, input, visit_id, &visit_sync_id, &now, machine_id).await?;
 
   tx.commit()
     .await
@@ -774,8 +793,16 @@ pub async fn delete_visit(pool: &SqlitePool, visit_id: i64, machine_id: &str) ->
     .begin()
     .await
     .context("failed to begin visit delete transaction")?;
+  let visit_link = get_visit_appointment_link_context(&mut tx, visit_id).await?;
 
-  unlink_or_delete_visit_appointment(&mut tx, visit_id, &now, machine_id).await?;
+  unlink_or_delete_visit_appointment(
+    &mut tx,
+    visit_id,
+    visit_link.as_ref(),
+    &now,
+    machine_id,
+  )
+  .await?;
 
   let result = sqlx::query(
     "UPDATE wf_visits \
@@ -802,10 +829,28 @@ pub async fn delete_visit(pool: &SqlitePool, visit_id: i64, machine_id: &str) ->
   Ok(())
 }
 
+async fn get_visit_appointment_link_context(
+  tx: &mut Transaction<'_, Sqlite>,
+  visit_id: i64,
+) -> Result<Option<VisitAppointmentLinkContext>> {
+  let row = sqlx::query("SELECT hn, next_appointment, sync_id FROM wf_visits WHERE id = ? LIMIT 1")
+    .bind(visit_id)
+    .fetch_optional(&mut **tx)
+    .await
+    .context("failed to query visit appointment link context")?;
+
+  Ok(row.map(|row| VisitAppointmentLinkContext {
+    hn: row.get("hn"),
+    next_appointment: row.try_get("next_appointment").ok().flatten(),
+    sync_id: row.try_get("sync_id").ok().flatten(),
+  }))
+}
+
 async fn sync_visit_appointment(
   tx: &mut Transaction<'_, Sqlite>,
   input: &VisitInput,
   visit_id: i64,
+  visit_sync_id: &str,
   now: &str,
   machine_id: &str,
 ) -> Result<()> {
@@ -820,11 +865,19 @@ async fn sync_visit_appointment(
 
   let existing_manual_appointment_id = sqlx::query_scalar::<_, i64>(
     "SELECT id FROM wf_appointments \
-      WHERE hn = ? AND appt_date = ? AND status = 'scheduled' AND source_visit_id IS NULL AND deleted_at IS NULL \
-         ORDER BY id DESC LIMIT 1",
+      WHERE deleted_at IS NULL AND (\
+            (hn = ? AND appt_date = ? AND status = 'scheduled' \
+              AND source_visit_id IS NULL AND source_visit_sync_id IS NULL)\
+         OR source_visit_sync_id = ?) \
+      ORDER BY CASE \
+          WHEN source_visit_sync_id = ? THEN 0 \
+          ELSE 1 \
+        END, id DESC LIMIT 1",
   )
   .bind(&input.hn)
   .bind(next_appointment)
+  .bind(visit_sync_id)
+  .bind(visit_sync_id)
   .fetch_optional(&mut **tx)
   .await
   .context("failed to find reusable appointment for visit")?;
@@ -833,6 +886,7 @@ async fn sync_visit_appointment(
     sqlx::query(
       "UPDATE wf_appointments \
            SET source_visit_id = ?, \
+           source_visit_sync_id = ?, \
            appt_type = COALESCE(appt_type, 'clinic_visit'), \
            updated_at = ?, \
            machine_id = ?, \
@@ -840,6 +894,7 @@ async fn sync_visit_appointment(
          WHERE id = ? AND deleted_at IS NULL",
     )
     .bind(visit_id)
+    .bind(visit_sync_id)
     .bind(now)
     .bind(machine_id)
     .bind(new_sync_id())
@@ -850,16 +905,17 @@ async fn sync_visit_appointment(
   } else {
     sqlx::query(
       "INSERT INTO wf_appointments \
-          (hn, appt_date, appt_type, status, notes, created_at, updated_at, source_visit_id, generated_from_visit, sync_id, machine_id) \
-          VALUES (?, ?, 'clinic_visit', 'scheduled', NULL, ?, ?, ?, 1, ?, ?)",
+        (hn, appt_date, appt_type, status, notes, created_at, updated_at, source_visit_id, source_visit_sync_id, generated_from_visit, sync_id, machine_id) \
+        VALUES (?, ?, 'clinic_visit', 'scheduled', NULL, ?, ?, ?, ?, 1, ?, ?)",
     )
     .bind(&input.hn)
     .bind(next_appointment)
     .bind(now)
-        .bind(now)
+    .bind(now)
     .bind(visit_id)
-        .bind(new_sync_id())
-        .bind(machine_id)
+    .bind(visit_sync_id)
+    .bind(new_sync_id())
+    .bind(machine_id)
     .execute(&mut **tx)
     .await
     .context("failed to create linked appointment for visit")?;
@@ -871,13 +927,27 @@ async fn sync_visit_appointment(
 async fn unlink_or_delete_visit_appointment(
   tx: &mut Transaction<'_, Sqlite>,
   visit_id: i64,
+  visit_link: Option<&VisitAppointmentLinkContext>,
   now: &str,
   machine_id: &str,
 ) -> Result<()> {
+  let visit_sync_id = visit_link.and_then(|link| link.sync_id.as_deref());
+  let visit_hn = visit_link.map(|link| link.hn.as_str());
+  let visit_next_appointment = visit_link.and_then(|link| link.next_appointment.as_deref());
+
   let linked_appointment = sqlx::query(
-    "SELECT id, generated_from_visit FROM wf_appointments WHERE source_visit_id = ? AND deleted_at IS NULL LIMIT 1",
+    "SELECT id, generated_from_visit FROM wf_appointments \
+      WHERE deleted_at IS NULL AND (\
+            source_visit_sync_id = ? \
+         OR (source_visit_sync_id IS NULL AND source_visit_id = ? AND hn = ? AND appt_date = ?)\
+      ) \
+      ORDER BY CASE WHEN source_visit_sync_id = ? THEN 0 ELSE 1 END LIMIT 1",
   )
+  .bind(visit_sync_id)
   .bind(visit_id)
+  .bind(visit_hn)
+  .bind(visit_next_appointment)
+  .bind(visit_sync_id)
   .fetch_optional(&mut **tx)
   .await
   .context("failed to query linked appointment for visit")?;
@@ -892,7 +962,7 @@ async fn unlink_or_delete_visit_appointment(
   if generated_from_visit != 0 {
     sqlx::query(
       "UPDATE wf_appointments \
-          SET deleted_at = ?, source_visit_id = NULL, updated_at = ?, machine_id = ?, sync_id = COALESCE(sync_id, ?) \
+          SET deleted_at = ?, source_visit_id = NULL, source_visit_sync_id = NULL, updated_at = ?, machine_id = ?, sync_id = COALESCE(sync_id, ?) \
         WHERE id = ? AND deleted_at IS NULL",
     )
     .bind(now)
@@ -906,7 +976,7 @@ async fn unlink_or_delete_visit_appointment(
   } else {
     sqlx::query(
       "UPDATE wf_appointments \
-          SET source_visit_id = NULL, updated_at = ?, machine_id = ?, sync_id = COALESCE(sync_id, ?) \
+          SET source_visit_id = NULL, source_visit_sync_id = NULL, updated_at = ?, machine_id = ?, sync_id = COALESCE(sync_id, ?) \
         WHERE id = ? AND deleted_at IS NULL",
     )
       .bind(now)

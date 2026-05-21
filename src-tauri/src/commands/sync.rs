@@ -150,6 +150,26 @@ async fn mark_rows_synced(
   Ok(())
 }
 
+async fn resolve_local_visit_id(
+  pool: &sqlx::SqlitePool,
+  source_visit_sync_id: Option<&str>,
+) -> Result<Option<i64>, String> {
+  let Some(source_visit_sync_id) = source_visit_sync_id
+    .map(str::trim)
+    .filter(|value| !value.is_empty())
+  else {
+    return Ok(None);
+  };
+
+  sqlx::query_scalar::<_, i64>(
+    "SELECT id FROM wf_visits WHERE sync_id = ? AND deleted_at IS NULL LIMIT 1",
+  )
+  .bind(source_visit_sync_id)
+  .fetch_optional(pool)
+  .await
+  .map_err(|e| e.to_string())
+}
+
 async fn push_rows<T>(
   client: &Client,
   url: &str,
@@ -347,10 +367,12 @@ pub async fn push_to_supabase(
   }
 
   let appointment_rows: Vec<WfAppointmentSync> = sqlx::query_as(
-    "SELECT sync_id, machine_id, hn, appt_date, appt_type, status, notes, source_visit_id, \
-            generated_from_visit, created_at, updated_at, deleted_at \
-       FROM wf_appointments \
-      WHERE sync_id IS NOT NULL AND (synced_at IS NULL OR updated_at > synced_at)",
+    "SELECT a.sync_id, a.machine_id, a.hn, a.appt_date, a.appt_type, a.status, a.notes, \
+            a.source_visit_id, COALESCE(a.source_visit_sync_id, v.sync_id) AS source_visit_sync_id, \
+            a.generated_from_visit, a.created_at, a.updated_at, a.deleted_at \
+       FROM wf_appointments a \
+       LEFT JOIN wf_visits v ON v.id = a.source_visit_id \
+      WHERE a.sync_id IS NOT NULL AND (a.synced_at IS NULL OR a.updated_at > a.synced_at)",
   )
   .fetch_all(&state.pool)
   .await
@@ -818,12 +840,19 @@ pub async fn pull_from_supabase(
         .await
         .map_err(|e| e.to_string())?;
 
+    let resolved_source_visit_id = resolve_local_visit_id(
+      &state.pool,
+      row.source_visit_sync_id.as_deref(),
+    )
+    .await?;
+    let source_visit_id = resolved_source_visit_id.or(row.source_visit_id);
+
     let affected = if let Some(existing_updated) = existing {
       let should_update = row.updated_at > existing_updated;
       if should_update {
         sqlx::query(
           "UPDATE wf_appointments SET machine_id = ?, hn = ?, appt_date = ?, appt_type = ?, \
-           status = ?, notes = ?, source_visit_id = ?, generated_from_visit = ?, \
+           status = ?, notes = ?, source_visit_id = ?, source_visit_sync_id = ?, generated_from_visit = ?, \
            updated_at = ?, deleted_at = ?, synced_at = ? WHERE sync_id = ?",
         )
         .bind(&row.machine_id)
@@ -832,7 +861,8 @@ pub async fn pull_from_supabase(
         .bind(&row.appt_type)
         .bind(&row.status)
         .bind(&row.notes)
-        .bind(row.source_visit_id)
+        .bind(source_visit_id)
+        .bind(&row.source_visit_sync_id)
         .bind(row.generated_from_visit)
         .bind(&row.updated_at)
         .bind(&row.deleted_at)
@@ -848,9 +878,9 @@ pub async fn pull_from_supabase(
     } else {
       sqlx::query(
         "INSERT INTO wf_appointments \
-            (sync_id, machine_id, hn, appt_date, appt_type, status, notes, source_visit_id, \
-             generated_from_visit, created_at, updated_at, deleted_at, synced_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          (sync_id, machine_id, hn, appt_date, appt_type, status, notes, source_visit_id, \
+           source_visit_sync_id, generated_from_visit, created_at, updated_at, deleted_at, synced_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .bind(sync_id)
       .bind(&row.machine_id)
@@ -859,7 +889,8 @@ pub async fn pull_from_supabase(
       .bind(&row.appt_type)
       .bind(&row.status)
       .bind(&row.notes)
-      .bind(row.source_visit_id)
+        .bind(source_visit_id)
+        .bind(&row.source_visit_sync_id)
       .bind(row.generated_from_visit)
       .bind(&row.created_at)
       .bind(&row.updated_at)

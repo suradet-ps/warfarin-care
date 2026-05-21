@@ -100,6 +100,7 @@ CREATE TABLE wf_appointments (
     status                 TEXT NOT NULL DEFAULT 'scheduled',
     notes                  TEXT,
     source_visit_id        INTEGER,
+    source_visit_sync_id   UUID,
     generated_from_visit   INTEGER NOT NULL DEFAULT 0,
     created_at            TEXT NOT NULL,
     updated_at            TEXT NOT NULL,
@@ -109,6 +110,9 @@ CREATE TABLE wf_appointments (
 CREATE INDEX idx_wf_appointments_updated_at ON wf_appointments(updated_at DESC);
 CREATE INDEX idx_wf_appointments_hn ON wf_appointments(hn);
 CREATE INDEX idx_wf_appointments_appt_date ON wf_appointments(appt_date);
+CREATE UNIQUE INDEX idx_wf_appointments_source_visit_sync_id
+    ON wf_appointments(source_visit_sync_id)
+    WHERE source_visit_sync_id IS NOT NULL;
 
 -- =====================================================
 -- wf_outcomes (matches 0001_initial + 0008)
