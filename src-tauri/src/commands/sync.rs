@@ -11,8 +11,8 @@ use crate::db::sqlite::AppState;
 use crate::{
   encrypt::{decrypt_value, encrypt_value},
   models::sync::{
-    PulledRow, SyncResult, SyncStatus, SyncSummary, WfAppointmentSync, WfDoseHistorySync,
-    WfOutcomeSync, WfPatientStatusHistorySync, WfPatientSync, WfVisitSync,
+    ConnectionTestResult, PulledRow, SyncResult, SyncStatus, SyncSummary, WfAppointmentSync,
+    WfDoseHistorySync, WfOutcomeSync, WfPatientStatusHistorySync, WfPatientSync, WfVisitSync,
   },
 };
 
@@ -386,22 +386,95 @@ pub async fn test_supabase_connection(
   app: AppHandle,
   url: String,
   anon_key: String,
-) -> Result<bool, String> {
+) -> Result<ConnectionTestResult, String> {
+  let trimmed_url = url.trim().trim_end_matches('/').to_string();
+  if trimmed_url.is_empty() {
+    return Err("กรุณากรอก Supabase URL".to_string());
+  }
+  let trimmed_key = anon_key.trim();
+  if trimmed_key.is_empty() {
+    return Err("กรุณากรอก Anon Key".to_string());
+  }
+  ensure_https(&trimmed_url)?;
+
   let machine_id = get_or_create_machine_id(&app)?;
-  let endpoint = build_rest_url(
-    url.trim().trim_end_matches('/'),
-    "wf_patients",
-    &[("limit", "1".to_string())],
-  )?;
-  let response = with_auth(
-    supabase_client().get(endpoint),
-    anon_key.trim(),
-    &machine_id,
-  )
-  .send()
-  .await
-  .map_err(|e| e.to_string())?;
-  Ok(response.status().is_success())
+  let client = supabase_client();
+
+  // Probe `wf_patients?limit=1` directly. Supabase's `/rest/v1/` root is
+  // service_role-only, so it always rejects anon keys with 401 — using it
+  // as a "connection test" gave false negatives. The table probe works with
+  // anon keys when RLS allows SELECT, and PostgREST returns a structured
+  // JSON error body whose `code` / `message` we can use to tell the user
+  // precisely what's wrong (bad key vs missing table vs RLS block).
+  let endpoint = build_rest_url(&trimmed_url, "wf_patients", &[("limit", "1".to_string())])?;
+  let response = with_auth(client.get(endpoint.clone()), trimmed_key, &machine_id)
+    .send()
+    .await
+    .map_err(|e| {
+      format!(
+        "ไม่สามารถเชื่อมต่อ {} ได้: {} (ตรวจสอบ URL และเครือข่าย)",
+        endpoint, e
+      )
+    })?;
+
+  let status = response.status();
+  let status_code = Some(status.as_u16());
+  let body = response.text().await.unwrap_or_default();
+  let preview: String = body.chars().take(300).collect();
+
+  if status.is_success() {
+    return Ok(ConnectionTestResult {
+      ok: true,
+      message: "เชื่อมต่อสำเร็จ พร้อมใช้งาน Push/Pull".to_string(),
+      status_code,
+    });
+  }
+
+  // PostgREST returns `42P01` when the relation doesn't exist. Treat this as
+  // a "connected but not yet set up" signal — distinct from a bad anon key.
+  if status.as_u16() == 404 || body.contains("42P01") || body.contains("does not exist") {
+    return Ok(ConnectionTestResult {
+      ok: false,
+      message: format!(
+        "เชื่อมต่อ Supabase สำเร็จ แต่ยังไม่มีตาราง wf_patients กรุณารัน SQL setup ตาม CLOUD-SYNC.md ก่อนใช้งาน Push/Pull (HTTP {}). รายละเอียด: {}",
+        status.as_u16(),
+        preview
+      ),
+      status_code,
+    });
+  }
+
+  if status.as_u16() == 401 {
+    return Ok(ConnectionTestResult {
+      ok: false,
+      message: format!(
+        "Anon Key ไม่ถูกต้อง (HTTP 401). รายละเอียด: {}",
+        preview
+      ),
+      status_code,
+    });
+  }
+
+  if status.as_u16() == 403 {
+    return Ok(ConnectionTestResult {
+      ok: false,
+      message: format!(
+        "ไม่มีสิทธิ์เข้าถึงตาราง wf_patients — ตรวจสอบ RLS policy ใน Supabase (HTTP 403). รายละเอียด: {}",
+        preview
+      ),
+      status_code,
+    });
+  }
+
+  Ok(ConnectionTestResult {
+    ok: false,
+    message: format!(
+      "เชื่อมต่อไม่สำเร็จ (HTTP {}): {}",
+      status.as_u16(),
+      preview
+    ),
+    status_code,
+  })
 }
 
 #[tauri::command]

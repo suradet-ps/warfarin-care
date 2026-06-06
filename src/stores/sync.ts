@@ -21,6 +21,12 @@ export interface SyncSummary {
   supabaseUrl: string | null
 }
 
+export interface ConnectionTestResult {
+  ok: boolean
+  message: string
+  statusCode: number | null
+}
+
 type SyncPhase = 'idle' | 'pushing' | 'pulling' | 'syncing' | 'success' | 'error'
 
 export const useSyncStore = defineStore('sync', () => {
@@ -61,8 +67,8 @@ export const useSyncStore = defineStore('sync', () => {
     await refreshStatus()
   }
 
-  async function testConnection(url: string, anonKey: string) {
-    return invoke<boolean>('test_supabase_connection', { url, anonKey })
+  async function testConnection(url: string, anonKey: string): Promise<ConnectionTestResult> {
+    return invoke<ConnectionTestResult>('test_supabase_connection', { url, anonKey })
   }
 
   async function push() {

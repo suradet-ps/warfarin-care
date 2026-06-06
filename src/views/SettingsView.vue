@@ -7,6 +7,9 @@ import SyncPanel from '#/components/settings/SyncPanel.vue'
 const store = useSettingsStore()
 const testResult = ref<boolean | null>(null)
 const testing = ref(false)
+const saving = ref(false)
+const saveResult = ref<'success' | 'error' | null>(null)
+const saveError = ref<string | null>(null)
 
 const activeSection = ref<'connection' | 'hospital' | 'interactions' | 'sync'>('connection')
 
@@ -25,9 +28,28 @@ onMounted(() => {
 
 async function handleTestConnection() {
   testing.value = true
+  saveResult.value = null
+  saveError.value = null
   const result = await store.testConnection()
   testResult.value = result
   testing.value = false
+}
+
+async function handleSaveConnection() {
+  saving.value = true
+  testResult.value = null
+  saveResult.value = null
+  saveError.value = null
+  try {
+    await store.saveMysqlConfig()
+    saveResult.value = 'success'
+  } catch (e) {
+    console.error('Save MySQL config failed:', e)
+    saveResult.value = 'error'
+    saveError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    saving.value = false
+  }
 }
 
 const interactionModalOpen = ref(false)
@@ -127,12 +149,20 @@ async function handleDeleteInteraction(id: number) {
         </label>
       </div>
       <div class="settings-actions">
-        <button class="btn btn-secondary" @click="handleTestConnection" :disabled="testing">
+        <button class="btn btn-secondary" @click="handleTestConnection" :disabled="testing || saving">
           {{ testing ? 'กำลังทดสอบ...' : 'ทดสอบการเชื่อมต่อ' }}
         </button>
-        <span v-if="testResult === true" class="badge badge-success">✓ เชื่อมต่อสำเร็จ</span>
+        <button class="btn btn-primary" @click="handleSaveConnection" :disabled="testing || saving">
+          {{ saving ? 'กำลังบันทึก...' : 'บันทึกการเชื่อมต่อ' }}
+        </button>
+        <span v-if="testResult === true" class="badge badge-success">✓ เชื่อมต่อสำเร็จ (บันทึกแล้ว)</span>
         <span v-else-if="testResult === false" class="badge badge-danger">✗ เชื่อมต่อไม่ได้</span>
+        <span v-if="saveResult === 'success'" class="badge badge-success">✓ บันทึกการเชื่อมต่อแล้ว</span>
+        <span v-else-if="saveResult === 'error'" class="badge badge-danger">✗ บันทึกไม่สำเร็จ</span>
       </div>
+      <p v-if="saveError" class="caption" style="color: var(--color-brand-red); margin-top: var(--spacing-xs)">
+        {{ saveError }}
+      </p>
     </div>
 
     <div v-else-if="activeSection === 'hospital'" class="settings-section card">

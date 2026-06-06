@@ -132,21 +132,57 @@ pub async fn save_setting(
 }
 
 /// Persists the MySQL config JSON and verifies the connection.
-/// Password is encrypted before storage.
+/// Password is encrypted before storage. If the supplied password is empty,
+/// the existing stored password is preserved (lets the UI keep the password
+/// hidden behind a placeholder without forcing the user to re-type it).
 #[tauri::command]
 pub async fn test_mysql_connection(
   config: DbConfig,
   state: State<'_, AppState>,
 ) -> Result<bool, String> {
-  let ok = db_test_connection(&config).await;
+  let merged = merge_with_stored_password(&state.pool, config).await?;
+  let ok = db_test_connection(&merged).await;
   if ok {
-    let key = get_or_create_encryption_key(&state.pool).await?;
-    let encrypted_json = encrypt::encrypt_json(&config, &key)?;
-    set_setting(&state.pool, MYSQL_CONFIG_KEY, &encrypted_json)
-      .await
-      .map_err(|e| e.to_string())?;
+    persist_mysql_config(&state.pool, &merged).await?;
   }
   Ok(ok)
+}
+
+/// Saves the MySQL config without performing a connection test. Used by the
+/// "บันทึก" button so users can persist credentials even when HOSxP is not
+/// currently reachable (e.g. while editing settings off-site). If the supplied
+/// password is empty, the existing stored password is preserved.
+#[tauri::command]
+pub async fn save_mysql_config(
+  config: DbConfig,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  let merged = merge_with_stored_password(&state.pool, config).await?;
+  persist_mysql_config(&state.pool, &merged).await
+}
+
+/// If the incoming config has an empty password and a stored config exists,
+/// copy the stored password into the incoming config so the rest of the
+/// pipeline (test + persist) operates on a complete record.
+async fn merge_with_stored_password(
+  pool: &sqlx::SqlitePool,
+  mut config: DbConfig,
+) -> Result<DbConfig, String> {
+  if !config.password.is_empty() {
+    return Ok(config);
+  }
+  if let Some(existing) = get_mysql_config_internal(pool).await? {
+    config.password = existing.password;
+  }
+  Ok(config)
+}
+
+async fn persist_mysql_config(pool: &sqlx::SqlitePool, config: &DbConfig) -> Result<(), String> {
+  let key = get_or_create_encryption_key(pool).await?;
+  let encrypted_json = encrypt::encrypt_json(config, &key)?;
+  set_setting(pool, MYSQL_CONFIG_KEY, &encrypted_json)
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// Returns the MySQL config with decrypted password for UI display/editing.

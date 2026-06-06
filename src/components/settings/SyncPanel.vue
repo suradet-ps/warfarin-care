@@ -12,6 +12,7 @@ const testing = ref(false)
 const saving = ref(false)
 const actionError = ref<string | null>(null)
 const testResult = ref<boolean | null>(null)
+const testMessage = ref<string | null>(null)
 
 const keyPlaceholder = computed(() => {
   return syncStore.summary.hasAnonKey ? '••••••••••••••••••••••' : 'eyJhbGciOi...'
@@ -80,6 +81,7 @@ onMounted(async () => {
 async function handleTestConnection() {
   actionError.value = null
   testResult.value = null
+  testMessage.value = null
 
   if (!formUrl.value.trim() || !formKey.value.trim()) {
     actionError.value = 'กรอก Project URL และ Anon Key ก่อนทดสอบการเชื่อมต่อ'
@@ -88,10 +90,17 @@ async function handleTestConnection() {
 
   testing.value = true
   try {
-    testResult.value = await syncStore.testConnection(formUrl.value.trim(), formKey.value.trim())
+    const result = await syncStore.testConnection(formUrl.value.trim(), formKey.value.trim())
+    testResult.value = result.ok
+    testMessage.value = result.message
+    if (!result.ok) {
+      actionError.value = result.message
+    }
   } catch (error) {
     testResult.value = false
-    actionError.value = error instanceof Error ? error.message : 'ทดสอบการเชื่อมต่อไม่สำเร็จ'
+    const msg = error instanceof Error ? error.message : String(error)
+    testMessage.value = msg
+    actionError.value = msg || 'ทดสอบการเชื่อมต่อไม่สำเร็จ'
   } finally {
     testing.value = false
   }
@@ -99,6 +108,7 @@ async function handleTestConnection() {
 
 async function handleSaveConfig() {
   actionError.value = null
+  testMessage.value = null
 
   if (!formUrl.value.trim() || !formKey.value.trim()) {
     actionError.value = 'กรอก Project URL และ Anon Key ก่อนบันทึก'
@@ -110,8 +120,10 @@ async function handleSaveConfig() {
     await syncStore.saveConfig(formUrl.value.trim(), formKey.value.trim())
     formKey.value = ''
     testResult.value = true
+    testMessage.value = 'บันทึกการตั้งค่าสำเร็จ'
   } catch (error) {
-    actionError.value = error instanceof Error ? error.message : 'บันทึกค่า Cloud Sync ไม่สำเร็จ'
+    const msg = error instanceof Error ? error.message : String(error)
+    actionError.value = msg || 'บันทึกค่า Cloud Sync ไม่สำเร็จ'
   } finally {
     saving.value = false
   }
@@ -198,6 +210,13 @@ async function handlePull() {
         <span v-if="testResult === true" class="badge badge-success">เชื่อมต่อสำเร็จ</span>
         <span v-else-if="testResult === false" class="badge badge-danger">เชื่อมต่อไม่สำเร็จ</span>
       </div>
+
+      <p v-if="testMessage && testResult === true" class="micro sync-test-message success">
+        {{ testMessage }}
+      </p>
+      <p v-else-if="testMessage && testResult === false" class="micro sync-test-message error">
+        {{ testMessage }}
+      </p>
     </section>
 
     <section class="card sync-status-card">
@@ -337,6 +356,25 @@ async function handlePull() {
   align-items: center;
   gap: var(--spacing-md);
   flex-wrap: wrap;
+}
+
+.sync-test-message {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--rounded-md);
+  background: var(--color-surface-soft);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sync-test-message.success {
+  background: var(--color-success-bg, var(--color-surface-soft));
+  color: var(--color-success-accent, var(--color-ink));
+}
+
+.sync-test-message.error {
+  background: var(--color-inr-high-bg);
+  color: var(--color-inr-high);
 }
 
 .sync-status-card {

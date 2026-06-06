@@ -89,6 +89,15 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  async function saveMysqlConfig() {
+    // Persists the current form values via the backend. The backend merges
+    // in the stored password if the in-memory password is empty, so users
+    // can save edits without re-typing the password.
+    await invoke('save_mysql_config', { config: mysqlConfig.value })
+    hasStoredConfig.value = true
+    mysqlConfig.value.password = ''
+  }
+
   async function loadSettings() {
     try {
       const settings = await invoke<Record<string, string>>('get_settings')
@@ -139,6 +148,7 @@ export const useSettingsStore = defineStore('settings', () => {
     drugInteractions,
     loadMysqlConfig,
     testConnection,
+    saveMysqlConfig,
     loadSettings,
     loadDrugInteractions,
     addDrugInteraction,

@@ -24,7 +24,7 @@ use commands::{
   screening::search_warfarin_patients,
   settings::{
     get_mysql_config_for_ui, get_mysql_config_internal, get_mysql_config_status,
-    get_setting_value, get_settings, save_setting, test_mysql_connection,
+    get_setting_value, get_settings, save_mysql_config, save_setting, test_mysql_connection,
   },
   slip::save_slip_pdf,
   sync::{
@@ -150,6 +150,7 @@ pub fn run() -> tauri::Result<()> {
       save_setting,
       get_setting_value,
       test_mysql_connection,
+      save_mysql_config,
       get_mysql_config_for_ui,
       get_mysql_config_status,
       get_inr_history,

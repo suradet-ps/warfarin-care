@@ -135,6 +135,18 @@ pub struct SyncSummary {
   pub supabase_url: Option<String>,
 }
 
+/// Detailed result returned by `test_supabase_connection`. The `ok` flag tells
+/// the UI whether the credentials are usable; `message` and `statusCode` give
+/// the user enough context to fix configuration mistakes (wrong URL, wrong
+/// anon key, missing tables, etc.) without digging through devtools.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionTestResult {
+  pub ok: bool,
+  pub message: String,
+  pub status_code: Option<u16>,
+}
+
 /// Common interface implemented by every row type the sync layer pulls from
 /// Supabase. Lets the generic `pull_table` helper in `commands::sync` read
 /// the row's stable identifier and last-write timestamp without knowing the
