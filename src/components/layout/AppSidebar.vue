@@ -44,8 +44,8 @@ onMounted(() => {
         </g>
       </svg>
       <div class="sidebar-logo-text">
-        <span class="sidebar-logo-title">วาร์ฟาริน</span>
-        <span class="sidebar-logo-sub">คลินิก</span>
+        <span class="sidebar-logo-title">Warfarin</span>
+        <span class="sidebar-logo-sub">Clinic</span>
       </div>
     </div>
     <ul class="sidebar-nav">
