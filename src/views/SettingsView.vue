@@ -117,7 +117,13 @@ async function handleDeleteInteraction(id: number) {
         </label>
         <label class="form-field" style="grid-column: 1 / -1">
           <span class="caption" style="color:var(--color-slate)">Password</span>
-          <input class="input" type="password" v-model="store.mysqlConfig.password" />
+          <input
+            class="input"
+            type="password"
+            v-model="store.mysqlConfig.password"
+            :placeholder="store.hasStoredConfig ? '•••••••• (พิมพ์ใหม่เพื่อเปลี่ยน)' : 'กรอกรหัสผ่าน'"
+            autocomplete="off"
+          />
         </label>
       </div>
       <div class="settings-actions">

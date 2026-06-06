@@ -18,6 +18,23 @@ export const doseDayLabels: Record<DoseDayKey, string> = {
   sun: 'อา',
 }
 
+/**
+ * Single source of truth for default target-INR ranges by clinical
+ * indication. Mirrors the Rust SQL schema default for `wf_patients`
+ * (target_inr_low = 2.0, target_inr_high = 3.0). Keep the two in sync
+ * if a clinical guideline changes — a drift between them will show up
+ * as silent range shifts on newly enrolled patients.
+ */
+export const DEFAULT_TARGET_INR_BY_INDICATION: Record<string, { low: number; high: number }> = {
+  AF: { low: 2.0, high: 3.0 },
+  DVT: { low: 2.0, high: 3.0 },
+  PE: { low: 2.0, high: 3.0 },
+  mechanical_valve: { low: 2.5, high: 3.5 },
+  other: { low: 2.0, high: 3.0 },
+}
+
+export const DEFAULT_TARGET_INR = { low: 2.0, high: 3.0 } as const
+
 export function emptyDoseSchedule(): DoseSchedule {
   return { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 }
 }

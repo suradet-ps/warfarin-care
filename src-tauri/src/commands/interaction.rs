@@ -3,7 +3,7 @@ use crate::models::interaction::{DrugInteraction, DrugInteractionInput};
 use anyhow::Result;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
+use sqlx::{MySql, QueryBuilder, Row};
 use std::collections::BTreeMap;
 use tauri::State;
 
@@ -152,9 +152,7 @@ pub async fn get_patient_drug_interactions(
     .unwrap_or_else(|| "2024-01-01".to_string());
 
   // Build query with date filter - only last 1 year
-  let icode_placeholders: Vec<String> =
-    interaction_icodes.iter().map(|_| "?".to_string()).collect();
-  let query = format!(
+  let mut query_builder = QueryBuilder::<MySql>::new(
     r#"
             SELECT
                 o.vstdate,
@@ -163,21 +161,25 @@ pub async fn get_patient_drug_interactions(
                 o.icode
             FROM opitemrece o
             LEFT JOIN drugitems d ON d.icode = o.icode
-            WHERE o.hn = ?
-              AND o.icode IN ({})
-              AND o.vstdate >= ?
-            ORDER BY o.vstdate DESC
-            "#,
-    icode_placeholders.join(", ")
+            WHERE o.hn = "#,
   );
-
-  let mut builder = sqlx::query(&query).bind(&hn);
-  for icode in &interaction_icodes {
-    builder = builder.bind(icode);
+  query_builder.push_bind(&hn);
+  query_builder.push(" AND o.icode IN (");
+  {
+    let mut separated = query_builder.separated(", ");
+    for icode in &interaction_icodes {
+      separated.push_bind(icode);
+    }
   }
-  builder = builder.bind(&one_year_ago);
+  query_builder.push(") AND o.vstdate >= ");
+  query_builder.push_bind(&one_year_ago);
+  query_builder.push(" ORDER BY o.vstdate DESC");
 
-  let rows = builder.fetch_all(&pool).await.map_err(|e| e.to_string())?;
+  let rows = query_builder
+    .build()
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
 
   let records: Vec<PatientDrugInteractionRecord> = rows
     .iter()
@@ -186,7 +188,7 @@ pub async fn get_patient_drug_interactions(
       let interaction_type = interaction_types
         .get(&icode)
         .cloned()
-        .unwrap_or_else(|| "increase".to_string());
+        .unwrap_or_else(|| "none".to_string());
       let date = mysql::get_optional_date_string(r, "vstdate").unwrap_or_default();
       PatientDrugInteractionRecord {
         date,

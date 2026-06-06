@@ -199,7 +199,7 @@ fn get_optional_string(row: &MySqlRow, column: &str) -> Option<String> {
     })
 }
 
-fn apply_keyword_filter(builder: &mut QueryBuilder<'_, MySql>, keyword: &str) {
+fn apply_keyword_filter(builder: &mut QueryBuilder<MySql>, keyword: &str) {
   let trimmed = keyword.trim();
   if trimmed.is_empty() {
     return;
@@ -217,7 +217,7 @@ fn apply_keyword_filter(builder: &mut QueryBuilder<'_, MySql>, keyword: &str) {
 }
 
 fn apply_enrollment_filter(
-  builder: &mut QueryBuilder<'_, MySql>,
+  builder: &mut QueryBuilder<MySql>,
   enrollment_status: Option<&str>,
   enrolled_hns: &[String],
 ) {
@@ -246,7 +246,7 @@ fn build_screening_query<'a>(
   keyword: &'a str,
   enrollment_status: Option<&'a str>,
   enrolled_hns: &'a [String],
-) -> QueryBuilder<'a, MySql> {
+) -> QueryBuilder<MySql> {
   let mut builder = QueryBuilder::<MySql>::new(select_clause);
   builder.push(
     r#"

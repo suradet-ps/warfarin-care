@@ -14,7 +14,6 @@ use crate::{
   },
   dose::calculator::calculate_ttr,
   models::{
-    alert::PatientAlert,
     inr::InrRecord,
     patient::{ActivePatientSummary, EnrollmentInput, HosxpPatient, PatientDetail, WfPatient},
   },
@@ -172,7 +171,6 @@ pub async fn get_patient_detail(
     current_dose_mgday: current_dose,
     ttr6months: ttr6,
     next_appointment: next_appt,
-    alerts: Vec::<PatientAlert>::new(),
     inr_history: inr_records,
     dispensing_history,
   })

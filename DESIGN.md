@@ -23,21 +23,20 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 | Token | Hex | Use | Contrast on White |
 |---|---|---|---|
 | `{colors.pink-900}` | `#831843` | Heart shadow / dark depth | n/a (used in shadow) |
-| `{colors.pink-600}` | `#EC4899` | Heart outline, primary CTA hover, active nav | AAA (3.96:1) for large text |
+| `{colors.pink-700}` | `#BE185D` | **Active nav, primary CTA** | AAA (4.96:1) |
+| `{colors.pink-600}` | `#DB2777` | Hover state, Heart outline | AAA (4.4:1) for large text |
 | `{colors.pink-500}` | `#F472B6` | Heart second ring (60% opacity fill) | n/a (transparency) |
+| `{colors.pink-400}` | `#EC4899` | Heart icon stroke, brand mark | AA large text |
 | `{colors.pink-300}` | `#F9A8D4` | Heart third ring (30% opacity fill) | n/a (transparency) |
 | `{colors.pink-100}` | `#FCE7F3` | Pastel pink surface tint | n/a (background) |
 | `{colors.pink-50}` | `#FDF2F8` | Softest pink wash | n/a (background) |
 | `{colors.teal-600}` | `#0D9488` | ~~Replaced~~ | — |
 | `{colors.teal-500}` | `#14B8A6` | ~~Replaced~~ | — |
-| `{colors.teal-100}` | `#CCFBF1` | ~~Replaced~~ | n/a |
+| `{colors.teal-100}` | `#CCFBF1` | ~~Replaced~~ | n/a (background) |
 | `{colors.purple-700}` | `#6D28D9` | ~~Replaced~~ | — |
 | `{colors.purple-600}` | `#7C3AED` | ~~Replaced~~ | — |
 | `{colors.purple-500}` | `#8B5CF6` | ~~Replaced~~ | — |
-| `{colors.purple-100}` | `#EDE9FE` | ~~Replaced~~ | — |
-| `{colors.pink-700}` | `#BE185D` | **Active nav, primary CTA** | AAA (4.96:1) |
-| `{colors.pink-600}` | `#DB2777` | Hover state | AAA (4.4:1) |
-| `{colors.pink-500}` | `#EC4899` | Heart icon stroke, brand mark | AA large text |
+| `{colors.purple-100}` | `#EDE9FE` | ~~Replaced~~ | n/a (background) |
 | `{colors.coral-500}` | `#F97316` | Warning/analogue accent | AAA (4.57:1) |
 | `{colors.coral-100}` | `#FFEDD5` | Coral pastel surface | n/a (background) |
 | `{colors.yellow-500}` | `#EAB308` | Split-complementary accent | AAA on dark (5.08:1) |
@@ -248,13 +247,18 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 
 ### INR Status Colors (for all components)
 
-| Status | Color Token | Background Token |
-|---|---|---|
-| In range | `{colors.inr-safe}` | `{colors.inr-safe-bg}` |
-| Below range | `{colors.inr-low}` | `{colors.inr-low-bg}` |
-| Above range | `{colors.inr-high}` | `{colors.inr-high-bg}` |
-| Critical (> 4.0 or < 1.5) | `{colors.inr-critical}` | `{colors.inr-critical-bg}` |
-| No data | `{colors.inr-none}` | `{colors.inr-none-bg}` |
+> **Canonical reference: "Semantic — INR Status (Clinical Convention)" above (lines 71–87).**
+> Every INR status surface (in-range badge, below/above-range chip, critical alert pill, trend chart point, slip print colour) MUST use those tokens. Do not introduce a second palette.
+>
+> Quick status → token lookup (kept for convenience only — if a token is renamed, update both places):
+>
+> | Status | Color Token | Background Token |
+> |---|---|---|
+> | In range | `{colors.inr-safe}` | `{colors.inr-safe-bg}` |
+> | Below range | `{colors.inr-low}` | `{colors.inr-low-bg}` |
+> | Above range | `{colors.inr-high}` | `{colors.inr-high-bg}` |
+> | Critical (> 4.0 or < 1.5) | `{colors.inr-critical}` | `{colors.inr-critical-bg}` |
+> | No data | `{colors.inr-none}` | `{colors.inr-none-bg}` |
 
 ### Inputs
 

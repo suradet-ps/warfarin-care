@@ -46,7 +46,7 @@ async function calculateSuggestion() {
   error.value = null
   try {
     suggestion.value = await invoke<DoseSuggestion>('suggest_dose', {
-      currentDose: currentDose.value,
+      currentDoseMgday: currentDose.value,
       currentInr: currentInr.value,
       targetLow: props.targetLow,
       targetHigh: props.targetHigh,

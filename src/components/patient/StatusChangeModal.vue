@@ -83,11 +83,12 @@ async function confirmSave() {
     </div>
 
     <ConfirmDialog
-      v-if="confirmOpen"
+      :open="confirmOpen"
       title="ยืนยันการเปลี่ยนสถานะ"
       :message="confirmMessage"
       confirm-label="ยืนยันการบันทึก"
       cancel-label="กลับไปแก้ไข"
+      @update:open="(v: boolean) => (confirmOpen = v)"
       @cancel="confirmOpen = false"
       @confirm="confirmSave"
     />

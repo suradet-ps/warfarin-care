@@ -6,10 +6,18 @@ import { Download } from 'lucide-vue-next'
 interface CensusReport { active: number; inactive: number; transferred: number; discharged: number; deceased: number; total: number }
 interface TtrReport { meanTtr: number }
 interface AdverseReport { totalEvents: number }
+interface InrDistributionReport { lt_1_5: number; '1_5_to_2_0': number; '2_0_to_3_0': number; '3_0_to_4_0': number; gt_4_0: number; total: number }
+interface MissedAppointmentsReport { total: number; items: Array<{ hn: string; apptDate: string }> }
+interface DoseAdjReport { totalChanges: number; totalVisits: number; patientsWithChanges: number; changeRatio: number }
+interface MonthlyCohortReport { items: Array<{ month: string; count: number }> }
 
 const census = ref<CensusReport | null>(null)
 const ttr = ref<TtrReport | null>(null)
 const adverse = ref<AdverseReport | null>(null)
+const inrDist = ref<InrDistributionReport | null>(null)
+const missedAppts = ref<MissedAppointmentsReport | null>(null)
+const doseAdj = ref<DoseAdjReport | null>(null)
+const monthlyCohort = ref<MonthlyCohortReport | null>(null)
 const loading = ref(false)
 
 const reportCards = computed(() => [
@@ -37,19 +45,85 @@ const reportCards = computed(() => [
     tone: 'card-feature-coral',
     rows: adverse.value ? [['รวมเหตุการณ์', `${adverse.value.totalEvents}`]] : [],
   },
+  {
+    key: 'inr_distribution',
+    title: 'การกระจาย INR',
+    value: inrDist.value ? `${inrDist.value.total} ค่า` : '-',
+    description: 'ฮิสโตแกรมของค่า INR ทั้งหมด',
+    tone: 'card-feature-teal',
+    rows: inrDist.value
+      ? [
+          ['< 1.5', `${inrDist.value.lt_1_5}`],
+          ['1.5 – 2.0', `${inrDist.value['1_5_to_2_0']}`],
+          ['2.0 – 3.0', `${inrDist.value['2_0_to_3_0']}`],
+          ['3.0 – 4.0', `${inrDist.value['3_0_to_4_0']}`],
+          ['> 4.0', `${inrDist.value.gt_4_0}`],
+        ]
+      : [],
+  },
+  {
+    key: 'missed_appointments',
+    title: 'ขาดนัด',
+    value: missedAppts.value ? `${missedAppts.value.total} รายการ` : '-',
+    description: 'นัดที่เลยวันแล้วและยังไม่ได้อัพเดตสถานะ',
+    tone: 'card-feature-coral',
+    rows: missedAppts.value
+      ? missedAppts.value.items.slice(0, 5).map((it) => [it.hn, it.apptDate])
+      : [],
+  },
+  {
+    key: 'dose_adjustment_frequency',
+    title: 'ความถี่ในการปรับยา',
+    value: doseAdj.value ? `${(doseAdj.value.changeRatio * 100).toFixed(0)}%` : '-',
+    description: 'สัดส่วนการเปลี่ยนขนาดยาต่อการมาคลินิกทั้งหมด',
+    tone: 'card-feature-yellow',
+    rows: doseAdj.value
+      ? [
+          ['ครั้งที่ปรับยา', `${doseAdj.value.totalChanges}`],
+          ['การมาคลินิกทั้งหมด', `${doseAdj.value.totalVisits}`],
+          ['ผู้ป่วยที่มีการปรับยา', `${doseAdj.value.patientsWithChanges}`],
+        ]
+      : [],
+  },
+  {
+    key: 'monthly_cohort',
+    title: 'การลงทะเบียนรายเดือน',
+    value: monthlyCohort.value ? `${monthlyCohort.value.items.length} เดือน` : '-',
+    description: 'จำนวนผู้ป่วยใหม่ที่ลงทะเบียนในคลินิก (12 เดือนล่าสุด)',
+    tone: 'card-feature-pink-dark',
+    rows: monthlyCohort.value
+      ? monthlyCohort.value.items.map((it) => [it.month, `${it.count}`])
+      : [],
+  },
 ])
 
 async function loadReports() {
   loading.value = true
   try {
-    const [censusData, ttrData, adverseData] = await Promise.all([
+    const [
+      censusData,
+      ttrData,
+      adverseData,
+      inrDistData,
+      missedData,
+      doseAdjData,
+      cohortData,
+    ] = await Promise.all([
       invoke<CensusReport>('get_report_data', { reportType: 'census' }),
       invoke<TtrReport>('get_report_data', { reportType: 'ttr' }),
       invoke<AdverseReport>('get_report_data', { reportType: 'adverse' }),
+      invoke<InrDistributionReport>('get_report_data', { reportType: 'inr_distribution' }),
+      invoke<MissedAppointmentsReport>('get_report_data', { reportType: 'missed_appointments' }),
+      invoke<DoseAdjReport>('get_report_data', { reportType: 'dose_adjustment_frequency' }),
+      invoke<MonthlyCohortReport>('get_report_data', { reportType: 'monthly_cohort' }),
     ])
     census.value = censusData
     ttr.value = ttrData
     adverse.value = adverseData
+    inrDist.value = inrDistData
+    missedAppts.value = missedData
+    doseAdj.value = doseAdjData
+    monthlyCohort.value = cohortData
   } finally {
     loading.value = false
   }

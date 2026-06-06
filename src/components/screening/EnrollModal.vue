@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { usePatientStore } from '#/stores/patient'
 import type { EnrollmentInput } from '#/types/patient'
 import { X } from 'lucide-vue-next'
+import { DEFAULT_TARGET_INR, DEFAULT_TARGET_INR_BY_INDICATION } from '#/utils/clinic'
 
 const props = defineProps<{ hn: string }>()
 const emit = defineEmits<{ close: []; enrolled: [] }>()
@@ -14,23 +15,15 @@ const error = ref<string | null>(null)
 const form = ref<EnrollmentInput>({
   hn: props.hn,
   indication: 'AF',
-  targetInrLow: 2.0,
-  targetInrHigh: 3.0,
+  targetInrLow: DEFAULT_TARGET_INR.low,
+  targetInrHigh: DEFAULT_TARGET_INR.high,
   enrolledAt: new Date().toISOString().split('T')[0],
   enrolledBy: '',
   notes: '',
 })
 
-const indicationDefaults: Record<string, { low: number; high: number }> = {
-  AF: { low: 2.0, high: 3.0 },
-  DVT: { low: 2.0, high: 3.0 },
-  PE: { low: 2.0, high: 3.0 },
-  mechanical_valve: { low: 2.5, high: 3.5 },
-  other: { low: 2.0, high: 3.0 },
-}
-
 function onIndicationChange() {
-  const d = indicationDefaults[form.value.indication]
+  const d = DEFAULT_TARGET_INR_BY_INDICATION[form.value.indication]
   if (d) {
     form.value.targetInrLow = d.low
     form.value.targetInrHigh = d.high

@@ -14,51 +14,94 @@ fn round_to_half_mg(value: f64) -> f64 {
 ///
 /// # Algorithm (per Thai clinical practice guidelines)
 ///
-/// | INR range   | Adjustment | Urgency | Recheck |
-/// |-------------|------------|---------|---------|
-/// | < 1.5       | +10-20%    | urgent  | 7-14 d  |
-/// | 1.5 - 1.9   | +5-10%     | caution | 14 d    |
-/// | 2.0 - 3.0   | 0%         | normal  | 28-42 d |
-/// | 3.1 - 3.9   | -5-10%     | caution | 14 d    |
-/// | 4.0 - 4.9   | Hold 1d, -10% | hold | 7 d    |
-/// | 5.0 - 8.9   | Hold 1-2d, Vit K, -10% | hold | 3-7 d |
-/// | >= 9.0      | Hold 1-2d, Vit K 1-10mg, -10% | hold | 1-3 d |
+/// The decision tree uses **deltas from the patient's target range**, not
+/// hard-coded population thresholds. This is critical: a patient with a
+/// mechanical mitral valve (target 2.5–3.5) and INR = 3.2 must be
+/// considered "in range", not "above 3.0" as it would be with absolute
+/// thresholds.
+///
+/// | Relation to target            | Adjustment | Urgency | Recheck |
+/// |-------------------------------|------------|---------|---------|
+/// | Within `[target_low, target_high]` | 0%        | normal  | 28–42 d |
+/// | > 1.0 above `target_high`     | -20%       | urgent  | 3 d     |
+/// | 0.5–1.0 above `target_high`   | -15%       | caution | 7 d     |
+/// | < 0.5 above `target_high`     | -10%       | caution | 14 d    |
+/// | 0.5–1.0 above `target_high` AND INR ≥ 5.0 | hold 1–2d + Vit K, -20% | hold | 3–5 d |
+/// | INR ≥ 5.0 with `target_high < 4.0` | hold + Vit K | hold | 3–5 d |
+/// | 0.5–1.0 below `target_low`    | +10%       | caution | 14 d    |
+/// | > 1.0 below `target_low`      | +20%       | urgent  | 7–14 d  |
+/// | INR < 1.5 (any target)        | +20%       | urgent  | 7–14 d  |
 pub fn suggest_dose(
   current_dose_weekly: f64,
   inr: f64,
-  _target_low: f64,
-  _target_high: f64,
+  target_low: f64,
+  target_high: f64,
 ) -> DoseSuggestion {
+  // Guard against invalid ranges. Fall back to the most common 2.0–3.0.
+  // Treats any inversion or non-finite value as "use defaults" rather than
+  // trying to repair one side and leaving the other unrepaired.
+  let (target_low, target_high) = if target_low.is_finite()
+    && target_high.is_finite()
+    && target_low > 0.0
+    && target_high > target_low
+  {
+    (target_low, target_high)
+  } else {
+    (2.0_f64, 3.0_f64)
+  };
+
+  // Universal critical-low threshold (medical emergency, regardless of target).
+  // Per AGENTS.md §Key Business Rules #9: "INR > 5.0: Always surface as a
+  // critical alert regardless of target range".
+  let universal_critical_high = 5.0;
+  let universal_critical_low = 1.5;
+
+  let in_range = inr >= target_low && inr <= target_high;
+  let above = inr - target_high;
+  let below = target_low - inr;
+
+  // Above-range branches, ordered most-severe first.
   let (adjustment_percent, recommendation, urgency, recheck_days): (f64, &str, &str, u32) =
-    if inr >= 9.0 {
+    if inr >= universal_critical_high {
+      // Hold + Vitamin K per critical threshold.
       (
-        -10.0,
-        "หยุดยา 1-2 วัน และให้ Vitamin K 1-10 mg PO และลดขนาดยา 10%",
+        -20.0,
+        "หยุดยา 1-2 วัน และให้ Vitamin K 1-2 mg PO และลดขนาดยา 20%",
         "hold",
-        2,
+        3,
       )
-    } else if inr >= 5.0 {
-      (
-        -10.0,
-        "หยุดยา 1-2 วัน และให้ Vitamin K 1 mg PO และลดขนาดยา 10%",
-        "hold",
-        5,
-      )
-    } else if inr >= 4.0 {
-      (-10.0, "หยุดยา 1 วัน และลดขนาดยา 10%", "hold", 7)
-    } else if inr > 3.0 {
-      (-7.5, "ลดขนาดยา 5-10% นัดตรวจ INR ใหม่ใน 14 วัน", "caution", 14)
-    } else if inr >= 2.0 {
+    } else if inr >= 4.0 && target_high < 4.0 {
+      // Hold for elevated INR even when not at universal critical, but only
+      // when patient's target is below 4.0 (otherwise 4.0 is in range).
+      (-15.0, "หยุดยา 1 วัน และลดขนาดยา 15%", "hold", 5)
+    } else if above > 1.0 {
+      (-20.0, "ลดขนาดยา 15-20% นัดตรวจ INR ใหม่ใน 7 วัน", "urgent", 7)
+    } else if above > 0.5 {
+      (-15.0, "ลดขนาดยา 10-15% นัดตรวจ INR ใหม่ใน 7-14 วัน", "caution", 10)
+    } else if above > 0.0 {
+      (-10.0, "ลดขนาดยา 5-10% นัดตรวจ INR ใหม่ใน 14 วัน", "caution", 14)
+    } else if in_range {
       (0.0, "คงขนาดยาเดิม นัดตรวจ INR ใน 4-6 สัปดาห์", "normal", 35)
-    } else if inr >= 1.5 {
-      (7.5, "เพิ่มขนาดยา 5-10% นัดตรวจ INR ใหม่ใน 14 วัน", "caution", 14)
-    } else {
+    } else if inr < universal_critical_low {
+      // Below 1.5 is universally critical regardless of target.
       (
-        15.0,
-        "เพิ่มขนาดยา 10-20% นัดตรวจ INR ใหม่ใน 7-14 วัน",
+        20.0,
+        "เพิ่มขนาดยา 15-20% นัดตรวจ INR ใหม่ใน 7-14 วัน (เสี่ยงลิ่มเลือด)",
         "urgent",
         10,
       )
+    } else if below > 1.0 {
+      (
+        20.0,
+        "เพิ่มขนาดยา 15-20% นัดตรวจ INR ใหม่ใน 7-14 วัน",
+        "urgent",
+        10,
+      )
+    } else if below > 0.5 {
+      (15.0, "เพิ่มขนาดยา 10-15% นัดตรวจ INR ใหม่ใน 14 วัน", "caution", 14)
+    } else {
+      // below > 0.0 (just below target_low)
+      (10.0, "เพิ่มขนาดยา 5-10% นัดตรวจ INR ใหม่ใน 14 วัน", "caution", 14)
     };
 
   let suggested_dose_weekly =
@@ -152,6 +195,7 @@ mod tests {
 
   #[test]
   fn suggest_dose_in_range_returns_no_change() {
+    // Patient target 2.0-3.0, INR 2.5 — in range.
     let result = suggest_dose(35.0, 2.5, 2.0, 3.0);
     assert_eq!(result.adjustment_percent, 0.0);
     assert_eq!(result.urgency, "normal");
@@ -160,70 +204,167 @@ mod tests {
   }
 
   #[test]
-  fn suggest_dose_above_3_0_decreases_7_5_percent() {
+  fn suggest_dose_just_above_target_decreases_10_percent() {
+    // Patient target 2.0-3.0, INR 3.3 — 0.3 above high → -10%.
     let result = suggest_dose(35.0, 3.3, 2.0, 3.0);
-    assert_eq!(result.adjustment_percent, -7.5);
-    assert_eq!(result.urgency, "caution");
-    // 35.0 * 0.925 = 32.375 → rounded to 32.5
-    assert_eq!(result.suggested_dose_mgweek, 32.5);
-  }
-
-  #[test]
-  fn suggest_dose_above_3_0_still_decreases() {
-    let result = suggest_dose(35.0, 3.7, 2.0, 3.0);
-    assert_eq!(result.adjustment_percent, -7.5);
-    assert_eq!(result.urgency, "caution");
-    assert_eq!(result.suggested_dose_mgweek, 32.5);
-  }
-
-  #[test]
-  fn suggest_dose_4_to_5_hold_and_reduce_10() {
-    let result = suggest_dose(35.0, 4.5, 2.0, 3.0);
     assert_eq!(result.adjustment_percent, -10.0);
-    assert_eq!(result.urgency, "hold");
+    assert_eq!(result.urgency, "caution");
     // 35.0 * 0.90 = 31.5
     assert_eq!(result.suggested_dose_mgweek, 31.5);
-    assert_eq!(result.recheck_days, 7);
   }
 
   #[test]
-  fn suggest_dose_over_5_hold_vit_k() {
-    let result = suggest_dose(35.0, 5.5, 2.0, 3.0);
-    assert_eq!(result.adjustment_percent, -10.0);
+  fn suggest_dose_above_target_0_5_to_1_0_decreases_15_percent() {
+    // INR 3.7 = 0.7 above target_high 3.0 → above > 0.5 && <= 1.0 → -15%.
+    let result = suggest_dose(35.0, 3.7, 2.0, 3.0);
+    assert_eq!(result.adjustment_percent, -15.0);
+    assert_eq!(result.urgency, "caution");
+    // 35.0 * 0.85 = 29.75 → rounded to 30.0
+    assert_eq!(result.suggested_dose_mgweek, 30.0);
+  }
+
+  #[test]
+  fn suggest_dose_4_to_5_hold_and_reduce_15() {
+    // INR 4.5, target 2.0-3.0 → 4.0+ but target_high < 4.0 → -15%, hold.
+    let result = suggest_dose(35.0, 4.5, 2.0, 3.0);
+    assert_eq!(result.adjustment_percent, -15.0);
     assert_eq!(result.urgency, "hold");
-    assert_eq!(result.suggested_dose_mgweek, 31.5);
+    // 35.0 * 0.85 = 29.75 → 30.0
+    assert_eq!(result.suggested_dose_mgweek, 30.0);
     assert_eq!(result.recheck_days, 5);
   }
 
   #[test]
-  fn suggest_dose_1_5_to_1_9_increases_7_5_percent() {
-    let result = suggest_dose(35.0, 1.8, 2.0, 3.0);
-    assert_eq!(result.adjustment_percent, 7.5);
-    assert_eq!(result.urgency, "caution");
-    // 35.0 * 1.075 = 37.625 → rounded to 37.5
-    assert_eq!(result.suggested_dose_mgweek, 37.5);
+  fn suggest_dose_over_5_hold_vit_k() {
+    // INR 5.5, target 2.0-3.0 → universal_critical_high → -20%, hold.
+    let result = suggest_dose(35.0, 5.5, 2.0, 3.0);
+    assert_eq!(result.adjustment_percent, -20.0);
+    assert_eq!(result.urgency, "hold");
+    // 35.0 * 0.80 = 28.0
+    assert_eq!(result.suggested_dose_mgweek, 28.0);
+    assert_eq!(result.recheck_days, 3);
   }
 
   #[test]
-  fn suggest_dose_below_1_5_increases_15_percent() {
+  fn suggest_dose_just_below_target_increases_10_percent() {
+    // INR 1.8, target 2.0-3.0 → 0.2 below target_low → +10%.
+    let result = suggest_dose(35.0, 1.8, 2.0, 3.0);
+    assert_eq!(result.adjustment_percent, 10.0);
+    assert_eq!(result.urgency, "caution");
+    // 35.0 * 1.10 = 38.5
+    assert_eq!(result.suggested_dose_mgweek, 38.5);
+  }
+
+  #[test]
+  fn suggest_dose_below_1_5_increases_20_percent() {
+    // INR 1.3, any target → universal_critical_low → +20%, urgent.
     let result = suggest_dose(35.0, 1.3, 2.0, 3.0);
-    assert_eq!(result.adjustment_percent, 15.0);
+    assert_eq!(result.adjustment_percent, 20.0);
     assert_eq!(result.urgency, "urgent");
-    // 35.0 * 1.15 = 40.25 → rounded to 40.5 (round to nearest 0.5)
-    assert_eq!(result.suggested_dose_mgweek, 40.5);
+    // 35.0 * 1.20 = 42.0
+    assert_eq!(result.suggested_dose_mgweek, 42.0);
   }
 
   #[test]
   fn suggest_dose_rounds_to_half_mg() {
-    // 28.0 * 1.075 = 30.1 → rounds to 30.0
+    // 28.0 * 1.10 = 30.8 → rounds to 31.0
     let result = suggest_dose(28.0, 1.8, 2.0, 3.0);
-    assert_eq!(result.suggested_dose_mgweek, 30.0);
+    assert_eq!(result.suggested_dose_mgweek, 31.0);
   }
 
   #[test]
   fn suggest_dose_zero_dose_stays_zero() {
     let result = suggest_dose(0.0, 1.0, 2.0, 3.0);
     assert_eq!(result.suggested_dose_mgweek, 0.0);
+  }
+
+  // ── Target-range aware tests (R-1.1) ──────────────────────────────────
+
+  #[test]
+  fn suggest_dose_mech_mitral_target_2_5_3_5_inr_3_2_in_range() {
+    // Mechanical mitral valve: target 2.5-3.5. INR 3.2 is in range.
+    let result = suggest_dose(35.0, 3.2, 2.5, 3.5);
+    assert_eq!(result.adjustment_percent, 0.0);
+    assert_eq!(result.urgency, "normal");
+    assert_eq!(result.suggested_dose_mgweek, 35.0);
+  }
+
+  #[test]
+  fn suggest_dose_mech_mitral_target_2_5_3_5_inr_2_4_below() {
+    // INR 2.4, target 2.5-3.5 → 0.1 below → +10%.
+    let result = suggest_dose(35.0, 2.4, 2.5, 3.5);
+    assert_eq!(result.adjustment_percent, 10.0);
+    assert_eq!(result.urgency, "caution");
+  }
+
+  #[test]
+  fn suggest_dose_mech_mitral_target_2_5_3_5_inr_3_7_above_0_5() {
+    // INR 3.7, target 2.5-3.5 → 0.2 above → -10%.
+    let result = suggest_dose(35.0, 3.7, 2.5, 3.5);
+    assert_eq!(result.adjustment_percent, -10.0);
+    assert_eq!(result.urgency, "caution");
+  }
+
+  #[test]
+  fn suggest_dose_mech_mitral_target_2_5_3_5_inr_4_5_hold() {
+    // INR 4.5, target 2.5-3.5 → target_high (3.5) < 4.0 → -15%, hold.
+    let result = suggest_dose(35.0, 4.5, 2.5, 3.5);
+    assert_eq!(result.adjustment_percent, -15.0);
+    assert_eq!(result.urgency, "hold");
+  }
+
+  #[test]
+  fn suggest_dose_mech_aortic_target_2_0_3_0_inr_3_2_caution() {
+    // Bileaflet aortic: same as default 2.0-3.0. INR 3.2 = 0.2 above → -10%.
+    let result = suggest_dose(35.0, 3.2, 2.0, 3.0);
+    assert_eq!(result.adjustment_percent, -10.0);
+    assert_eq!(result.urgency, "caution");
+  }
+
+  #[test]
+  fn suggest_dose_inr_5_0_always_critical() {
+    // Even with target 2.5-3.5, INR 5.0 is universal critical.
+    let result = suggest_dose(35.0, 5.0, 2.5, 3.5);
+    assert_eq!(result.urgency, "hold");
+    assert_eq!(result.adjustment_percent, -20.0);
+  }
+
+  #[test]
+  fn suggest_dose_inr_1_4_always_critical() {
+    // INR 1.4 is below 1.5 → universal critical low → +20%, urgent.
+    let result = suggest_dose(35.0, 1.4, 2.5, 3.5);
+    assert_eq!(result.urgency, "urgent");
+    assert_eq!(result.adjustment_percent, 20.0);
+  }
+
+  #[test]
+  fn suggest_dose_invalid_target_falls_back_to_default() {
+    // target_low=0, target_high=0 → fallback to 2.0-3.0.
+    let result = suggest_dose(35.0, 2.5, 0.0, 0.0);
+    assert_eq!(result.adjustment_percent, 0.0);
+    assert_eq!(result.urgency, "normal");
+  }
+
+  #[test]
+  fn suggest_dose_target_low_greater_than_high_falls_back() {
+    // target_low > target_high → fallback to 2.0-3.0.
+    let result = suggest_dose(35.0, 2.5, 4.0, 3.0);
+    assert_eq!(result.adjustment_percent, 0.0);
+    assert_eq!(result.urgency, "normal");
+  }
+
+  #[test]
+  fn suggest_dose_boundary_inr_equals_target_low_is_in_range() {
+    let result = suggest_dose(35.0, 2.0, 2.0, 3.0);
+    assert_eq!(result.adjustment_percent, 0.0);
+    assert_eq!(result.urgency, "normal");
+  }
+
+  #[test]
+  fn suggest_dose_boundary_inr_equals_target_high_is_in_range() {
+    let result = suggest_dose(35.0, 3.0, 2.0, 3.0);
+    assert_eq!(result.adjustment_percent, 0.0);
+    assert_eq!(result.urgency, "normal");
   }
 
   // ── calculate_ttr tests ─────────────────────────────────────────────────

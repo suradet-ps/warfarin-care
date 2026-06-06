@@ -134,3 +134,42 @@ pub struct SyncSummary {
   pub has_anon_key: bool,
   pub supabase_url: Option<String>,
 }
+
+/// Common interface implemented by every row type the sync layer pulls from
+/// Supabase. Lets the generic `pull_table` helper in `commands::sync` read
+/// the row's stable identifier and last-write timestamp without knowing the
+/// concrete shape of each table.
+pub trait PulledRow {
+  fn sync_id(&self) -> Option<&String>;
+  fn updated_at(&self) -> &str;
+}
+
+impl PulledRow for WfPatientSync {
+  fn sync_id(&self) -> Option<&String> { self.sync_id.as_ref() }
+  fn updated_at(&self) -> &str { &self.updated_at }
+}
+
+impl PulledRow for WfVisitSync {
+  fn sync_id(&self) -> Option<&String> { self.sync_id.as_ref() }
+  fn updated_at(&self) -> &str { &self.updated_at }
+}
+
+impl PulledRow for WfDoseHistorySync {
+  fn sync_id(&self) -> Option<&String> { self.sync_id.as_ref() }
+  fn updated_at(&self) -> &str { &self.updated_at }
+}
+
+impl PulledRow for WfAppointmentSync {
+  fn sync_id(&self) -> Option<&String> { self.sync_id.as_ref() }
+  fn updated_at(&self) -> &str { &self.updated_at }
+}
+
+impl PulledRow for WfOutcomeSync {
+  fn sync_id(&self) -> Option<&String> { self.sync_id.as_ref() }
+  fn updated_at(&self) -> &str { &self.updated_at }
+}
+
+impl PulledRow for WfPatientStatusHistorySync {
+  fn sync_id(&self) -> Option<&String> { self.sync_id.as_ref() }
+  fn updated_at(&self) -> &str { &self.updated_at }
+}

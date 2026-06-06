@@ -11,6 +11,7 @@ use crate::{
 };
 
 const TTR_RED_THRESHOLD: f64 = 50.0;
+const TTR_YELLOW_THRESHOLD: f64 = 65.0;
 const INR_CRITICAL_HIGH: f64 = 4.0;
 const INR_CRITICAL_LOW: f64 = 1.5;
 const NO_INR_DAYS: i64 = 90;
@@ -142,17 +143,28 @@ pub async fn get_patient_alerts(state: State<'_, AppState>) -> Result<Vec<Patien
       patient.target_inr_low,
       patient.target_inr_high,
       182,
-    ) && ttr < TTR_RED_THRESHOLD
-    {
-      alerts.push(PatientAlert {
-        hn: patient.hn.clone(),
-        patient_name: display_name.clone(),
-        alert_type: "low_ttr".to_string(),
-        severity: "critical".to_string(),
-        message: format!("TTR ต่ำ {ttr:.0}% (เกณฑ์ ≥ 65%)"),
-        value: Some(ttr),
-        date: None,
-      });
+    ) {
+      if ttr < TTR_RED_THRESHOLD {
+        alerts.push(PatientAlert {
+          hn: patient.hn.clone(),
+          patient_name: display_name.clone(),
+          alert_type: "low_ttr".to_string(),
+          severity: "critical".to_string(),
+          message: format!("TTR ต่ำมาก {ttr:.0}% (เกณฑ์ ≥ 65%)"),
+          value: Some(ttr),
+          date: None,
+        });
+      } else if ttr < TTR_YELLOW_THRESHOLD {
+        alerts.push(PatientAlert {
+          hn: patient.hn.clone(),
+          patient_name: display_name.clone(),
+          alert_type: "low_ttr".to_string(),
+          severity: "warning".to_string(),
+          message: format!("TTR ต่ำ {ttr:.0}% (เกณฑ์ ≥ 65%)"),
+          value: Some(ttr),
+          date: None,
+        });
+      }
     }
 
     // ── Missed appointment ─────────────────────────────────────────────

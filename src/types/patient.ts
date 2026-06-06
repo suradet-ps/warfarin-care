@@ -63,7 +63,6 @@ export interface PatientDetail {
   currentDoseMgday?: number
   ttr6months?: number | null
   nextAppointment?: string
-  alerts: PatientAlert[]
   inrHistory?: InrRecord[]
   dispensingHistory?: DispensingRecord[]
   visits?: WfVisit[]

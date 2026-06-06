@@ -89,6 +89,23 @@ const sideEffectOptionsLow = [
 const selectedSideEffects = ref<string[]>([])
 
 async function loadDefaults() {
+  // Avoid re-running the heavy default-load work when the panel is reopened
+  // for the same patient + visit-date without changes (e.g. user toggles the
+  // panel a few times to peek).
+  const cacheKey = {
+    hn: props.hn,
+    date: props.editVisit?.visitDate ?? '',
+    editId: props.editVisit?.id ?? null,
+  }
+  if (
+    lastLoaded.value
+    && lastLoaded.value.hn === cacheKey.hn
+    && lastLoaded.value.date === cacheKey.date
+    && lastLoaded.value.editId === cacheKey.editId
+  ) {
+    return
+  }
+
   loadingSuggestion.value = false
   doseOptionsError.value = null
   doseOptionsHint.value = null
@@ -156,6 +173,7 @@ async function loadDefaults() {
   } catch {
     // non-critical
   }
+  lastLoaded.value = cacheKey
 }
 
 function applyHosxpDose(visit: NonNullable<typeof latestHosxpVisit.value>) {
@@ -190,7 +208,7 @@ async function fetchSuggestion() {
     const currentWeekly = currentDoseMgday.value * 7
 
     suggestion.value = await invoke<DoseSuggestion>('suggest_dose', {
-      currentDose: currentWeekly,
+      currentDoseMgday: currentDoseMgday.value,
       currentInr: inrValue.value,
       targetLow: targetLow.value,
       targetHigh: targetHigh.value,
@@ -355,6 +373,8 @@ async function handleSubmit() {
     saving.value = false
   }
 }
+
+const lastLoaded = ref<{ hn: string; date: string; editId: number | null } | null>(null)
 
 watch(() => modelValue.value, (open) => {
   if (open) void loadDefaults()

@@ -113,10 +113,11 @@ function adherenceBadgeClass(a?: string | null) {
   </div>
 
   <ConfirmDialog
-    v-if="deleteTargetId !== null"
+    :open="deleteTargetId !== null"
     title="ยืนยันการลบ"
     message="คุณต้องการลบประวัติการทำคลินิกนี้ใช่หรือไม่? การลบจะไม่สามารถกู้คืนได้"
     confirm-label="ลบ"
+    @update:open="(v: boolean) => { if (!v) handleCancelDelete() }"
     @confirm="handleConfirmedDelete"
     @cancel="handleCancelDelete"
   />

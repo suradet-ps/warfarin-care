@@ -27,6 +27,14 @@ export interface MysqlConfig {
   password: string
 }
 
+export interface MysqlConfigStatus {
+  hasConfig: boolean
+  host: string
+  port: number
+  database: string
+  username: string
+}
+
 export const useSettingsStore = defineStore('settings', () => {
   const mysqlConfig = ref<MysqlConfig>({
     host: 'localhost',
@@ -43,14 +51,22 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function loadMysqlConfig() {
     try {
-      const config = await invoke<MysqlConfig | null>('get_mysql_config_for_ui')
-      if (config) {
-        mysqlConfig.value = config
+      // Fetch non-secret metadata only. The password is never round-tripped
+      // through the frontend; the user re-enters it to update.
+      const status = await invoke<MysqlConfigStatus>('get_mysql_config_status')
+      if (status.hasConfig) {
+        mysqlConfig.value = {
+          host: status.host,
+          port: status.port,
+          database: status.database,
+          username: status.username,
+          password: '',
+        }
         hasStoredConfig.value = true
         isConnected.value = true
       }
     } catch (e) {
-      console.error('Failed to load MySQL config:', e)
+      console.error('Failed to load MySQL config status:', e)
     }
   }
 
@@ -61,6 +77,9 @@ export const useSettingsStore = defineStore('settings', () => {
       })
       if (isConnected.value) {
         hasStoredConfig.value = true
+        // Clear the password from the in-memory store once it has been
+        // persisted encrypted on the backend. Don't keep it in Vue state.
+        mysqlConfig.value.password = ''
       }
       return isConnected.value
     } catch (e) {

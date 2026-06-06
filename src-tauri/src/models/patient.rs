@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{alert::PatientAlert, dispensing::DispensingRecord, inr::InrRecord};
+use super::{dispensing::DispensingRecord, inr::InrRecord};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -70,7 +70,6 @@ pub struct PatientDetail {
   pub current_dose_mgday: Option<f64>,
   pub ttr6months: Option<f64>,
   pub next_appointment: Option<String>,
-  pub alerts: Vec<PatientAlert>,
   pub inr_history: Vec<InrRecord>,
   pub dispensing_history: Vec<DispensingRecord>,
 }

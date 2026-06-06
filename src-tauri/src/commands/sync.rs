@@ -2,6 +2,7 @@ use anyhow::Context;
 use reqwest::{Client, Url};
 use serde_json::json;
 use sqlx::{QueryBuilder, Sqlite};
+use std::pin::Pin;
 use tauri::{AppHandle, State};
 use tauri_plugin_store::StoreExt;
 use uuid::Uuid;
@@ -10,10 +11,80 @@ use crate::db::sqlite::AppState;
 use crate::{
   encrypt::{decrypt_value, encrypt_value},
   models::sync::{
-    SyncResult, SyncStatus, SyncSummary, WfAppointmentSync, WfDoseHistorySync, WfOutcomeSync,
-    WfPatientStatusHistorySync, WfPatientSync, WfVisitSync,
+    PulledRow, SyncResult, SyncStatus, SyncSummary, WfAppointmentSync, WfDoseHistorySync,
+    WfOutcomeSync, WfPatientStatusHistorySync, WfPatientSync, WfVisitSync,
   },
 };
+
+/// Alias for an async block that performs a SQLite write and returns either
+/// the number of rows touched or an error string. Used by `pull_table` to
+/// accept per-table INSERT/UPDATE logic without an `async` closure (which
+/// Rust does not yet support natively).
+type SqliteFut<'a, T> = Pin<Box<dyn std::future::Future<Output = Result<T, String>> + Send + 'a>>;
+
+/// Pulls rows for a single table from Supabase and applies them to the local
+/// SQLite database, choosing INSERT vs UPDATE per row based on the
+/// batch-fetched existence map. The `apply` closure encapsulates the
+/// per-table SQL: it receives the existing local `updated_at` (or `None` if
+/// the row is new) and returns the number of rows affected. The closure is
+/// also responsible for the "stale row" check — returning `Ok(0)` when the
+/// remote row is older than the local copy counts as a conflict.
+#[allow(clippy::too_many_arguments)]
+async fn pull_table<T, F>(
+  pool: &sqlx::SqlitePool,
+  client: &Client,
+  base_url: &str,
+  anon_key: &str,
+  machine_id: &str,
+  last_pull_at: &str,
+  table: &str,
+  apply: F,
+) -> Result<(usize, usize), String>
+where
+  T: PulledRow + serde::de::DeserializeOwned,
+  F: for<'a> Fn(&'a sqlx::SqlitePool, &'a T, Option<&'a str>) -> SqliteFut<'a, u64>,
+{
+  assert_table_allowed(table)?;
+
+  let url = build_rest_url(
+    base_url,
+    table,
+    &[("updated_at", format!("gt.{last_pull_at}"))],
+  )?;
+  let response = with_auth(client.get(url.clone()), anon_key, machine_id)
+    .send()
+    .await
+    .map_err(|e| format!("[{table}] Network error: {e} | URL: {url}"))?;
+  if !response.status().is_success() {
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+    return Err(format!(
+      "[{table}] HTTP {status} - Response: {body}\nQuery URL: {url}"
+    ));
+  }
+  let rows: Vec<T> = response
+    .json()
+    .await
+    .map_err(|e| format!("[{table}] JSON parse error: {e} - Response may be empty or malformed"))?;
+
+  let sync_ids: Vec<String> = rows.iter().filter_map(T::sync_id).cloned().collect();
+  let existing = fetch_existing_updated_ats(pool, table, &sync_ids).await?;
+
+  let mut pulled = 0usize;
+  let mut conflicts = 0usize;
+  for row in &rows {
+    let sync_id = T::sync_id(row)
+      .ok_or_else(|| format!("[{table}] sync_id is null"))?;
+    let prev_updated = existing.get(sync_id).map(String::as_str);
+    let affected = apply(pool, row, prev_updated).await?;
+    if affected > 0 {
+      pulled += 1;
+    } else {
+      conflicts += 1;
+    }
+  }
+  Ok((pulled, conflicts))
+}
 
 const STORE_FILE: &str = "config.json";
 const SUPABASE_URL_KEY: &str = "supabase_url";
@@ -21,6 +92,41 @@ const SUPABASE_ANON_KEY_KEY: &str = "supabase_anon_key_enc";
 const MACHINE_ID_KEY: &str = "machine_id";
 const LAST_PULL_AT_KEY: &str = "last_pull_at";
 const LAST_SYNC_AT_KEY: &str = "last_sync_at";
+
+/// Allowlist of table names that can be passed into `ensure_sync_ids` and other
+/// dynamic-table SQL builders. The Rust compiler cannot verify that the table
+/// parameter is one of these — we match on it explicitly in every helper that
+/// takes `table: &str`.
+const SYNC_TABLES: &[&str] = &[
+  "wf_patients",
+  "wf_visits",
+  "wf_dose_history",
+  "wf_appointments",
+  "wf_outcomes",
+  "wf_patient_status_history",
+];
+
+fn assert_table_allowed(table: &str) -> Result<(), String> {
+  if SYNC_TABLES.contains(&table) {
+    Ok(())
+  } else {
+    Err(format!("disallowed table name '{table}'"))
+  }
+}
+
+/// Supabase REST API requires HTTPS. Reject `http://` to avoid sending
+/// bearer tokens and patient data in cleartext. `localhost` is allowed
+/// only when the host is literally `localhost` or `127.0.0.1` (useful
+/// during local development against a self-hosted PostgREST).
+fn ensure_https(url: &str) -> Result<(), String> {
+  let parsed = Url::parse(url).map_err(|e| format!("invalid Supabase URL: {e}"))?;
+  match parsed.scheme() {
+    "https" => Ok(()),
+    "http" if matches!(parsed.host_str(), Some("localhost") | Some("127.0.0.1")) => Ok(()),
+    "http" => Err("Supabase URL must use HTTPS in production".to_string()),
+    other => Err(format!("unsupported Supabase URL scheme '{other}'")),
+  }
+}
 
 pub(crate) fn get_or_create_machine_id(app: &AppHandle) -> Result<String, String> {
   let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
@@ -50,6 +156,7 @@ fn get_supabase_config(app: &AppHandle) -> Result<(String, String), String> {
     .ok_or_else(|| "Supabase URL is not configured".to_string())?
     .trim_end_matches('/')
     .to_string();
+  ensure_https(&url)?;
 
   let encrypted_key = store
     .get(SUPABASE_ANON_KEY_KEY)
@@ -61,7 +168,12 @@ fn get_supabase_config(app: &AppHandle) -> Result<(String, String), String> {
 }
 
 fn supabase_client() -> Client {
-  Client::new()
+  Client::builder()
+    .timeout(std::time::Duration::from_secs(30))
+    .connect_timeout(std::time::Duration::from_secs(10))
+    .user_agent(concat!("warfarin-care/", env!("CARGO_PKG_VERSION")))
+    .build()
+    .unwrap_or_else(|_| Client::new())
 }
 
 fn build_rest_url(base_url: &str, table: &str, query: &[(&str, String)]) -> Result<Url, String> {
@@ -95,20 +207,30 @@ async fn ensure_sync_ids(
   table: &str,
   machine_id: &str,
 ) -> Result<(), String> {
+  assert_table_allowed(table)?;
+
   let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
-  let select_sql = format!("SELECT id FROM {table} WHERE sync_id IS NULL");
-  let ids = sqlx::query_scalar::<_, i64>(&select_sql)
+  let mut select = QueryBuilder::<Sqlite>::new(format!(
+    "SELECT id FROM {table} WHERE sync_id IS NULL"
+  ));
+  let ids: Vec<i64> = select
+    .build_query_scalar::<i64>()
     .fetch_all(&mut *tx)
     .await
     .map_err(|e| e.to_string())?;
 
   for row_id in ids {
-    let update_sql =
-      format!("UPDATE {table} SET sync_id = ?, machine_id = COALESCE(machine_id, ?) WHERE id = ?");
-    sqlx::query(&update_sql)
-      .bind(Uuid::new_v4().to_string())
-      .bind(machine_id)
-      .bind(row_id)
+    let new_sync_id = Uuid::new_v4().to_string();
+    let mut update = QueryBuilder::<Sqlite>::new(format!(
+      "UPDATE {table} SET sync_id = "
+    ));
+    update.push_bind(new_sync_id);
+    update.push(", machine_id = COALESCE(machine_id, ");
+    update.push_bind(machine_id);
+    update.push(") WHERE id = ");
+    update.push_bind(row_id);
+    update
+      .build()
       .execute(&mut *tx)
       .await
       .map_err(|e| e.to_string())?;
@@ -170,6 +292,37 @@ async fn resolve_local_visit_id(
   .map_err(|e| e.to_string())
 }
 
+/// Single batched lookup that replaces the N+1 `SELECT updated_at ... WHERE
+/// sync_id = ?` round-trips the original pull loop performed per row. Returns
+/// a map of `sync_id -> existing updated_at` so the caller can decide per
+/// row whether to INSERT or UPDATE.
+async fn fetch_existing_updated_ats(
+  pool: &sqlx::SqlitePool,
+  table: &str,
+  sync_ids: &[String],
+) -> Result<std::collections::HashMap<String, String>, String> {
+  assert_table_allowed(table)?;
+  if sync_ids.is_empty() {
+    return Ok(Default::default());
+  }
+  let mut builder = QueryBuilder::<Sqlite>::new(format!(
+    "SELECT sync_id, updated_at FROM {table} WHERE sync_id IN ("
+  ));
+  {
+    let mut separated = builder.separated(", ");
+    for sync_id in sync_ids {
+      separated.push_bind(sync_id);
+    }
+  }
+  builder.push(")");
+  let rows: Vec<(String, String)> = builder
+    .build_query_as::<(String, String)>()
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+  Ok(rows.into_iter().collect())
+}
+
 async fn push_rows<T>(
   client: &Client,
   url: &str,
@@ -217,6 +370,7 @@ pub async fn save_supabase_config(
   if normalized_url.is_empty() {
     return Err("Supabase URL is required".to_string());
   }
+  ensure_https(&normalized_url)?;
 
   let machine_id = get_or_create_machine_id(&app)?;
   let encrypted_key = encrypt_value(anon_key.trim(), &machine_id)?;
@@ -473,625 +627,142 @@ pub async fn pull_from_supabase(
 
   let mut result = SyncResult::default();
 
-  let patient_url = build_rest_url(
+  // The first table needs an explicit `order` so the rest of the loop can
+  // rely on append-only ordering; the helper handles URL building, JSON
+  // parsing, batched existence check, and pull/conflict accounting for
+  // every table uniformly.
+  let (patients_pulled, patients_conflicts) = pull_table_patients(
+    &state.pool,
+    &client,
     &url,
-    "wf_patients",
-    &[
-      ("updated_at", format!("gt.{}", last_pull_at)),
-      ("order", "updated_at.asc,sync_id.asc".to_string()),
-    ],
-  )?;
-  let patient_response = with_auth(client.get(patient_url.clone()), &anon_key, &machine_id)
-    .send()
-    .await
-    .map_err(|e| format!("[wf_patients] Network error: {} | URL: {}", e, patient_url))?;
+    &anon_key,
+    &machine_id,
+    &last_pull_at,
+  )
+  .await?;
+  result.pulled += patients_pulled;
+  result.conflicts += patients_conflicts;
 
-  if !patient_response.status().is_success() {
-    let status = patient_response.status();
-    let body = patient_response.text().await.unwrap_or_default();
-    return Err(format!(
-      "[wf_patients] HTTP {} - Response: {}\nQuery URL: {}",
-      status, body, patient_url
-    ));
-  }
-
-  let patient_rows: Vec<WfPatientSync> = patient_response.json().await.map_err(|e| {
-    format!(
-      "[wf_patients] JSON parse error: {} - Response may be empty or malformed",
-      e
-    )
-  })?;
-
-  for row in &patient_rows {
-    let sync_id = row
-      .sync_id
-      .as_ref()
-      .ok_or("[wf_patients] sync_id is null")?;
-
-    let existing: Option<String> =
-      sqlx::query_scalar("SELECT updated_at FROM wf_patients WHERE sync_id = ?")
-        .bind(sync_id)
-        .fetch_optional(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let affected = if let Some(existing_updated) = existing {
-      let should_update = row.updated_at > existing_updated;
-      if should_update {
-        sqlx::query(
-          "UPDATE wf_patients SET machine_id = ?, hn = ?, enrolled_at = ?, enrolled_by = ?, \
-           status = ?, indication = ?, target_inr_low = ?, target_inr_high = ?, notes = ?, \
-           created_at = ?, updated_at = ?, deleted_at = ?, synced_at = ? \
-           WHERE sync_id = ?",
-        )
-        .bind(&row.machine_id)
-        .bind(&row.hn)
-        .bind(&row.enrolled_at)
-        .bind(&row.enrolled_by)
-        .bind(&row.status)
-        .bind(&row.indication)
-        .bind(row.target_inr_low)
-        .bind(row.target_inr_high)
-        .bind(&row.notes)
-        .bind(&row.created_at)
-        .bind(&row.updated_at)
-        .bind(&row.deleted_at)
-        .bind(&row.updated_at)
-        .bind(sync_id)
-        .execute(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?
-        .rows_affected()
-      } else {
-        0
-      }
-    } else {
-      sqlx::query(
-        "INSERT INTO wf_patients \
-            (sync_id, machine_id, hn, enrolled_at, enrolled_by, status, indication, target_inr_low, \
-             target_inr_high, notes, created_at, updated_at, deleted_at, synced_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-      )
-      .bind(sync_id)
-      .bind(&row.machine_id)
-      .bind(&row.hn)
-      .bind(&row.enrolled_at)
-      .bind(&row.enrolled_by)
-      .bind(&row.status)
-      .bind(&row.indication)
-      .bind(row.target_inr_low)
-      .bind(row.target_inr_high)
-      .bind(&row.notes)
-      .bind(&row.created_at)
-      .bind(&row.updated_at)
-      .bind(&row.deleted_at)
-      .bind(&row.updated_at)
-      .execute(&state.pool)
-      .await
-      .map_err(|e| e.to_string())?
-      .rows_affected()
-    };
-
-    if affected > 0 {
-      result.pulled += 1;
-    } else {
-      result.conflicts += 1;
-    }
-  }
-
-  let visit_url = build_rest_url(
+  let (visits_pulled, visits_conflicts) = pull_table::<WfVisitSync, _>(
+    &state.pool,
+    &client,
     &url,
+    &anon_key,
+    &machine_id,
+    &last_pull_at,
     "wf_visits",
-    &[("updated_at", format!("gt.{last_pull_at}"))],
-  )?;
-  let visit_response = with_auth(client.get(visit_url.clone()), &anon_key, &machine_id)
-    .send()
-    .await
-    .map_err(|e| format!("[wf_visits] Network error: {}", e))?;
+    |pool, row, prev| {
+      Box::pin(async move {
+        let row_updated = row.updated_at.as_str();
+        match prev {
+          None => insert_visit(pool, row).await,
+          Some(prev_updated) if row_updated > prev_updated => update_visit(pool, row).await,
+          Some(_) => Ok(0),
+        }
+      })
+    },
+  )
+  .await?;
+  result.pulled += visits_pulled;
+  result.conflicts += visits_conflicts;
 
-  if !visit_response.status().is_success() {
-    let status = visit_response.status();
-    let body = visit_response.text().await.unwrap_or_default();
-    return Err(format!(
-      "[wf_visits] HTTP {} - Response: {}\nQuery URL: {}",
-      status, body, visit_url
-    ));
-  }
-
-  let visit_rows: Vec<WfVisitSync> = visit_response
-    .json()
-    .await
-    .map_err(|e| format!("[wf_visits] JSON parse error: {}", e))?;
-
-  for row in &visit_rows {
-    let sync_id = row.sync_id.as_ref().ok_or("[wf_visits] sync_id is null")?;
-
-    let existing: Option<String> =
-      sqlx::query_scalar("SELECT updated_at FROM wf_visits WHERE sync_id = ?")
-        .bind(sync_id)
-        .fetch_optional(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let affected = if let Some(existing_updated) = existing {
-      let should_update = row.updated_at > existing_updated;
-      if should_update {
-        sqlx::query(
-          "UPDATE wf_visits SET machine_id = ?, hn = ?, visit_date = ?, inr_value = ?, inr_source = ?, \
-           current_dose_mgday = ?, dose_detail = ?, new_dose_mgday = ?, new_dose_detail = ?, \
-           new_dose_description = ?, selected_dose_option = ?, dose_changed = ?, next_appointment = ?, \
-           next_inr_due = ?, physician = ?, notes = ?, side_effects = ?, adherence = ?, created_by = ?, \
-           reviewed_at = ?, reviewed_by = ?, updated_at = ?, deleted_at = ?, synced_at = ? \
-           WHERE sync_id = ?"
-        )
-        .bind(&row.machine_id)
-        .bind(&row.hn)
-        .bind(&row.visit_date)
-        .bind(row.inr_value)
-        .bind(&row.inr_source)
-        .bind(row.current_dose_mgday)
-        .bind(&row.dose_detail)
-        .bind(row.new_dose_mgday)
-        .bind(&row.new_dose_detail)
-        .bind(&row.new_dose_description)
-        .bind(&row.selected_dose_option)
-        .bind(row.dose_changed)
-        .bind(&row.next_appointment)
-        .bind(&row.next_inr_due)
-        .bind(&row.physician)
-        .bind(&row.notes)
-        .bind(&row.side_effects)
-        .bind(&row.adherence)
-        .bind(&row.created_by)
-        .bind(&row.reviewed_at)
-        .bind(&row.reviewed_by)
-        .bind(&row.updated_at)
-        .bind(&row.deleted_at)
-        .bind(&row.updated_at)
-        .bind(sync_id)
-        .execute(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?
-        .rows_affected()
-      } else {
-        0
-      }
-    } else {
-      sqlx::query(
-        "INSERT INTO wf_visits \
-            (sync_id, machine_id, hn, visit_date, inr_value, inr_source, current_dose_mgday, \
-             dose_detail, new_dose_mgday, new_dose_detail, new_dose_description, selected_dose_option, \
-             dose_changed, next_appointment, next_inr_due, physician, notes, side_effects, adherence, \
-             created_by, reviewed_at, reviewed_by, created_at, updated_at, deleted_at, synced_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-      )
-      .bind(sync_id)
-      .bind(&row.machine_id)
-      .bind(&row.hn)
-      .bind(&row.visit_date)
-      .bind(row.inr_value)
-      .bind(&row.inr_source)
-      .bind(row.current_dose_mgday)
-      .bind(&row.dose_detail)
-      .bind(row.new_dose_mgday)
-      .bind(&row.new_dose_detail)
-      .bind(&row.new_dose_description)
-      .bind(&row.selected_dose_option)
-      .bind(row.dose_changed)
-      .bind(&row.next_appointment)
-      .bind(&row.next_inr_due)
-      .bind(&row.physician)
-      .bind(&row.notes)
-      .bind(&row.side_effects)
-      .bind(&row.adherence)
-      .bind(&row.created_by)
-      .bind(&row.reviewed_at)
-      .bind(&row.reviewed_by)
-      .bind(&row.created_at)
-      .bind(&row.updated_at)
-      .bind(&row.deleted_at)
-      .bind(&row.updated_at)
-      .execute(&state.pool)
-      .await
-      .map_err(|e| e.to_string())?
-      .rows_affected()
-    };
-
-    if affected > 0 {
-      result.pulled += 1;
-    } else {
-      result.conflicts += 1;
-    }
-  }
-
-  let dose_url = build_rest_url(
+  let (dose_pulled, dose_conflicts) = pull_table::<WfDoseHistorySync, _>(
+    &state.pool,
+    &client,
     &url,
+    &anon_key,
+    &machine_id,
+    &last_pull_at,
     "wf_dose_history",
-    &[("updated_at", format!("gt.{last_pull_at}"))],
-  )?;
-  let dose_response = with_auth(client.get(dose_url.clone()), &anon_key, &machine_id)
-    .send()
-    .await
-    .map_err(|e| format!("[wf_dose_history] Network error: {}", e))?;
+    |pool, row, prev| {
+      Box::pin(async move {
+        let row_updated = row.updated_at.as_str();
+        match prev {
+          None => insert_dose_history(pool, row).await,
+          Some(prev_updated) if row_updated > prev_updated => update_dose_history(pool, row).await,
+          Some(_) => Ok(0),
+        }
+      })
+    },
+  )
+  .await?;
+  result.pulled += dose_pulled;
+  result.conflicts += dose_conflicts;
 
-  if !dose_response.status().is_success() {
-    let status = dose_response.status();
-    let body = dose_response.text().await.unwrap_or_default();
-    return Err(format!(
-      "[wf_dose_history] HTTP {} - Response: {}\nQuery URL: {}",
-      status, body, dose_url
-    ));
-  }
-
-  let dose_rows: Vec<WfDoseHistorySync> = dose_response
-    .json()
-    .await
-    .map_err(|e| format!("[wf_dose_history] JSON parse error: {}", e))?;
-  for row in &dose_rows {
-    let sync_id = row
-      .sync_id
-      .as_ref()
-      .ok_or("[wf_dose_history] sync_id is null")?;
-
-    let existing: Option<String> =
-      sqlx::query_scalar("SELECT updated_at FROM wf_dose_history WHERE sync_id = ?")
-        .bind(sync_id)
-        .fetch_optional(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let affected = if let Some(existing_updated) = existing {
-      let should_update = row.updated_at > existing_updated;
-      if should_update {
-        sqlx::query(
-          "UPDATE wf_dose_history SET machine_id = ?, hn = ?, changed_at = ?, old_dose_mgday = ?, \
-           new_dose_mgday = ?, old_detail = ?, new_detail = ?, reason = ?, inr_at_change = ?, \
-           changed_by = ?, updated_at = ?, deleted_at = ?, synced_at = ? WHERE sync_id = ?",
-        )
-        .bind(&row.machine_id)
-        .bind(&row.hn)
-        .bind(&row.changed_at)
-        .bind(row.old_dose_mgday)
-        .bind(row.new_dose_mgday)
-        .bind(&row.old_detail)
-        .bind(&row.new_detail)
-        .bind(&row.reason)
-        .bind(row.inr_at_change)
-        .bind(&row.changed_by)
-        .bind(&row.updated_at)
-        .bind(&row.deleted_at)
-        .bind(&row.updated_at)
-        .bind(sync_id)
-        .execute(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?
-        .rows_affected()
-      } else {
-        0
-      }
-    } else {
-      sqlx::query(
-        "INSERT INTO wf_dose_history \
-            (sync_id, machine_id, hn, changed_at, old_dose_mgday, new_dose_mgday, old_detail, \
-             new_detail, reason, inr_at_change, changed_by, created_at, updated_at, deleted_at, synced_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-      )
-      .bind(sync_id)
-      .bind(&row.machine_id)
-      .bind(&row.hn)
-      .bind(&row.changed_at)
-      .bind(row.old_dose_mgday)
-      .bind(row.new_dose_mgday)
-      .bind(&row.old_detail)
-      .bind(&row.new_detail)
-      .bind(&row.reason)
-      .bind(row.inr_at_change)
-      .bind(&row.changed_by)
-      .bind(&row.created_at)
-      .bind(&row.updated_at)
-      .bind(&row.deleted_at)
-      .bind(&row.updated_at)
-      .execute(&state.pool)
-      .await
-      .map_err(|e| e.to_string())?
-      .rows_affected()
-    };
-
-    if affected > 0 {
-      result.pulled += 1;
-    } else {
-      result.conflicts += 1;
-    }
-  }
-
-  let appointment_url = build_rest_url(
+  let (appt_pulled, appt_conflicts) = pull_table::<WfAppointmentSync, _>(
+    &state.pool,
+    &client,
     &url,
+    &anon_key,
+    &machine_id,
+    &last_pull_at,
     "wf_appointments",
-    &[("updated_at", format!("gt.{last_pull_at}"))],
-  )?;
-  let appointment_response = with_auth(client.get(appointment_url.clone()), &anon_key, &machine_id)
-    .send()
-    .await
-    .map_err(|e| format!("[wf_appointments] Network error: {}", e))?;
+    |pool, row, prev| {
+      Box::pin(async move {
+        let row_updated = row.updated_at.as_str();
+        let resolved = resolve_local_visit_id(pool, row.source_visit_sync_id.as_deref()).await?;
+        let source_visit_id = resolved.or(row.source_visit_id);
+        match prev {
+          None => insert_appointment(pool, row, source_visit_id).await,
+          Some(prev_updated) if row_updated > prev_updated => {
+            update_appointment(pool, row, source_visit_id).await
+          }
+          Some(_) => Ok(0),
+        }
+      })
+    },
+  )
+  .await?;
+  result.pulled += appt_pulled;
+  result.conflicts += appt_conflicts;
 
-  if !appointment_response.status().is_success() {
-    let status = appointment_response.status();
-    let body = appointment_response.text().await.unwrap_or_default();
-    return Err(format!(
-      "[wf_appointments] HTTP {} - Response: {}\nQuery URL: {}",
-      status, body, appointment_url
-    ));
-  }
-
-  let appointment_rows: Vec<WfAppointmentSync> = appointment_response
-    .json()
-    .await
-    .map_err(|e| format!("[wf_appointments] JSON parse error: {}", e))?;
-  for row in &appointment_rows {
-    let sync_id = row
-      .sync_id
-      .as_ref()
-      .ok_or("[wf_appointments] sync_id is null")?;
-
-    let existing: Option<String> =
-      sqlx::query_scalar("SELECT updated_at FROM wf_appointments WHERE sync_id = ?")
-        .bind(sync_id)
-        .fetch_optional(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let resolved_source_visit_id = resolve_local_visit_id(
-      &state.pool,
-      row.source_visit_sync_id.as_deref(),
-    )
-    .await?;
-    let source_visit_id = resolved_source_visit_id.or(row.source_visit_id);
-
-    let affected = if let Some(existing_updated) = existing {
-      let should_update = row.updated_at > existing_updated;
-      if should_update {
-        sqlx::query(
-          "UPDATE wf_appointments SET machine_id = ?, hn = ?, appt_date = ?, appt_type = ?, \
-           status = ?, notes = ?, source_visit_id = ?, source_visit_sync_id = ?, generated_from_visit = ?, \
-           updated_at = ?, deleted_at = ?, synced_at = ? WHERE sync_id = ?",
-        )
-        .bind(&row.machine_id)
-        .bind(&row.hn)
-        .bind(&row.appt_date)
-        .bind(&row.appt_type)
-        .bind(&row.status)
-        .bind(&row.notes)
-        .bind(source_visit_id)
-        .bind(&row.source_visit_sync_id)
-        .bind(row.generated_from_visit)
-        .bind(&row.updated_at)
-        .bind(&row.deleted_at)
-        .bind(&row.updated_at)
-        .bind(sync_id)
-        .execute(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?
-        .rows_affected()
-      } else {
-        0
-      }
-    } else {
-      sqlx::query(
-        "INSERT INTO wf_appointments \
-          (sync_id, machine_id, hn, appt_date, appt_type, status, notes, source_visit_id, \
-           source_visit_sync_id, generated_from_visit, created_at, updated_at, deleted_at, synced_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      )
-      .bind(sync_id)
-      .bind(&row.machine_id)
-      .bind(&row.hn)
-      .bind(&row.appt_date)
-      .bind(&row.appt_type)
-      .bind(&row.status)
-      .bind(&row.notes)
-        .bind(source_visit_id)
-        .bind(&row.source_visit_sync_id)
-      .bind(row.generated_from_visit)
-      .bind(&row.created_at)
-      .bind(&row.updated_at)
-      .bind(&row.deleted_at)
-      .bind(&row.updated_at)
-      .execute(&state.pool)
-      .await
-      .map_err(|e| e.to_string())?
-      .rows_affected()
-    };
-
-    if affected > 0 {
-      result.pulled += 1;
-    } else {
-      result.conflicts += 1;
-    }
-  }
-
-  let outcome_url = build_rest_url(
+  let (outcome_pulled, outcome_conflicts) = pull_table::<WfOutcomeSync, _>(
+    &state.pool,
+    &client,
     &url,
+    &anon_key,
+    &machine_id,
+    &last_pull_at,
     "wf_outcomes",
-    &[("updated_at", format!("gt.{last_pull_at}"))],
-  )?;
-  let outcome_response = with_auth(client.get(outcome_url.clone()), &anon_key, &machine_id)
-    .send()
-    .await
-    .map_err(|e| format!("[wf_outcomes] Network error: {}", e))?;
+    |pool, row, prev| {
+      Box::pin(async move {
+        let row_updated = row.updated_at.as_str();
+        match prev {
+          None => insert_outcome(pool, row).await,
+          Some(prev_updated) if row_updated > prev_updated => update_outcome(pool, row).await,
+          Some(_) => Ok(0),
+        }
+      })
+    },
+  )
+  .await?;
+  result.pulled += outcome_pulled;
+  result.conflicts += outcome_conflicts;
 
-  if !outcome_response.status().is_success() {
-    let status = outcome_response.status();
-    let body = outcome_response.text().await.unwrap_or_default();
-    return Err(format!(
-      "[wf_outcomes] HTTP {} - Response: {}\nQuery URL: {}",
-      status, body, outcome_url
-    ));
-  }
-
-  let outcome_rows: Vec<WfOutcomeSync> = outcome_response
-    .json()
-    .await
-    .map_err(|e| format!("[wf_outcomes] JSON parse error: {}", e))?;
-  for row in &outcome_rows {
-    let sync_id = row
-      .sync_id
-      .as_ref()
-      .ok_or("[wf_outcomes] sync_id is null")?;
-
-    let existing: Option<String> =
-      sqlx::query_scalar("SELECT updated_at FROM wf_outcomes WHERE sync_id = ?")
-        .bind(sync_id)
-        .fetch_optional(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let affected = if let Some(existing_updated) = existing {
-      let should_update = row.updated_at > existing_updated;
-      if should_update {
-        sqlx::query(
-          "UPDATE wf_outcomes SET machine_id = ?, hn = ?, event_date = ?, event_type = ?, \
-           description = ?, inr_at_event = ?, action_taken = ?, created_by = ?, \
-           updated_at = ?, deleted_at = ?, synced_at = ? WHERE sync_id = ?",
-        )
-        .bind(&row.machine_id)
-        .bind(&row.hn)
-        .bind(&row.event_date)
-        .bind(&row.event_type)
-        .bind(&row.description)
-        .bind(row.inr_at_event)
-        .bind(&row.action_taken)
-        .bind(&row.created_by)
-        .bind(&row.updated_at)
-        .bind(&row.deleted_at)
-        .bind(&row.updated_at)
-        .bind(sync_id)
-        .execute(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?
-        .rows_affected()
-      } else {
-        0
-      }
-    } else {
-      sqlx::query(
-        "INSERT INTO wf_outcomes \
-            (sync_id, machine_id, hn, event_date, event_type, description, inr_at_event, action_taken, \
-             created_by, created_at, updated_at, deleted_at, synced_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-      )
-      .bind(sync_id)
-      .bind(&row.machine_id)
-      .bind(&row.hn)
-      .bind(&row.event_date)
-      .bind(&row.event_type)
-      .bind(&row.description)
-      .bind(row.inr_at_event)
-      .bind(&row.action_taken)
-      .bind(&row.created_by)
-      .bind(&row.created_at)
-      .bind(&row.updated_at)
-      .bind(&row.deleted_at)
-      .bind(&row.updated_at)
-      .execute(&state.pool)
-      .await
-      .map_err(|e| e.to_string())?
-      .rows_affected()
-    };
-
-    if affected > 0 {
-      result.pulled += 1;
-    } else {
-      result.conflicts += 1;
-    }
-  }
-
-  let history_url = build_rest_url(
+  let (history_pulled, history_conflicts) = pull_table::<WfPatientStatusHistorySync, _>(
+    &state.pool,
+    &client,
     &url,
+    &anon_key,
+    &machine_id,
+    &last_pull_at,
     "wf_patient_status_history",
-    &[("updated_at", format!("gt.{last_pull_at}"))],
-  )?;
-  let history_response = with_auth(client.get(history_url.clone()), &anon_key, &machine_id)
-    .send()
-    .await
-    .map_err(|e| format!("[wf_patient_status_history] Network error: {}", e))?;
-
-  if !history_response.status().is_success() {
-    let status = history_response.status();
-    let body = history_response.text().await.unwrap_or_default();
-    return Err(format!(
-      "[wf_patient_status_history] HTTP {} - Response: {}\nQuery URL: {}",
-      status, body, history_url
-    ));
-  }
-
-  let history_rows: Vec<WfPatientStatusHistorySync> = history_response
-    .json()
-    .await
-    .map_err(|e| format!("[wf_patient_status_history] JSON parse error: {}", e))?;
-  for row in &history_rows {
-    let sync_id = row
-      .sync_id
-      .as_ref()
-      .ok_or("[wf_patient_status_history] sync_id is null")?;
-
-    let existing: Option<String> =
-      sqlx::query_scalar("SELECT updated_at FROM wf_patient_status_history WHERE sync_id = ?")
-        .bind(sync_id)
-        .fetch_optional(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let affected = if let Some(existing_updated) = existing {
-      let should_update = row.updated_at > existing_updated;
-      if should_update {
-        sqlx::query(
-          "UPDATE wf_patient_status_history SET machine_id = ?, hn = ?, status = ?, reason = ?, \
-           effective_date = ?, updated_at = ?, deleted_at = ?, synced_at = ? WHERE sync_id = ?",
-        )
-        .bind(&row.machine_id)
-        .bind(&row.hn)
-        .bind(&row.status)
-        .bind(&row.reason)
-        .bind(&row.effective_date)
-        .bind(&row.updated_at)
-        .bind(&row.deleted_at)
-        .bind(&row.updated_at)
-        .bind(sync_id)
-        .execute(&state.pool)
-        .await
-        .map_err(|e| e.to_string())?
-        .rows_affected()
-      } else {
-        0
-      }
-    } else {
-      sqlx::query(
-        "INSERT INTO wf_patient_status_history \
-            (sync_id, machine_id, hn, status, reason, effective_date, created_at, updated_at, deleted_at, synced_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-      )
-      .bind(sync_id)
-      .bind(&row.machine_id)
-      .bind(&row.hn)
-      .bind(&row.status)
-      .bind(&row.reason)
-      .bind(&row.effective_date)
-      .bind(&row.created_at)
-      .bind(&row.updated_at)
-      .bind(&row.deleted_at)
-      .bind(&row.updated_at)
-      .execute(&state.pool)
-      .await
-      .map_err(|e| e.to_string())?
-      .rows_affected()
-    };
-
-    if affected > 0 {
-      result.pulled += 1;
-    } else {
-      result.conflicts += 1;
-    }
-  }
+    |pool, row, prev| {
+      Box::pin(async move {
+        let row_updated = row.updated_at.as_str();
+        match prev {
+          None => insert_status_history(pool, row).await,
+          Some(prev_updated) if row_updated > prev_updated => {
+            update_status_history(pool, row).await
+          }
+          Some(_) => Ok(0),
+        }
+      })
+    },
+  )
+  .await?;
+  result.pulled += history_pulled;
+  result.conflicts += history_conflicts;
 
   let pulled_at = chrono::Utc::now().to_rfc3339();
   store.set(LAST_PULL_AT_KEY, json!(pulled_at.clone()));
@@ -1099,6 +770,435 @@ pub async fn pull_from_supabase(
   store.save().map_err(|e| e.to_string())?;
 
   Ok(result)
+}
+
+/// `wf_patients` is the only table that needs a custom `order` query
+/// parameter to ensure append-only ordering on the server, so it gets its
+/// own thin wrapper around `pull_table` to pass that extra query pair.
+async fn pull_table_patients(
+  pool: &sqlx::SqlitePool,
+  client: &Client,
+  base_url: &str,
+  anon_key: &str,
+  machine_id: &str,
+  last_pull_at: &str,
+) -> Result<(usize, usize), String> {
+  let table = "wf_patients";
+  let url = build_rest_url(
+    base_url,
+    table,
+    &[
+      ("updated_at", format!("gt.{last_pull_at}")),
+      ("order", "updated_at.asc,sync_id.asc".to_string()),
+    ],
+  )?;
+  let response = with_auth(client.get(url.clone()), anon_key, machine_id)
+    .send()
+    .await
+    .map_err(|e| format!("[{table}] Network error: {e} | URL: {url}"))?;
+  if !response.status().is_success() {
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+    return Err(format!(
+      "[{table}] HTTP {status} - Response: {body}\nQuery URL: {url}"
+    ));
+  }
+  let rows: Vec<WfPatientSync> = response.json().await.map_err(|e| {
+    format!("[{table}] JSON parse error: {e} - Response may be empty or malformed")
+  })?;
+  let sync_ids: Vec<String> = rows
+    .iter()
+    .filter_map(WfPatientSync::sync_id)
+    .cloned()
+    .collect();
+  let existing = fetch_existing_updated_ats(pool, table, &sync_ids).await?;
+  let mut pulled = 0usize;
+  let mut conflicts = 0usize;
+  for row in &rows {
+    let sync_id = WfPatientSync::sync_id(row)
+      .ok_or_else(|| format!("[{table}] sync_id is null"))?;
+    let prev = existing.get(sync_id).map(String::as_str);
+    let row_updated = row.updated_at.as_str();
+    let affected = match prev {
+      None => insert_patient(pool, row).await?,
+      Some(prev_updated) if row_updated > prev_updated => update_patient(pool, row).await?,
+      Some(_) => 0,
+    };
+    if affected > 0 {
+      pulled += 1;
+    } else {
+      conflicts += 1;
+    }
+  }
+  Ok((pulled, conflicts))
+}
+
+// Per-table INSERT helpers — keep the SQL column lists next to the row struct
+// they reference for easy auditing when the schema changes.
+
+async fn insert_patient(pool: &sqlx::SqlitePool, row: &WfPatientSync) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "INSERT INTO wf_patients \
+        (sync_id, machine_id, hn, enrolled_at, enrolled_by, status, indication, target_inr_low, \
+         target_inr_high, notes, created_at, updated_at, deleted_at, synced_at) \
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+  .bind(sync_id)
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.enrolled_at)
+  .bind(&row.enrolled_by)
+  .bind(&row.status)
+  .bind(&row.indication)
+  .bind(row.target_inr_low)
+  .bind(row.target_inr_high)
+  .bind(&row.notes)
+  .bind(&row.created_at)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn update_patient(pool: &sqlx::SqlitePool, row: &WfPatientSync) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "UPDATE wf_patients SET machine_id = ?, hn = ?, enrolled_at = ?, enrolled_by = ?, \
+     status = ?, indication = ?, target_inr_low = ?, target_inr_high = ?, notes = ?, \
+     created_at = ?, updated_at = ?, deleted_at = ?, synced_at = ? \
+     WHERE sync_id = ?",
+  )
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.enrolled_at)
+  .bind(&row.enrolled_by)
+  .bind(&row.status)
+  .bind(&row.indication)
+  .bind(row.target_inr_low)
+  .bind(row.target_inr_high)
+  .bind(&row.notes)
+  .bind(&row.created_at)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .bind(sync_id)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn insert_visit(pool: &sqlx::SqlitePool, row: &WfVisitSync) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "INSERT INTO wf_visits \
+        (sync_id, machine_id, hn, visit_date, inr_value, inr_source, current_dose_mgday, \
+         dose_detail, new_dose_mgday, new_dose_detail, new_dose_description, selected_dose_option, \
+         dose_changed, next_appointment, next_inr_due, physician, notes, side_effects, adherence, \
+         created_by, reviewed_at, reviewed_by, created_at, updated_at, deleted_at, synced_at) \
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+  .bind(sync_id)
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.visit_date)
+  .bind(row.inr_value)
+  .bind(&row.inr_source)
+  .bind(row.current_dose_mgday)
+  .bind(&row.dose_detail)
+  .bind(row.new_dose_mgday)
+  .bind(&row.new_dose_detail)
+  .bind(&row.new_dose_description)
+  .bind(&row.selected_dose_option)
+  .bind(row.dose_changed)
+  .bind(&row.next_appointment)
+  .bind(&row.next_inr_due)
+  .bind(&row.physician)
+  .bind(&row.notes)
+  .bind(&row.side_effects)
+  .bind(&row.adherence)
+  .bind(&row.created_by)
+  .bind(&row.reviewed_at)
+  .bind(&row.reviewed_by)
+  .bind(&row.created_at)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn update_visit(pool: &sqlx::SqlitePool, row: &WfVisitSync) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "UPDATE wf_visits SET machine_id = ?, hn = ?, visit_date = ?, inr_value = ?, inr_source = ?, \
+     current_dose_mgday = ?, dose_detail = ?, new_dose_mgday = ?, new_dose_detail = ?, \
+     new_dose_description = ?, selected_dose_option = ?, dose_changed = ?, next_appointment = ?, \
+     next_inr_due = ?, physician = ?, notes = ?, side_effects = ?, adherence = ?, created_by = ?, \
+     reviewed_at = ?, reviewed_by = ?, updated_at = ?, deleted_at = ?, synced_at = ? \
+     WHERE sync_id = ?",
+  )
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.visit_date)
+  .bind(row.inr_value)
+  .bind(&row.inr_source)
+  .bind(row.current_dose_mgday)
+  .bind(&row.dose_detail)
+  .bind(row.new_dose_mgday)
+  .bind(&row.new_dose_detail)
+  .bind(&row.new_dose_description)
+  .bind(&row.selected_dose_option)
+  .bind(row.dose_changed)
+  .bind(&row.next_appointment)
+  .bind(&row.next_inr_due)
+  .bind(&row.physician)
+  .bind(&row.notes)
+  .bind(&row.side_effects)
+  .bind(&row.adherence)
+  .bind(&row.created_by)
+  .bind(&row.reviewed_at)
+  .bind(&row.reviewed_by)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .bind(sync_id)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn insert_dose_history(
+  pool: &sqlx::SqlitePool,
+  row: &WfDoseHistorySync,
+) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "INSERT INTO wf_dose_history \
+        (sync_id, machine_id, hn, changed_at, old_dose_mgday, new_dose_mgday, old_detail, \
+         new_detail, reason, inr_at_change, changed_by, created_at, updated_at, deleted_at, synced_at) \
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+  .bind(sync_id)
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.changed_at)
+  .bind(row.old_dose_mgday)
+  .bind(row.new_dose_mgday)
+  .bind(&row.old_detail)
+  .bind(&row.new_detail)
+  .bind(&row.reason)
+  .bind(row.inr_at_change)
+  .bind(&row.changed_by)
+  .bind(&row.created_at)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn update_dose_history(
+  pool: &sqlx::SqlitePool,
+  row: &WfDoseHistorySync,
+) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "UPDATE wf_dose_history SET machine_id = ?, hn = ?, changed_at = ?, old_dose_mgday = ?, \
+     new_dose_mgday = ?, old_detail = ?, new_detail = ?, reason = ?, inr_at_change = ?, \
+     changed_by = ?, updated_at = ?, deleted_at = ?, synced_at = ? WHERE sync_id = ?",
+  )
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.changed_at)
+  .bind(row.old_dose_mgday)
+  .bind(row.new_dose_mgday)
+  .bind(&row.old_detail)
+  .bind(&row.new_detail)
+  .bind(&row.reason)
+  .bind(row.inr_at_change)
+  .bind(&row.changed_by)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .bind(sync_id)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn insert_appointment(
+  pool: &sqlx::SqlitePool,
+  row: &WfAppointmentSync,
+  source_visit_id: Option<i64>,
+) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "INSERT INTO wf_appointments \
+      (sync_id, machine_id, hn, appt_date, appt_type, status, notes, source_visit_id, \
+       source_visit_sync_id, generated_from_visit, created_at, updated_at, deleted_at, synced_at) \
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+  .bind(sync_id)
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.appt_date)
+  .bind(&row.appt_type)
+  .bind(&row.status)
+  .bind(&row.notes)
+  .bind(source_visit_id)
+  .bind(&row.source_visit_sync_id)
+  .bind(row.generated_from_visit)
+  .bind(&row.created_at)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn update_appointment(
+  pool: &sqlx::SqlitePool,
+  row: &WfAppointmentSync,
+  source_visit_id: Option<i64>,
+) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "UPDATE wf_appointments SET machine_id = ?, hn = ?, appt_date = ?, appt_type = ?, \
+     status = ?, notes = ?, source_visit_id = ?, source_visit_sync_id = ?, generated_from_visit = ?, \
+     updated_at = ?, deleted_at = ?, synced_at = ? WHERE sync_id = ?",
+  )
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.appt_date)
+  .bind(&row.appt_type)
+  .bind(&row.status)
+  .bind(&row.notes)
+  .bind(source_visit_id)
+  .bind(&row.source_visit_sync_id)
+  .bind(row.generated_from_visit)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .bind(sync_id)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn insert_outcome(pool: &sqlx::SqlitePool, row: &WfOutcomeSync) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "INSERT INTO wf_outcomes \
+        (sync_id, machine_id, hn, event_date, event_type, description, inr_at_event, action_taken, \
+         created_by, created_at, updated_at, deleted_at, synced_at) \
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+  .bind(sync_id)
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.event_date)
+  .bind(&row.event_type)
+  .bind(&row.description)
+  .bind(row.inr_at_event)
+  .bind(&row.action_taken)
+  .bind(&row.created_by)
+  .bind(&row.created_at)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn update_outcome(pool: &sqlx::SqlitePool, row: &WfOutcomeSync) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "UPDATE wf_outcomes SET machine_id = ?, hn = ?, event_date = ?, event_type = ?, \
+     description = ?, inr_at_event = ?, action_taken = ?, created_by = ?, \
+     updated_at = ?, deleted_at = ?, synced_at = ? WHERE sync_id = ?",
+  )
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.event_date)
+  .bind(&row.event_type)
+  .bind(&row.description)
+  .bind(row.inr_at_event)
+  .bind(&row.action_taken)
+  .bind(&row.created_by)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .bind(sync_id)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn insert_status_history(
+  pool: &sqlx::SqlitePool,
+  row: &WfPatientStatusHistorySync,
+) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "INSERT INTO wf_patient_status_history \
+        (sync_id, machine_id, hn, status, reason, effective_date, created_at, updated_at, deleted_at, synced_at) \
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+  .bind(sync_id)
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.status)
+  .bind(&row.reason)
+  .bind(&row.effective_date)
+  .bind(&row.created_at)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
+}
+
+async fn update_status_history(
+  pool: &sqlx::SqlitePool,
+  row: &WfPatientStatusHistorySync,
+) -> Result<u64, String> {
+  let sync_id = row.sync_id.as_deref().unwrap_or_default();
+  sqlx::query(
+    "UPDATE wf_patient_status_history SET machine_id = ?, hn = ?, status = ?, reason = ?, \
+     effective_date = ?, updated_at = ?, deleted_at = ?, synced_at = ? WHERE sync_id = ?",
+  )
+  .bind(&row.machine_id)
+  .bind(&row.hn)
+  .bind(&row.status)
+  .bind(&row.reason)
+  .bind(&row.effective_date)
+  .bind(&row.updated_at)
+  .bind(&row.deleted_at)
+  .bind(&row.updated_at)
+  .bind(sync_id)
+  .execute(pool)
+  .await
+  .map(|r| r.rows_affected())
+  .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

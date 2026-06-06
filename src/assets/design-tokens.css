@@ -4,8 +4,6 @@
    NEVER hardcode hex values or px sizes outside this file
    ======================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600&display=swap');
-
 :root {
   /* Brand — Pink Scale */
   --color-pink-900: #831843;
@@ -70,6 +68,17 @@
   --color-success:  #059669;
   --color-warning:  #D97706;
   --color-danger:   #DC2626;
+
+  /* Typography — Thai-capable system font stack.
+     Replaces the previous Google Fonts `@import` to keep the app fully
+     offline-capable and CSP-clean (no third-party origin). The first
+     entry is a system-installed Thai font on each major OS; the generic
+     `sans-serif` ensures graceful fallback. */
+  --font-family-primary: "Sarabun", "Noto Sans Thai", "Leelawadee UI",
+                         "Thonburi", -apple-system, BlinkMacSystemFont,
+                         "Segoe UI", system-ui, sans-serif;
+  --font-family-mono: "SF Mono", "JetBrains Mono", "Fira Code", Menlo,
+                       Consolas, monospace;
 
   /* Pill — Warfarin Strength */
   --color-pill-2mg:  #FED7AA;

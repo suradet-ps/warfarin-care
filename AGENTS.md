@@ -852,3 +852,5 @@ warfarin-care/
 - The `dose/calculator.rs` module is pure functions with no I/O — fully unit-testable with `#[cfg(test)]`
 - Server-side pagination in `search_warfarin_patients` Tauri command (limit/offset parameters)
 - Store MySQL credentials using Tauri's OS keychain plugin (`tauri-plugin-stronghold` or `tauri-plugin-os`)
+- **Design tokens**: The canonical INR/TTR color table is `DESIGN.md` §"Semantic — INR Status (Clinical Convention)". A convenience lookup table in §"INR Status Colors (for all components)" mirrors it — keep them in sync.
+- **Encryption key storage**: The 32-byte AES key is held in the OS keychain (service `warfarin-care`, user `mysql-encryption-key`) via the `keyring` crate. A one-time migration lifts any legacy key stored in `wf_settings` (`encryption_key` row) into the keychain on first run, then deletes the row.

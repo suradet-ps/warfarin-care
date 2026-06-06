@@ -23,8 +23,8 @@ use commands::{
   reports::{calculate_clinic_ttr, calculate_ttr, get_report_data},
   screening::search_warfarin_patients,
   settings::{
-    get_mysql_config_for_ui, get_mysql_config_internal, get_setting_value, get_settings,
-    save_setting, test_mysql_connection,
+    get_mysql_config_for_ui, get_mysql_config_internal, get_mysql_config_status,
+    get_setting_value, get_settings, save_setting, test_mysql_connection,
   },
   slip::save_slip_pdf,
   sync::{
@@ -151,6 +151,7 @@ pub fn run() -> tauri::Result<()> {
       get_setting_value,
       test_mysql_connection,
       get_mysql_config_for_ui,
+      get_mysql_config_status,
       get_inr_history,
       get_latest_inr,
       schedule_appointment,
