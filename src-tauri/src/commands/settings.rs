@@ -1,6 +1,7 @@
 //! Settings and MySQL connection-test commands.
 
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use tauri::State;
@@ -15,6 +16,13 @@ const MYSQL_CONFIG_KEY: &str = "mysql_config";
 const ENCRYPTION_KEY_KEY: &str = "encryption_key";
 const KEYRING_SERVICE: &str = "warfarin-care";
 const KEYRING_USER: &str = "mysql-encryption-key";
+
+/// In-process cache for the 32-byte AES key. The macOS Keychain (and other
+/// OS keystores reached via the `keyring` crate) prompts the user to
+/// authorise every read while the app is unsigned. Caching here means the
+/// prompt appears at most once per app launch, not on every settings
+/// interaction. Cleared automatically when the process exits.
+static ENCRYPTION_KEY_CACHE: OnceLock<[u8; 32]> = OnceLock::new();
 
 fn load_key_from_keyring() -> Result<[u8; 32], String> {
   let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
@@ -88,6 +96,20 @@ async fn migrate_key_to_keyring(pool: &sqlx::SqlitePool) -> Result<(), String> {
 }
 
 async fn get_or_create_encryption_key(pool: &sqlx::SqlitePool) -> Result<[u8; 32], String> {
+  // Hot path: serve from the in-process cache so the OS keychain is only
+  // touched once per app launch.
+  if let Some(key) = ENCRYPTION_KEY_CACHE.get() {
+    return Ok(*key);
+  }
+
+  let key = load_or_mint_encryption_key(pool).await?;
+  // `set` returns Err if another thread populated the cache concurrently;
+  // their value is still valid, so ignore the error.
+  let _ = ENCRYPTION_KEY_CACHE.set(key);
+  Ok(key)
+}
+
+async fn load_or_mint_encryption_key(pool: &sqlx::SqlitePool) -> Result<[u8; 32], String> {
   // Try the OS keychain first. If the key isn't there, run the one-time
   // migration from the legacy SQLite row. If still nothing, mint a new key
   // and store it in the keychain.
