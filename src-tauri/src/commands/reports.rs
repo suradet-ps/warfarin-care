@@ -215,12 +215,11 @@ pub async fn get_report_data(
       .fetch_all(&state.pool)
       .await
       .map_err(|e| e.to_string())?;
-      let total_visits: i64 = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM wf_visits WHERE deleted_at IS NULL",
-      )
-      .fetch_one(&state.pool)
-      .await
-      .map_err(|e| e.to_string())?;
+      let total_visits: i64 =
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM wf_visits WHERE deleted_at IS NULL")
+          .fetch_one(&state.pool)
+          .await
+          .map_err(|e| e.to_string())?;
       let total_changes: i64 = rows.iter().map(|(_, c)| *c).sum();
       let patients_with_changes = rows.iter().filter(|(_, c)| *c > 0).count();
       let change_ratio = if total_visits > 0 {

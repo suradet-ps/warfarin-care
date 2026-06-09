@@ -73,8 +73,7 @@ where
   let mut pulled = 0usize;
   let mut conflicts = 0usize;
   for row in &rows {
-    let sync_id = T::sync_id(row)
-      .ok_or_else(|| format!("[{table}] sync_id is null"))?;
+    let sync_id = T::sync_id(row).ok_or_else(|| format!("[{table}] sync_id is null"))?;
     let prev_updated = existing.get(sync_id).map(String::as_str);
     let affected = apply(pool, row, prev_updated).await?;
     if affected > 0 {
@@ -210,9 +209,8 @@ async fn ensure_sync_ids(
   assert_table_allowed(table)?;
 
   let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
-  let mut select = QueryBuilder::<Sqlite>::new(format!(
-    "SELECT id FROM {table} WHERE sync_id IS NULL"
-  ));
+  let mut select =
+    QueryBuilder::<Sqlite>::new(format!("SELECT id FROM {table} WHERE sync_id IS NULL"));
   let ids: Vec<i64> = select
     .build_query_scalar::<i64>()
     .fetch_all(&mut *tx)
@@ -221,9 +219,7 @@ async fn ensure_sync_ids(
 
   for row_id in ids {
     let new_sync_id = Uuid::new_v4().to_string();
-    let mut update = QueryBuilder::<Sqlite>::new(format!(
-      "UPDATE {table} SET sync_id = "
-    ));
+    let mut update = QueryBuilder::<Sqlite>::new(format!("UPDATE {table} SET sync_id = "));
     update.push_bind(new_sync_id);
     update.push(", machine_id = COALESCE(machine_id, ");
     update.push_bind(machine_id);
@@ -447,10 +443,7 @@ pub async fn test_supabase_connection(
   if status.as_u16() == 401 {
     return Ok(ConnectionTestResult {
       ok: false,
-      message: format!(
-        "Anon Key ไม่ถูกต้อง (HTTP 401). รายละเอียด: {}",
-        preview
-      ),
+      message: format!("Anon Key ไม่ถูกต้อง (HTTP 401). รายละเอียด: {}", preview),
       status_code,
     });
   }
@@ -468,11 +461,7 @@ pub async fn test_supabase_connection(
 
   Ok(ConnectionTestResult {
     ok: false,
-    message: format!(
-      "เชื่อมต่อไม่สำเร็จ (HTTP {}): {}",
-      status.as_u16(),
-      preview
-    ),
+    message: format!("เชื่อมต่อไม่สำเร็จ (HTTP {}): {}", status.as_u16(), preview),
     status_code,
   })
 }
@@ -876,9 +865,10 @@ async fn pull_table_patients(
       "[{table}] HTTP {status} - Response: {body}\nQuery URL: {url}"
     ));
   }
-  let rows: Vec<WfPatientSync> = response.json().await.map_err(|e| {
-    format!("[{table}] JSON parse error: {e} - Response may be empty or malformed")
-  })?;
+  let rows: Vec<WfPatientSync> = response
+    .json()
+    .await
+    .map_err(|e| format!("[{table}] JSON parse error: {e} - Response may be empty or malformed"))?;
   let sync_ids: Vec<String> = rows
     .iter()
     .filter_map(WfPatientSync::sync_id)
@@ -888,8 +878,8 @@ async fn pull_table_patients(
   let mut pulled = 0usize;
   let mut conflicts = 0usize;
   for row in &rows {
-    let sync_id = WfPatientSync::sync_id(row)
-      .ok_or_else(|| format!("[{table}] sync_id is null"))?;
+    let sync_id =
+      WfPatientSync::sync_id(row).ok_or_else(|| format!("[{table}] sync_id is null"))?;
     let prev = existing.get(sync_id).map(String::as_str);
     let row_updated = row.updated_at.as_str();
     let affected = match prev {

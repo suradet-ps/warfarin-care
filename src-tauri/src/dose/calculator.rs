@@ -77,9 +77,19 @@ pub fn suggest_dose(
     } else if above > 1.0 {
       (-20.0, "ลดขนาดยา 15-20% นัดตรวจ INR ใหม่ใน 7 วัน", "urgent", 7)
     } else if above > 0.5 {
-      (-15.0, "ลดขนาดยา 10-15% นัดตรวจ INR ใหม่ใน 7-14 วัน", "caution", 10)
+      (
+        -15.0,
+        "ลดขนาดยา 10-15% นัดตรวจ INR ใหม่ใน 7-14 วัน",
+        "caution",
+        10,
+      )
     } else if above > 0.0 {
-      (-10.0, "ลดขนาดยา 5-10% นัดตรวจ INR ใหม่ใน 14 วัน", "caution", 14)
+      (
+        -10.0,
+        "ลดขนาดยา 5-10% นัดตรวจ INR ใหม่ใน 14 วัน",
+        "caution",
+        14,
+      )
     } else if in_range {
       (0.0, "คงขนาดยาเดิม นัดตรวจ INR ใน 4-6 สัปดาห์", "normal", 35)
     } else if inr < universal_critical_low {
@@ -98,10 +108,20 @@ pub fn suggest_dose(
         10,
       )
     } else if below > 0.5 {
-      (15.0, "เพิ่มขนาดยา 10-15% นัดตรวจ INR ใหม่ใน 14 วัน", "caution", 14)
+      (
+        15.0,
+        "เพิ่มขนาดยา 10-15% นัดตรวจ INR ใหม่ใน 14 วัน",
+        "caution",
+        14,
+      )
     } else {
       // below > 0.0 (just below target_low)
-      (10.0, "เพิ่มขนาดยา 5-10% นัดตรวจ INR ใหม่ใน 14 วัน", "caution", 14)
+      (
+        10.0,
+        "เพิ่มขนาดยา 5-10% นัดตรวจ INR ใหม่ใน 14 วัน",
+        "caution",
+        14,
+      )
     };
 
   let suggested_dose_weekly =

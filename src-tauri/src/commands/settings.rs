@@ -175,10 +175,7 @@ pub async fn test_mysql_connection(
 /// currently reachable (e.g. while editing settings off-site). If the supplied
 /// password is empty, the existing stored password is preserved.
 #[tauri::command]
-pub async fn save_mysql_config(
-  config: DbConfig,
-  state: State<'_, AppState>,
-) -> Result<(), String> {
+pub async fn save_mysql_config(config: DbConfig, state: State<'_, AppState>) -> Result<(), String> {
   let merged = merge_with_stored_password(&state.pool, config).await?;
   persist_mysql_config(&state.pool, &merged).await
 }

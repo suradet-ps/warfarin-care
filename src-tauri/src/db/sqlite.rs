@@ -51,8 +51,7 @@ fn pills_for_dose(dose_mg: f64) -> Vec<(u8, bool)> {
         for h5 in 0..=1 {
           for h3 in 0..=1 {
             for h2 in 0..=1 {
-              let total_half_units = 2 * (5 * w5 + 3 * w3 + 2 * w2)
-                + (5 * h5 + 3 * h3 + 2 * h2);
+              let total_half_units = 2 * (5 * w5 + 3 * w3 + 2 * w2) + (5 * h5 + 3 * h3 + 2 * h2);
               if total_half_units != half_units {
                 continue;
               }
@@ -615,14 +614,8 @@ pub async fn update_visit(
     bail!("visit not found: {visit_id}");
   }
 
-  unlink_or_delete_visit_appointment(
-    &mut tx,
-    visit_id,
-    existing_link.as_ref(),
-    &now,
-    machine_id,
-  )
-  .await?;
+  unlink_or_delete_visit_appointment(&mut tx, visit_id, existing_link.as_ref(), &now, machine_id)
+    .await?;
   sync_visit_appointment(&mut tx, input, visit_id, &visit_sync_id, &now, machine_id).await?;
 
   tx.commit()
@@ -878,14 +871,8 @@ pub async fn delete_visit(pool: &SqlitePool, visit_id: i64, machine_id: &str) ->
     .context("failed to begin visit delete transaction")?;
   let visit_link = get_visit_appointment_link_context(&mut tx, visit_id).await?;
 
-  unlink_or_delete_visit_appointment(
-    &mut tx,
-    visit_id,
-    visit_link.as_ref(),
-    &now,
-    machine_id,
-  )
-  .await?;
+  unlink_or_delete_visit_appointment(&mut tx, visit_id, visit_link.as_ref(), &now, machine_id)
+    .await?;
 
   let result = sqlx::query(
     "UPDATE wf_visits \
@@ -1571,7 +1558,10 @@ mod pill_counter_tests {
       .iter()
       .map(|(s, (w, h))| (*s as i32) * 2 * (*w as i32) + (*s as i32) * (*h as i32))
       .sum();
-    assert_eq!(total_half_units, 9, "4.5 mg dose should dispense 4.5 mg total");
+    assert_eq!(
+      total_half_units, 9,
+      "4.5 mg dose should dispense 4.5 mg total"
+    );
     let total_pieces: u32 = counts.values().map(|(w, h)| w + h).sum();
     assert_eq!(total_pieces, 2, "should use 2 pieces (minimum)");
   }
