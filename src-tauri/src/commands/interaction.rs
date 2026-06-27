@@ -1,4 +1,3 @@
-use crate::db::mysql;
 use anyhow::Result;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -6,6 +5,7 @@ use sqlx::{MySql, QueryBuilder, Row};
 use std::collections::BTreeMap;
 use tauri::State;
 use warfarin_core::models::interaction::{DrugInteraction, DrugInteractionInput};
+use warfarin_db::mysql;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,29 +36,29 @@ pub struct PatientDrugInteractionSummary {
 
 #[tauri::command]
 pub async fn get_all_drug_interactions(
-  state: State<'_, crate::db::sqlite::AppState>,
+  state: State<'_, warfarin_db::sqlite::AppState>,
 ) -> Result<Vec<DrugInteraction>, String> {
-  crate::db::sqlite::get_all_drug_interactions(&state.pool)
+  warfarin_db::sqlite::get_all_drug_interactions(&state.pool)
     .await
     .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn add_drug_interaction(
-  state: State<'_, crate::db::sqlite::AppState>,
+  state: State<'_, warfarin_db::sqlite::AppState>,
   input: DrugInteractionInput,
 ) -> Result<i64, String> {
-  crate::db::sqlite::add_drug_interaction(&state.pool, &input)
+  warfarin_db::sqlite::add_drug_interaction(&state.pool, &input)
     .await
     .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn delete_drug_interaction(
-  state: State<'_, crate::db::sqlite::AppState>,
+  state: State<'_, warfarin_db::sqlite::AppState>,
   id: i64,
 ) -> Result<(), String> {
-  crate::db::sqlite::delete_drug_interaction(&state.pool, id)
+  warfarin_db::sqlite::delete_drug_interaction(&state.pool, id)
     .await
     .map_err(|e| e.to_string())
 }
@@ -106,7 +106,7 @@ pub async fn search_hosxp_drugs(
 
 #[tauri::command]
 pub async fn get_patient_drug_interactions(
-  state: State<'_, crate::db::sqlite::AppState>,
+  state: State<'_, warfarin_db::sqlite::AppState>,
   mysql_config: mysql::DbConfig,
   hn: String,
 ) -> Result<
@@ -116,7 +116,7 @@ pub async fn get_patient_drug_interactions(
   ),
   String,
 > {
-  let interaction_icodes = crate::db::sqlite::get_drug_interaction_icodes(&state.pool)
+  let interaction_icodes = warfarin_db::sqlite::get_drug_interaction_icodes(&state.pool)
     .await
     .map_err(|e| e.to_string())?;
 
@@ -132,7 +132,7 @@ pub async fn get_patient_drug_interactions(
   }
 
   // Get interaction types from SQLite
-  let all_interactions = crate::db::sqlite::get_all_drug_interactions(&state.pool)
+  let all_interactions = warfarin_db::sqlite::get_all_drug_interactions(&state.pool)
     .await
     .map_err(|e| e.to_string())?;
 

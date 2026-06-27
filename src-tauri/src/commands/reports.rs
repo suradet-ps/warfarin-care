@@ -3,11 +3,9 @@
 use serde_json::{Value, json};
 use tauri::State;
 
-use crate::{
-  commands::patients::{get_inr_records, get_inr_records_by_hns},
-  db::sqlite::{AppState, get_active_patients, get_outcome_counts_by_hns},
-};
+use crate::commands::patients::{get_inr_records, get_inr_records_by_hns};
 use warfarin_core::dose::calculator::calculate_ttr as calc_ttr;
+use warfarin_db::sqlite::{AppState, get_active_patients, get_outcome_counts_by_hns};
 
 /// Calculates TTR (Rosendaal method) for a single patient over a given window.
 ///
@@ -18,7 +16,7 @@ pub async fn calculate_ttr(
   window_days: u32,
   state: State<'_, AppState>,
 ) -> Result<Option<f64>, String> {
-  let patient = crate::db::sqlite::get_patient_by_hn(&state.pool, &hn)
+  let patient = warfarin_db::sqlite::get_patient_by_hn(&state.pool, &hn)
     .await
     .map_err(|e| e.to_string())?
     .ok_or_else(|| format!("patient not found: {hn}"))?;
@@ -96,7 +94,7 @@ pub async fn get_report_data(
 ) -> Result<Value, String> {
   match report_type.as_str() {
     "census" => {
-      let patients = crate::db::sqlite::get_all_patients(&state.pool)
+      let patients = warfarin_db::sqlite::get_all_patients(&state.pool)
         .await
         .map_err(|e| e.to_string())?;
 

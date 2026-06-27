@@ -2,12 +2,12 @@
 
 use tauri::State;
 
-use crate::db::sqlite::{
+use warfarin_core::models::appointment::{AppointmentDayLoad, AppointmentInput, WfAppointment};
+use warfarin_db::sqlite::{
   AppState, get_appointment_day_load as db_get_appointment_day_load,
   get_appointments as db_get_appointments, get_pending_appointments as db_get_pending_appointments,
   schedule_appointment as db_schedule,
 };
-use warfarin_core::models::appointment::{AppointmentDayLoad, AppointmentInput, WfAppointment};
 
 #[tauri::command]
 pub async fn get_appointments(

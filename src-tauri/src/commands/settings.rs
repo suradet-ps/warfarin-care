@@ -6,11 +6,11 @@ use std::sync::OnceLock;
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use tauri::State;
 
-use crate::db::{
+use warfarin_core::encrypt;
+use warfarin_db::{
   mysql::{DbConfig, test_mysql_connection as db_test_connection},
   sqlite::{AppState, get_all_settings, get_setting, set_setting},
 };
-use warfarin_core::encrypt;
 
 const MYSQL_CONFIG_KEY: &str = "mysql_config";
 const ENCRYPTION_KEY_KEY: &str = "encryption_key";

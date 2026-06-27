@@ -1,15 +1,15 @@
 //! Screening command — queries HOSxP warfarin dispensing records.
 //!
 //! When MySQL is not configured this falls back to an empty response so the UI
-//! remains functional.  The HOSxP MySQL integration is in `db::mysql`.
+//! remains functional.  The HOSxP MySQL integration is in `warfarin_db::mysql`.
 
 use tauri::State;
 
-use crate::db::{
+use warfarin_core::models::patient::{SearchFilters, SearchResponse};
+use warfarin_db::{
   mysql::search_hosxp_warfarin_patients,
   sqlite::{AppState, get_all_enrolled_hns},
 };
-use warfarin_core::models::patient::{SearchFilters, SearchResponse};
 
 /// Hard cap on `page_size` regardless of what the FE sends. Stops a malicious
 /// or buggy caller from asking the MySQL host for tens of thousands of rows

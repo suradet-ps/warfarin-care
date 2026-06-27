@@ -8,3 +8,25 @@ license = "MIT"
 
 [lib]
 name = "warfarin_db"
+
+[dependencies]
+# Shared domain models + pure helpers (dose parsing, pill summaries, etc.).
+warfarin-core = { path = "../warfarin-core" }
+
+# Database drivers. Runtime queries only — no DATABASE_URL is needed at
+# compile time for either MySQL (HOSxP) or the local SQLite store.
+sqlx = { version = "0.9", features = ["mysql", "sqlite", "runtime-tokio", "chrono", "macros"] }
+
+# Async primitives used by the MySQL pool cache (tokio::sync::RwLock).
+tokio = { version = "1", features = ["sync"] }
+
+# Error propagation and date math used across both data sources.
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+
+# Sync IDs for cloud-sync rows written from the SQLite layer.
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Serde for the sync row models (derive) and the DbConfig struct.
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"

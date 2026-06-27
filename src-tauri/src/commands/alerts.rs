@@ -3,11 +3,9 @@
 use chrono::{NaiveDate, Utc};
 use tauri::State;
 
-use crate::{
-  commands::patients::get_inr_records_by_hns,
-  db::sqlite::{AppState, get_active_patients, get_pending_appointments},
-};
+use crate::commands::patients::get_inr_records_by_hns;
 use warfarin_core::{dose::calculator::calculate_ttr, models::alert::PatientAlert};
+use warfarin_db::sqlite::{AppState, get_active_patients, get_pending_appointments};
 
 const TTR_RED_THRESHOLD: f64 = 50.0;
 const TTR_YELLOW_THRESHOLD: f64 = 65.0;

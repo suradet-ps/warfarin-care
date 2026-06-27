@@ -2,15 +2,15 @@
 
 use tauri::State;
 
-use crate::db::sqlite::{
+use warfarin_core::{
+  dose::calculator::suggest_dose as suggest_dose_impl,
+  models::visit::{DoseSuggestion, VisitInput, WfVisit},
+};
+use warfarin_db::sqlite::{
   AppState, approve_visit as db_approve_visit, delete_visit as db_delete_visit,
   get_pending_review_count as db_pending_count, get_pending_review_visits as db_pending,
   get_visit_by_id as db_get_visit_by_id, get_visit_history as db_history, save_visit as db_save,
   update_visit as db_update_visit,
-};
-use warfarin_core::{
-  dose::calculator::suggest_dose as suggest_dose_impl,
-  models::visit::{DoseSuggestion, VisitInput, WfVisit},
 };
 
 #[tauri::command]

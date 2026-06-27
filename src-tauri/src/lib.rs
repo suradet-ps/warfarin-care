@@ -1,6 +1,4 @@
 pub mod commands;
-pub mod db;
-pub mod models;
 
 use anyhow::{Context, Result};
 use commands::{
@@ -34,9 +32,9 @@ use commands::{
     get_visit_by_id, get_visit_history, save_visit, suggest_dose, update_visit,
   },
 };
-use db::sqlite::{AppState, init_pool};
 use sqlx::mysql::MySqlPoolOptions;
 use tauri::{App, Emitter, Manager};
+use warfarin_db::sqlite::{AppState, init_pool};
 
 fn initialise_app_state(app: &mut App) -> Result<()> {
   let app_handle = app.handle().clone();

@@ -3,19 +3,19 @@
 use chrono::Utc;
 use tauri::State;
 
-use crate::db::{
-  mysql::{get_dispensing_history, get_hosxp_patient},
-  sqlite::{
-    AppState, enroll_patient as db_enroll, get_active_patients as db_get_active,
-    get_inr_from_visits, get_latest_visit_dose_by_hns, get_patient_by_hn, get_pending_appointments,
-    get_visit_history, update_patient_status as db_update_status,
-  },
-};
 use warfarin_core::{
   dose::calculator::calculate_ttr,
   models::{
     inr::InrRecord,
     patient::{ActivePatientSummary, EnrollmentInput, HosxpPatient, PatientDetail, WfPatient},
+  },
+};
+use warfarin_db::{
+  mysql::{get_dispensing_history, get_hosxp_patient},
+  sqlite::{
+    AppState, enroll_patient as db_enroll, get_active_patients as db_get_active,
+    get_inr_from_visits, get_latest_visit_dose_by_hns, get_patient_by_hn, get_pending_appointments,
+    get_visit_history, update_patient_status as db_update_status,
   },
 };
 
@@ -37,7 +37,7 @@ pub async fn get_active_patient_summaries(
     .map_err(|e| e.to_string())?;
 
   let (hosxp_map, mysql_inr_map) = if let Some(config) = config_result {
-    crate::db::mysql::get_dashboard_patient_data(&config, &hns)
+    warfarin_db::mysql::get_dashboard_patient_data(&config, &hns)
       .await
       .unwrap_or_else(|_| {
         (
@@ -258,7 +258,7 @@ pub(crate) async fn get_inr_records_by_hns(
     .flatten();
 
   let mut records_by_hn = if let Some(config) = config_result {
-    crate::db::mysql::get_dashboard_patient_data(&config, hns)
+    warfarin_db::mysql::get_dashboard_patient_data(&config, hns)
       .await
       .map(|(_, inr_map)| inr_map)
       .unwrap_or_default()
