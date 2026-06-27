@@ -1,10 +1,10 @@
-//! HOSxP MySQL read-only query layer.
+//! `HOSxP` `MySQL` read-only query layer.
 //!
-//! **This module NEVER writes to HOSxP.** All functions return `anyhow::Result`
+//! **This module NEVER writes to `HOSxP`.** All functions return `anyhow::Result`
 //! so command handlers can surface connection and query failures explicitly.
 //!
-//! Runtime queries (`sqlx::query()`) are used throughout because the HOSxP
-//! MySQL server is only available at runtime, never at compile time.
+//! Runtime queries (`sqlx::query()`) are used throughout because the `HOSxP`
+//! `MySQL` server is only available at runtime, never at compile time.
 
 use anyhow::{Context, Result, bail};
 use chrono::{Duration, NaiveDate, NaiveDateTime, Utc};
@@ -86,7 +86,7 @@ pub async fn create_pool(config: &DbConfig) -> Result<sqlx::MySqlPool> {
   Ok(cached)
 }
 
-/// Tests whether the given MySQL config can establish a connection.
+/// Tests whether the given `MySQL` config can establish a connection.
 /// Returns `true` on success, `false` on any error.
 pub async fn test_mysql_connection(config: &DbConfig) -> bool {
   match create_pool(config).await {
@@ -222,7 +222,7 @@ fn apply_enrollment_filter(
   enrolled_hns: &[String],
 ) {
   match enrollment_status {
-    Some("enrolled") | Some("not_enrolled") if !enrolled_hns.is_empty() => {
+    Some("enrolled" | "not_enrolled") if !enrolled_hns.is_empty() => {
       builder.push(match enrollment_status {
         Some("enrolled") => " AND p.hn IN (",
         _ => " AND p.hn NOT IN (",
@@ -249,12 +249,12 @@ fn build_screening_query<'a>(
 ) -> QueryBuilder<MySql> {
   let mut builder = QueryBuilder::<MySql>::new(select_clause);
   builder.push(
-    r#"
+    r"
         FROM opitemrece o
         JOIN patient   p ON p.hn    = o.hn
         JOIN drugitems d ON d.icode = o.icode
         WHERE o.icode IN (
-        "#,
+        ",
   );
   {
     let mut separated = builder.separated(", ");
@@ -277,7 +277,7 @@ fn build_screening_query<'a>(
 
 // ── Patient demographics ──────────────────────────────────────────────────────
 
-/// Fetches basic demographics for a single patient from HOSxP.
+/// Fetches basic demographics for a single patient from `HOSxP`.
 pub async fn get_hosxp_patient(config: &DbConfig, hn: &str) -> Result<Option<HosxpPatient>> {
   let pool = create_pool(config).await?;
   let row = sqlx::query(
@@ -471,6 +471,17 @@ pub async fn get_dashboard_patient_data(
 
 /// Queries all patients who have ever received any of the three warfarin codes.
 /// Applies optional date / enrollment filters and returns server-side paginated results.
+/// Searches `HOSxP` for patients who have ever received warfarin, joining
+/// `opitemrece` with `patient` and `drugitems` for the three warfarin icodes,
+/// grouped by `hn`.
+///
+/// # Errors
+///
+/// Propagates `sqlx::Error` if the `HOSxP` `MySQL` connection or any query
+/// fails, or if a row column cannot be decoded.
+// SQL `COUNT(*)` and `total_visits` results are non-negative counts that
+// fit `usize` on all practical targets; the i64→usize casts are safe here.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub async fn search_hosxp_warfarin_patients(
   config: &DbConfig,
   filters: &SearchFilters,
@@ -481,7 +492,7 @@ pub async fn search_hosxp_warfarin_patients(
   let keyword = filters.keyword.as_deref().unwrap_or("").trim().to_string();
   let page = filters.page.max(1);
   let page_size = filters.page_size.clamp(1, 200);
-  let offset = (page.saturating_sub(1) * page_size) as i64;
+  let offset = i64::from(page.saturating_sub(1) * page_size);
   let enrolled_hn_set: HashSet<&str> = enrolled_hns.iter().map(String::as_str).collect();
 
   if matches!(filters.enrollment_status.as_deref(), Some("enrolled")) && enrolled_hns.is_empty() {
@@ -509,7 +520,7 @@ pub async fn search_hosxp_warfarin_patients(
     .context("failed to read HOSxP screening count")? as usize;
 
   let mut items_query = build_screening_query(
-    r#"
+    r"
         SELECT
             p.hn,
             p.pname,
@@ -521,7 +532,7 @@ pub async fn search_hosxp_warfarin_patients(
             MAX(o.vstdate)            AS last_dispense_date,
             COUNT(DISTINCT o.vstdate) AS total_visits,
             GROUP_CONCAT(DISTINCT d.strength ORDER BY d.strength SEPARATOR ',') AS strengths
-        "#,
+        ",
     &date_from,
     &date_to,
     &keyword,
@@ -532,7 +543,7 @@ pub async fn search_hosxp_warfarin_patients(
         " GROUP BY p.hn, p.pname, p.fname, p.lname, p.birthday, p.sex ORDER BY MAX(o.vstdate) DESC LIMIT ",
     );
   items_query
-    .push_bind(page_size as i64)
+    .push_bind(i64::from(page_size))
     .push(" OFFSET ")
     .push_bind(offset);
   let rows = items_query
@@ -581,7 +592,7 @@ pub async fn search_hosxp_warfarin_patients(
 pub async fn get_dispensing_history(config: &DbConfig, hn: &str) -> Result<Vec<DispensingRecord>> {
   let pool = create_pool(config).await?;
   let rows = match sqlx::query(
-    r#"
+    r"
         SELECT
           o.hn,
           o.vn,
@@ -611,7 +622,7 @@ pub async fn get_dispensing_history(config: &DbConfig, hn: &str) -> Result<Vec<D
         WHERE o.hn = ?
           AND o.icode IN ('1600014', '1600013', '1600024')
         ORDER BY o.vstdate DESC, o.vn DESC, o.icode
-        "#,
+        ",
   )
   .bind(hn)
   .fetch_all(&pool)
@@ -619,7 +630,7 @@ pub async fn get_dispensing_history(config: &DbConfig, hn: &str) -> Result<Vec<D
   {
     Ok(rows) => rows,
     Err(_) => sqlx::query(
-      r#"
+      r"
         SELECT
           o.hn,
           o.vn,
@@ -638,7 +649,7 @@ pub async fn get_dispensing_history(config: &DbConfig, hn: &str) -> Result<Vec<D
         WHERE o.hn = ?
           AND o.icode IN ('1600014', '1600013', '1600024')
         ORDER BY o.vstdate DESC, o.vn DESC, o.icode
-        "#,
+        ",
     )
     .bind(hn)
     .fetch_all(&pool)
@@ -692,7 +703,7 @@ pub async fn get_inr_history(config: &DbConfig, hn: &str) -> Result<Vec<InrRecor
 
   // In-house lab — follows the same join pattern as the TB project reference query.
   let inhouse_rows = sqlx::query(
-    r#"
+    r"
         SELECT
             lh.lab_order_number,
             lh.vn,
@@ -706,7 +717,7 @@ pub async fn get_inr_history(config: &DbConfig, hn: &str) -> Result<Vec<InrRecor
           AND lo.lab_order_result <> ''
           AND lo.lab_order_result REGEXP '^[0-9]'
         ORDER BY lh.order_date ASC
-        "#,
+        ",
   )
   .bind(hn)
   .fetch_all(&pool)
@@ -715,7 +726,7 @@ pub async fn get_inr_history(config: &DbConfig, hn: &str) -> Result<Vec<InrRecor
 
   // External / app lab.
   let app_rows = sqlx::query(
-    r#"
+    r"
         SELECT
             ah.lab_app_order_number,
             ah.vn,
@@ -729,7 +740,7 @@ pub async fn get_inr_history(config: &DbConfig, hn: &str) -> Result<Vec<InrRecor
           AND ao.lab_order_result <> ''
           AND ao.lab_order_result REGEXP '^[0-9]'
         ORDER BY ah.order_date ASC
-        "#,
+        ",
   )
   .bind(hn)
   .fetch_all(&pool)

@@ -1,6 +1,6 @@
-//! SQLite persistence layer for the warfarin clinic application.
+//! `SQLite` persistence layer for the warfarin clinic application.
 //!
-//! Uses runtime queries (`sqlx::query()`) throughout so no DATABASE_URL is
+//! Uses runtime queries (`sqlx::query()`) throughout so no `DATABASE_URL` is
 //! needed at compile time. All public functions return `anyhow::Result`.
 
 use anyhow::{Context, Result, bail};
@@ -34,7 +34,7 @@ struct VisitAppointmentLinkContext {
 
 // Pool initialisation
 
-/// Opens (or creates) the SQLite database and runs embedded migrations.
+/// Opens (or creates) the `SQLite` database and runs embedded migrations.
 pub async fn init_pool(db_path: PathBuf) -> Result<SqlitePool> {
   let url = format!("sqlite://{}?mode=rwc", db_path.display());
   let pool = SqlitePoolOptions::new()
@@ -196,8 +196,10 @@ pub async fn update_patient_status(
   let effective_date = effective_date
     .map(str::trim)
     .filter(|value| !value.is_empty())
-    .map(ToOwned::to_owned)
-    .unwrap_or_else(|| Utc::now().date_naive().format("%Y-%m-%d").to_string());
+    .map_or_else(
+      || Utc::now().date_naive().format("%Y-%m-%d").to_string(),
+      ToOwned::to_owned,
+    );
   let reason = reason
     .map(str::trim)
     .filter(|value| !value.is_empty())
@@ -258,8 +260,7 @@ pub async fn save_visit(pool: &SqlitePool, input: &VisitInput, machine_id: &str)
     .next_appointment
     .as_deref()
     .map(str::trim)
-    .filter(|value| !value.is_empty())
-    .is_none()
+    .is_none_or(str::is_empty)
   {
     bail!("next appointment is required when saving visit");
   }
@@ -345,8 +346,7 @@ pub async fn update_visit(
     .next_appointment
     .as_deref()
     .map(str::trim)
-    .filter(|value| !value.is_empty())
-    .is_none()
+    .is_none_or(str::is_empty)
   {
     bail!("next appointment is required when updating visit");
   }
@@ -1115,7 +1115,7 @@ pub async fn delete_drug_interaction(pool: &SqlitePool, id: i64) -> Result<()> {
   Ok(())
 }
 
-/// Returns visits pending review (no reviewed_at), newest first.
+/// Returns visits pending review (no `reviewed_at`), newest first.
 pub async fn get_pending_review_visits(pool: &SqlitePool) -> Result<Vec<WfVisit>> {
   let rows = sqlx::query(
     "SELECT id, hn, visit_date, inr_value, inr_source, \
@@ -1143,7 +1143,7 @@ pub async fn get_pending_review_count(pool: &SqlitePool) -> Result<i64> {
   Ok(row.get("cnt"))
 }
 
-/// Approves a visit (sets reviewed_at and reviewed_by).
+/// Approves a visit (sets `reviewed_at` and `reviewed_by`).
 pub async fn approve_visit(
   pool: &SqlitePool,
   visit_id: i64,
@@ -1175,12 +1175,12 @@ pub async fn approve_visit(
 
 // AppState
 
-/// Application state managed by Tauri, wrapping the SQLite connection pool.
+/// Application state managed by Tauri, wrapping the `SQLite` connection pool.
 ///
 /// Registered with `tauri::Builder::manage()` and injected into every command
 /// handler via `tauri::State<'_, AppState>`.
 pub struct AppState {
-  /// SQLite connection pool.
+  /// `SQLite` connection pool.
   pub pool: SqlitePool,
   /// Stable identifier for the current machine, used for sync metadata.
   pub machine_id: String,
@@ -1188,6 +1188,7 @@ pub struct AppState {
 
 impl AppState {
   /// Constructs `AppState` from an already-initialised pool.
+  #[must_use]
   pub fn new(pool: SqlitePool, machine_id: String) -> Self {
     Self { pool, machine_id }
   }
