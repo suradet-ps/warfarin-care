@@ -1,4 +1,4 @@
-//! Settings and MySQL connection-test commands.
+//! Settings and `MySQL` connection-test commands.
 
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -53,10 +53,10 @@ fn store_key_to_keyring(key: &[u8; 32]) -> Result<(), String> {
     .map_err(|e| format!("keyring write failed: {e}"))
 }
 
-/// One-time migration: if a key exists in the SQLite `wf_settings` table
+/// One-time migration: if a key exists in the `SQLite` `wf_settings` table
 /// (the pre-R-1.5 storage), copy it into the OS keychain and delete the
 /// database row so the secret no longer lives on disk in plaintext-equivalent
-/// form. If the keychain already has a key, the SQLite row is removed without
+/// form. If the keychain already has a key, the `SQLite` row is removed without
 /// overwriting.
 async fn migrate_key_to_keyring(pool: &sqlx::SqlitePool) -> Result<(), String> {
   let Some(stored_b64) = get_setting(pool, ENCRYPTION_KEY_KEY)
@@ -67,25 +67,22 @@ async fn migrate_key_to_keyring(pool: &sqlx::SqlitePool) -> Result<(), String> {
   };
   // Best-effort migration: if the keychain already has a key, prefer the
   // keychain one (it was set by a newer install) and just drop the SQLite row.
-  match load_key_from_keyring() {
-    Ok(_) => {
-      // Keychain already populated — nothing to migrate, just clean up.
+  if load_key_from_keyring().is_ok() {
+    // Keychain already populated — nothing to migrate, just clean up.
+  } else {
+    // Keychain empty — try to migrate the SQLite value into it.
+    let bytes = BASE64
+      .decode(stored_b64.trim())
+      .map_err(|e| format!("legacy key is not valid base64: {e}"))?;
+    if bytes.len() != 32 {
+      return Err(format!(
+        "legacy key has wrong length: {} (expected 32)",
+        bytes.len()
+      ));
     }
-    Err(_) => {
-      // Keychain empty — try to migrate the SQLite value into it.
-      let bytes = BASE64
-        .decode(stored_b64.trim())
-        .map_err(|e| format!("legacy key is not valid base64: {e}"))?;
-      if bytes.len() != 32 {
-        return Err(format!(
-          "legacy key has wrong length: {} (expected 32)",
-          bytes.len()
-        ));
-      }
-      let mut key = [0u8; 32];
-      key.copy_from_slice(&bytes);
-      store_key_to_keyring(&key)?;
-    }
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&bytes);
+    store_key_to_keyring(&key)?;
   }
   // Remove the SQLite row regardless of which path we took; the keychain is
   // the new source of truth.
@@ -153,7 +150,7 @@ pub async fn save_setting(
     .map_err(|e| e.to_string())
 }
 
-/// Persists the MySQL config JSON and verifies the connection.
+/// Persists the `MySQL` config JSON and verifies the connection.
 /// Password is encrypted before storage. If the supplied password is empty,
 /// the existing stored password is preserved (lets the UI keep the password
 /// hidden behind a placeholder without forcing the user to re-type it).
@@ -170,8 +167,8 @@ pub async fn test_mysql_connection(
   Ok(ok)
 }
 
-/// Saves the MySQL config without performing a connection test. Used by the
-/// "บันทึก" button so users can persist credentials even when HOSxP is not
+/// Saves the `MySQL` config without performing a connection test. Used by the
+/// "บันทึก" button so users can persist credentials even when `HOSxP` is not
 /// currently reachable (e.g. while editing settings off-site). If the supplied
 /// password is empty, the existing stored password is preserved.
 #[tauri::command]
@@ -204,9 +201,9 @@ async fn persist_mysql_config(pool: &sqlx::SqlitePool, config: &DbConfig) -> Res
     .map_err(|e| e.to_string())
 }
 
-/// Returns the MySQL config with decrypted password for UI display/editing.
+/// Returns the `MySQL` config with decrypted password for UI display/editing.
 ///
-/// **Deprecated.** Returns the full DbConfig including the password, which is
+/// **Deprecated.** Returns the full `DbConfig` including the password, which is
 /// a security concern. Use [`get_mysql_config_status`] for UI display and let
 /// the user re-enter the password to update. Kept for backward compatibility
 /// with plugins or external scripts that may still depend on it; will be
@@ -215,12 +212,11 @@ async fn persist_mysql_config(pool: &sqlx::SqlitePool, config: &DbConfig) -> Res
 pub async fn get_mysql_config_for_ui(
   state: State<'_, AppState>,
 ) -> Result<Option<DbConfig>, String> {
-  let stored = match get_setting(&state.pool, MYSQL_CONFIG_KEY)
+  let Some(stored) = get_setting(&state.pool, MYSQL_CONFIG_KEY)
     .await
     .map_err(|e| e.to_string())?
-  {
-    Some(v) => v,
-    None => return Ok(None),
+  else {
+    return Ok(None);
   };
 
   // Try encrypted format first
@@ -235,7 +231,7 @@ pub async fn get_mysql_config_for_ui(
   Ok(Some(config))
 }
 
-/// Non-secret metadata about the stored MySQL config. Safe to call from the UI
+/// Non-secret metadata about the stored `MySQL` config. Safe to call from the UI
 /// because the password is never returned. Use the empty-string convention
 /// in the form for password: presence of `has_config == true` + non-empty
 /// username means a config is stored; the user re-types the password to
@@ -283,17 +279,16 @@ pub async fn get_setting_value(
     .map_err(|e| e.to_string())
 }
 
-/// Internal helper: returns decrypted MySQL config for use by other commands.
+/// Internal helper: returns decrypted `MySQL` config for use by other commands.
 /// This handles both encrypted (new) and plaintext (legacy) formats.
 pub async fn get_mysql_config_internal(
   pool: &sqlx::SqlitePool,
 ) -> Result<Option<DbConfig>, String> {
-  let stored = match get_setting(pool, MYSQL_CONFIG_KEY)
+  let Some(stored) = get_setting(pool, MYSQL_CONFIG_KEY)
     .await
     .map_err(|e| e.to_string())?
-  {
-    Some(v) => v,
-    None => return Ok(None),
+  else {
+    return Ok(None);
   };
 
   // Try encrypted format first

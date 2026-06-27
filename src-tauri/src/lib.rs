@@ -1,3 +1,28 @@
+//! Tauri application shell for warfarin-care.
+//!
+//! This crate is a thin wrapper: it registers Tauri plugins, wires up
+//! `AppState`, and exposes the 46 `#[tauri::command]` handlers that delegate
+//! to `warfarin-core` (pure logic) and `warfarin-db` (data access). No
+//! business logic lives here.
+//!
+//! # Error convention
+//!
+//! Every `#[tauri::command]` returns `Result<T, String>`: internal errors
+//! from `anyhow`/`sqlx` are mapped to a human-readable string at the command
+//! boundary so the Vue frontend receives a displayable message. That
+//! contract is uniform, so `clippy::missing_errors_doc` is relaxed at the
+//! crate level rather than duplicated across 46 handlers.
+
+#![warn(clippy::pedantic)]
+// Tauri commands uniformly return Result<_, String> for the frontend; see
+// the crate docs above.
+#![allow(clippy::missing_errors_doc)]
+// Several command handlers orchestrate multiple data sources (HOSxP MySQL
+// + local SQLite + INR/TTR aggregation) and are inherently longer than 100
+// lines. Splitting them would scatter the IPC-visible flow; the long-form
+// is preferred until a dedicated orchestration layer is introduced.
+#![allow(clippy::too_many_lines)]
+
 pub mod commands;
 
 use anyhow::{Context, Result};
@@ -92,7 +117,7 @@ fn initialise_app_state(app: &mut App) -> Result<()> {
             let _ = app_handle_clone.emit("splash-status", "เชื่อมต่อสำเร็จ ✓");
           }
           Ok(Err(e)) => {
-            eprintln!("[warfarin] Auto-connect to MySQL failed: {}", e);
+            eprintln!("[warfarin] Auto-connect to MySQL failed: {e}");
             let _ = app_handle_clone.emit("splash-status", "เชื่อมต่อล้มเหลว (ใช้งานออฟไลน์ได้)");
           }
           Err(_) => {
@@ -105,7 +130,7 @@ fn initialise_app_state(app: &mut App) -> Result<()> {
         let _ = app_handle_clone.emit("splash-status", "พร้อมใช้งาน (ยังไม่ตั้งค่า MySQL)");
       }
       Err(e) => {
-        eprintln!("[warfarin] Failed to load saved DB config: {}", e);
+        eprintln!("[warfarin] Failed to load saved DB config: {e}");
         let _ = app_handle_clone.emit("splash-status", "โหลดการตั้งค่าล้มเหลว");
       }
     }

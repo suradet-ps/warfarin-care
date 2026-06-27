@@ -42,6 +42,8 @@ pub async fn calculate_ttr(
 
 /// Calculates mean TTR across all active patients (for clinic-level report).
 #[tauri::command]
+// `count` is a bounded loop counter that fits `f64` exactly.
+#[allow(clippy::cast_precision_loss)]
 pub async fn calculate_clinic_ttr(
   window_days: u32,
   state: State<'_, AppState>,
@@ -88,6 +90,13 @@ pub async fn calculate_clinic_ttr(
 }
 
 #[tauri::command]
+// SQLite aggregate results (i64) are non-negative patient counts / sums
+// that fit `usize` and `f64` on practical targets.
+#[allow(
+  clippy::cast_precision_loss,
+  clippy::cast_possible_truncation,
+  clippy::cast_sign_loss
+)]
 pub async fn get_report_data(
   report_type: String,
   state: State<'_, AppState>,

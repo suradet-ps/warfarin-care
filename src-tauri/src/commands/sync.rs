@@ -14,14 +14,14 @@ use warfarin_db::sync_models::{
   WfDoseHistorySync, WfOutcomeSync, WfPatientStatusHistorySync, WfPatientSync, WfVisitSync,
 };
 
-/// Alias for an async block that performs a SQLite write and returns either
+/// Alias for an async block that performs a `SQLite` write and returns either
 /// the number of rows touched or an error string. Used by `pull_table` to
 /// accept per-table INSERT/UPDATE logic without an `async` closure (which
 /// Rust does not yet support natively).
 type SqliteFut<'a, T> = Pin<Box<dyn std::future::Future<Output = Result<T, String>> + Send + 'a>>;
 
 /// Pulls rows for a single table from Supabase and applies them to the local
-/// SQLite database, choosing INSERT vs UPDATE per row based on the
+/// `SQLite` database, choosing INSERT vs UPDATE per row based on the
 /// batch-fetched existence map. The `apply` closure encapsulates the
 /// per-table SQL: it receives the existing local `updated_at` (or `None` if
 /// the row is new) and returns the number of rows affected. The closure is
@@ -114,12 +114,12 @@ fn assert_table_allowed(table: &str) -> Result<(), String> {
 /// Supabase REST API requires HTTPS. Reject `http://` to avoid sending
 /// bearer tokens and patient data in cleartext. `localhost` is allowed
 /// only when the host is literally `localhost` or `127.0.0.1` (useful
-/// during local development against a self-hosted PostgREST).
+/// during local development against a self-hosted `PostgREST`).
 fn ensure_https(url: &str) -> Result<(), String> {
   let parsed = Url::parse(url).map_err(|e| format!("invalid Supabase URL: {e}"))?;
   match parsed.scheme() {
     "https" => Ok(()),
-    "http" if matches!(parsed.host_str(), Some("localhost") | Some("127.0.0.1")) => Ok(()),
+    "http" if matches!(parsed.host_str(), Some("localhost" | "127.0.0.1")) => Ok(()),
     "http" => Err("Supabase URL must use HTTPS in production".to_string()),
     other => Err(format!("unsupported Supabase URL scheme '{other}'")),
   }
@@ -297,7 +297,7 @@ async fn fetch_existing_updated_ats(
 ) -> Result<std::collections::HashMap<String, String>, String> {
   assert_table_allowed(table)?;
   if sync_ids.is_empty() {
-    return Ok(Default::default());
+    return Ok(std::collections::HashMap::new());
   }
   let mut builder = QueryBuilder::<Sqlite>::new(format!(
     "SELECT sync_id, updated_at FROM {table} WHERE sync_id IN ("
@@ -339,7 +339,7 @@ where
     .json(rows)
     .send()
     .await
-    .map_err(|e| format!("[{}] Network error: {}", table, e))?;
+    .map_err(|e| format!("[{table}] Network error: {e}"))?;
 
   if response.status().is_success() {
     return Ok(());
@@ -351,7 +351,7 @@ where
     .await
     .unwrap_or_else(|_| "unknown error".to_string());
 
-  Err(format!("[{}] HTTP {} - Response: {}", table, status, body))
+  Err(format!("[{table}] HTTP {status} - Response: {body}"))
 }
 
 #[tauri::command]
@@ -404,12 +404,7 @@ pub async fn test_supabase_connection(
   let response = with_auth(client.get(endpoint.clone()), trimmed_key, &machine_id)
     .send()
     .await
-    .map_err(|e| {
-      format!(
-        "ไม่สามารถเชื่อมต่อ {} ได้: {} (ตรวจสอบ URL และเครือข่าย)",
-        endpoint, e
-      )
-    })?;
+    .map_err(|e| format!("ไม่สามารถเชื่อมต่อ {endpoint} ได้: {e} (ตรวจสอบ URL และเครือข่าย)"))?;
 
   let status = response.status();
   let status_code = Some(status.as_u16());
@@ -441,7 +436,7 @@ pub async fn test_supabase_connection(
   if status.as_u16() == 401 {
     return Ok(ConnectionTestResult {
       ok: false,
-      message: format!("Anon Key ไม่ถูกต้อง (HTTP 401). รายละเอียด: {}", preview),
+      message: format!("Anon Key ไม่ถูกต้อง (HTTP 401). รายละเอียด: {preview}"),
       status_code,
     });
   }
@@ -450,8 +445,7 @@ pub async fn test_supabase_connection(
     return Ok(ConnectionTestResult {
       ok: false,
       message: format!(
-        "ไม่มีสิทธิ์เข้าถึงตาราง wf_patients — ตรวจสอบ RLS policy ใน Supabase (HTTP 403). รายละเอียด: {}",
-        preview
+        "ไม่มีสิทธิ์เข้าถึงตาราง wf_patients — ตรวจสอบ RLS policy ใน Supabase (HTTP 403). รายละเอียด: {preview}"
       ),
       status_code,
     });

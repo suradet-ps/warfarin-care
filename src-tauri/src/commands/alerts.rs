@@ -188,7 +188,7 @@ pub async fn get_patient_alerts(state: State<'_, AppState>) -> Result<Vec<Patien
 
   // Sort: critical first, then by HN.
   alerts.sort_by(|a, b| {
-    let severity_order = |s: &str| if s == "critical" { 0 } else { 1 };
+    let severity_order = |s: &str| i32::from(s != "critical");
     severity_order(&a.severity)
       .cmp(&severity_order(&b.severity))
       .then(a.hn.cmp(&b.hn))

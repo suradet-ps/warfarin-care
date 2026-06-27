@@ -75,7 +75,7 @@ pub async fn search_hosxp_drugs(
   let keyword_like = format!("%{}%", keyword.trim());
 
   let rows = sqlx::query(
-    r#"
+    r"
             SELECT icode, name, strength, units
             FROM drugitems
             WHERE (name LIKE ? OR icode LIKE ?)
@@ -83,7 +83,7 @@ pub async fn search_hosxp_drugs(
               AND name <> ''
             ORDER BY name
             LIMIT 50
-            "#,
+            ",
   )
   .bind(&keyword_like)
   .bind(&keyword_like)
@@ -105,6 +105,8 @@ pub async fn search_hosxp_drugs(
 }
 
 #[tauri::command]
+// Interaction counts are small per-patient values that fit `i32`.
+#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub async fn get_patient_drug_interactions(
   state: State<'_, warfarin_db::sqlite::AppState>,
   mysql_config: mysql::DbConfig,
@@ -148,12 +150,14 @@ pub async fn get_patient_drug_interactions(
   // Calculate date 1 year ago from today (CE format for MySQL)
   let one_year_ago = Utc::now()
     .checked_sub_signed(chrono::Duration::days(365))
-    .map(|d| d.format("%Y-%m-%d").to_string())
-    .unwrap_or_else(|| "2024-01-01".to_string());
+    .map_or_else(
+      || "2024-01-01".to_string(),
+      |d| d.format("%Y-%m-%d").to_string(),
+    );
 
   // Build query with date filter - only last 1 year
   let mut query_builder = QueryBuilder::<MySql>::new(
-    r#"
+    r"
             SELECT
                 o.vstdate,
                 COALESCE(d.name, 'Unknown') AS drug_name,
@@ -161,7 +165,7 @@ pub async fn get_patient_drug_interactions(
                 o.icode
             FROM opitemrece o
             LEFT JOIN drugitems d ON d.icode = o.icode
-            WHERE o.hn = "#,
+            WHERE o.hn = ",
   );
   query_builder.push_bind(&hn);
   query_builder.push(" AND o.icode IN (");

@@ -1,4 +1,4 @@
-//! INR history commands — fetches from HOSxP MySQL (dual source) with
+//! INR history commands — fetches from `HOSxP` `MySQL` (dual source) with
 //! fallback to clinic-recorded values in `wf_visits`.
 
 use tauri::State;

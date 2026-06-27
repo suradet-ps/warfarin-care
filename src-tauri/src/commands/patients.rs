@@ -34,7 +34,7 @@ pub async fn get_active_patient_summaries(
   let hns: Vec<String> = patients.iter().map(|patient| patient.hn.clone()).collect();
   let config_result = crate::commands::settings::get_mysql_config_internal(&state.pool)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| e.clone())?;
 
   let (hosxp_map, mysql_inr_map) = if let Some(config) = config_result {
     warfarin_db::mysql::get_dashboard_patient_data(&config, &hns)
@@ -198,7 +198,7 @@ pub async fn update_patient_status(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/// Attempts to fetch patient demographics from HOSxP MySQL, returning a
+/// Attempts to fetch patient demographics from `HOSxP` `MySQL`, returning a
 /// placeholder on any failure so the UI is never blocked.
 async fn try_get_hosxp_patient(state: &AppState, hn: &str) -> HosxpPatient {
   let config_result = crate::commands::settings::get_mysql_config_internal(&state.pool)
@@ -214,10 +214,10 @@ async fn try_get_hosxp_patient(state: &AppState, hn: &str) -> HosxpPatient {
 
   HosxpPatient {
     hn: hn.to_string(),
-    pname: "".to_string(),
+    pname: String::new(),
     fname: format!("HN {hn}"),
     lname: "(ไม่พบข้อมูล HOSxP)".to_string(),
-    birthday: "".to_string(),
+    birthday: String::new(),
     sex: "U".to_string(),
     addrpart: None,
     phone: None,
@@ -242,7 +242,7 @@ async fn try_get_dispensing_history(
   Vec::new()
 }
 
-/// Returns INR records, preferring HOSxP MySQL (dual-source merge) and
+/// Returns INR records, preferring `HOSxP` `MySQL` (dual-source merge) and
 /// falling back to clinic-recorded INR values from `wf_visits`.
 pub(crate) async fn get_inr_records_by_hns(
   state: &AppState,
