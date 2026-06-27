@@ -9,3 +9,4 @@ pub mod dose;
 pub mod encrypt;
 pub mod models;
 pub mod pills;
+pub mod screening;

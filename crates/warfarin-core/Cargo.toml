@@ -17,6 +17,9 @@ serde_json = "1"
 # Date math for TTR (Rosendaal interpolation) and pill-dispense summaries.
 chrono = { version = "0.4", features = ["serde"] }
 
+# Structured error types at the library boundary (AGENTS-RUST §5.2).
+thiserror = "2"
+
 # Thai/English usage-text parsing in the dose module.
 regex = "1"
 

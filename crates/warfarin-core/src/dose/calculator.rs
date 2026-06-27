@@ -4,6 +4,69 @@
 
 use crate::models::visit::DoseSuggestion;
 
+/// Hard cap on the dose magnitude the calculator is willing to consider.
+/// Anything beyond this is almost certainly a data-entry error (max
+/// practical warfarin dose is around 15 mg/day).
+pub const MAX_DOSE_MGDAY: f64 = 20.0;
+/// Hard cap on the INR value. Real-world INR > 10 is rare and indicates
+/// a critical situation; we don't compute dose adjustments beyond this.
+pub const MAX_INR: f64 = 10.0;
+
+/// Errors returned by [`suggest_dose_from_daily`] when the caller-supplied
+/// inputs fall outside the accepted ranges. The `Display` representation
+/// matches the historical error strings the frontend already surfaces.
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub enum DoseInputError {
+  #[error("current_dose_mgday must be 0..={MAX_DOSE_MGDAY}, got {value}")]
+  DoseOutOfRange { value: f64 },
+  #[error("current_inr must be 0.5..={MAX_INR}, got {value}")]
+  InrOutOfRange { value: f64 },
+  #[error("target_low and target_high must be finite")]
+  TargetNotFinite,
+}
+
+/// Validates caller-supplied daily dose / INR / target range, converts the
+/// dose to mg/week, and delegates to [`suggest_dose`].
+///
+/// This is the boundary-safe entry point for the Tauri command: the
+/// command only needs `.map_err(|e| e.to_string())` so the frontend sees
+/// the same human-readable messages it always has.
+///
+/// # Errors
+///
+/// Returns [`DoseInputError::DoseOutOfRange`] if `current_dose_mgday` is
+/// non-finite or outside `0.0..=MAX_DOSE_MGDAY`,
+/// [`DoseInputError::InrOutOfRange`] if `current_inr` is non-finite or
+/// outside `0.5..=MAX_INR`, and [`DoseInputError::TargetNotFinite`] if
+/// either target bound is non-finite.
+pub fn suggest_dose_from_daily(
+  current_dose_mgday: f64,
+  current_inr: f64,
+  target_low: f64,
+  target_high: f64,
+) -> Result<DoseSuggestion, DoseInputError> {
+  if !current_dose_mgday.is_finite() || !(0.0..=MAX_DOSE_MGDAY).contains(&current_dose_mgday) {
+    return Err(DoseInputError::DoseOutOfRange {
+      value: current_dose_mgday,
+    });
+  }
+  if !current_inr.is_finite() || !(0.5..=MAX_INR).contains(&current_inr) {
+    return Err(DoseInputError::InrOutOfRange { value: current_inr });
+  }
+  if !target_low.is_finite() || !target_high.is_finite() {
+    return Err(DoseInputError::TargetNotFinite);
+  }
+  // The calculator works in mg/week; convert from mg/day at the boundary so
+  // callers never have to think in weekly units.
+  let current_dose_mgweek = current_dose_mgday * 7.0;
+  Ok(suggest_dose(
+    current_dose_mgweek,
+    current_inr,
+    target_low,
+    target_high,
+  ))
+}
+
 /// Rounds a dose value to the nearest 0.5 mg/day practical step.
 fn round_to_half_mg(value: f64) -> f64 {
   (value * 2.0).round() / 2.0
@@ -210,6 +273,71 @@ pub fn calculate_ttr(
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  // ── suggest_dose_from_daily tests ──────────────────────────────────────
+
+  #[test]
+  fn suggest_dose_from_daily_converts_mgday_to_mgweek() {
+    // 5 mg/day = 35 mg/week; INR 2.5 in range → no adjustment.
+    let result = suggest_dose_from_daily(5.0, 2.5, 2.0, 3.0).expect("valid input");
+    assert_eq!(result.adjustment_percent, 0.0);
+    assert_eq!(result.suggested_dose_mgweek, 35.0);
+  }
+
+  #[test]
+  fn suggest_dose_from_daily_rejects_dose_above_max() {
+    let err = suggest_dose_from_daily(25.0, 2.5, 2.0, 3.0).unwrap_err();
+    assert_eq!(err, DoseInputError::DoseOutOfRange { value: 25.0 });
+  }
+
+  #[test]
+  fn suggest_dose_from_daily_rejects_negative_dose() {
+    let err = suggest_dose_from_daily(-1.0, 2.5, 2.0, 3.0).unwrap_err();
+    assert!(matches!(err, DoseInputError::DoseOutOfRange { .. }));
+  }
+
+  #[test]
+  fn suggest_dose_from_daily_rejects_non_finite_dose() {
+    let err = suggest_dose_from_daily(f64::NAN, 2.5, 2.0, 3.0).unwrap_err();
+    assert!(matches!(err, DoseInputError::DoseOutOfRange { .. }));
+  }
+
+  #[test]
+  fn suggest_dose_from_daily_rejects_inr_above_max() {
+    let err = suggest_dose_from_daily(5.0, 11.0, 2.0, 3.0).unwrap_err();
+    assert_eq!(err, DoseInputError::InrOutOfRange { value: 11.0 });
+  }
+
+  #[test]
+  fn suggest_dose_from_daily_rejects_inr_below_min() {
+    let err = suggest_dose_from_daily(5.0, 0.2, 2.0, 3.0).unwrap_err();
+    assert!(matches!(err, DoseInputError::InrOutOfRange { .. }));
+  }
+
+  #[test]
+  fn suggest_dose_from_daily_rejects_non_finite_target() {
+    let err = suggest_dose_from_daily(5.0, 2.5, f64::INFINITY, 3.0).unwrap_err();
+    assert_eq!(err, DoseInputError::TargetNotFinite);
+  }
+
+  #[test]
+  fn suggest_dose_from_daily_error_display_matches_frontend_strings() {
+    // The frontend historically received these exact strings via .to_string().
+    let dose_err = suggest_dose_from_daily(25.0, 2.5, 2.0, 3.0).unwrap_err();
+    assert_eq!(
+      dose_err.to_string(),
+      "current_dose_mgday must be 0..=20, got 25"
+    );
+
+    let inr_err = suggest_dose_from_daily(5.0, 11.0, 2.0, 3.0).unwrap_err();
+    assert_eq!(inr_err.to_string(), "current_inr must be 0.5..=10, got 11");
+
+    let target_err = suggest_dose_from_daily(5.0, 2.5, f64::NAN, 3.0).unwrap_err();
+    assert_eq!(
+      target_err.to_string(),
+      "target_low and target_high must be finite"
+    );
+  }
 
   // ── suggest_dose tests ──────────────────────────────────────────────────
 
