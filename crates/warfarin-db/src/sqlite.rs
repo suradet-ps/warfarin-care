@@ -5,7 +5,10 @@
 
 use anyhow::{Context, Result, bail};
 use chrono::Utc;
-use sqlx::{QueryBuilder, Row, Sqlite, SqlitePool, Transaction, sqlite::SqlitePoolOptions};
+use sqlx::{
+  QueryBuilder, Row, Sqlite, SqlitePool, Transaction,
+  sqlite::{SqlitePoolOptions, SqliteRow},
+};
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -427,6 +430,76 @@ pub async fn update_visit(
 }
 
 /// Returns all visit records for a patient, newest first.
+/// Maps a `wf_visits` row into a [`WfVisit`], decoding the JSON columns
+/// (`dose_detail`, `new_dose_detail`, `side_effects`, `selected_dose_option`)
+/// and deriving `total_pills_summary` from either the selected regimen option
+/// or the new-dose schedule + next appointment.
+///
+/// Shared by `get_visit_history`, `get_visit_by_id`, and
+/// `get_pending_review_visits` so the row shape stays in one place.
+fn map_visit_row(r: &SqliteRow) -> WfVisit {
+  let dose_detail = r
+    .try_get::<Option<String>, _>("dose_detail")
+    .ok()
+    .flatten()
+    .and_then(|s| serde_json::from_str::<DoseSchedule>(&s).ok());
+  let new_dose_detail = r
+    .try_get::<Option<String>, _>("new_dose_detail")
+    .ok()
+    .flatten()
+    .and_then(|s| serde_json::from_str::<DoseSchedule>(&s).ok());
+  let side_effects = r
+    .try_get::<Option<String>, _>("side_effects")
+    .ok()
+    .flatten()
+    .and_then(|s| serde_json::from_str::<Vec<String>>(&s).ok())
+    .filter(|v| !v.is_empty());
+  let selected_dose_option = r
+    .try_get::<Option<String>, _>("selected_dose_option")
+    .ok()
+    .flatten()
+    .and_then(|s| serde_json::from_str::<RegimenOptionSnapshot>(&s).ok());
+  let dose_changed: i32 = r.try_get("dose_changed").unwrap_or(0);
+  let visit_date_str: String = r.get("visit_date");
+  let next_appt: Option<String> = r.try_get("next_appointment").ok();
+  let total_pills_summary = selected_dose_option
+    .as_ref()
+    .map(selected_option_summary)
+    .or_else(|| {
+      if let (Some(na), Some(nd)) = (&next_appt, &new_dose_detail) {
+        calculate_pills_summary(&visit_date_str, nd, na)
+      } else {
+        None
+      }
+    });
+
+  WfVisit {
+    id: r.get("id"),
+    hn: r.get("hn"),
+    visit_date: visit_date_str,
+    inr_value: r.try_get("inr_value").ok(),
+    inr_source: r.try_get("inr_source").ok(),
+    current_dose_mgday: r.try_get("current_dose_mgday").ok(),
+    dose_detail,
+    new_dose_mgday: r.try_get("new_dose_mgday").ok(),
+    new_dose_detail,
+    new_dose_description: r.try_get("new_dose_description").ok(),
+    dose_changed: dose_changed != 0,
+    next_appointment: next_appt,
+    next_inr_due: r.try_get("next_inr_due").ok(),
+    physician: r.try_get("physician").ok(),
+    notes: r.try_get("notes").ok(),
+    side_effects,
+    adherence: r.try_get("adherence").ok(),
+    created_by: r.try_get("created_by").ok(),
+    created_at: r.get("created_at"),
+    total_pills_summary,
+    selected_dose_option,
+    reviewed_at: r.try_get("reviewed_at").ok(),
+    reviewed_by: r.try_get("reviewed_by").ok(),
+  }
+}
+
 pub async fn get_visit_history(pool: &SqlitePool, hn: &str) -> Result<Vec<WfVisit>> {
   let rows = sqlx::query(
     "SELECT id, hn, visit_date, inr_value, inr_source, \
@@ -441,71 +514,7 @@ pub async fn get_visit_history(pool: &SqlitePool, hn: &str) -> Result<Vec<WfVisi
   .await
   .context("failed to query visit history")?;
 
-  rows
-    .iter()
-    .map(|r| {
-      let dose_detail = r
-        .try_get::<Option<String>, _>("dose_detail")
-        .ok()
-        .flatten()
-        .and_then(|s| serde_json::from_str::<DoseSchedule>(&s).ok());
-      let new_dose_detail = r
-        .try_get::<Option<String>, _>("new_dose_detail")
-        .ok()
-        .flatten()
-        .and_then(|s| serde_json::from_str::<DoseSchedule>(&s).ok());
-      let side_effects = r
-        .try_get::<Option<String>, _>("side_effects")
-        .ok()
-        .flatten()
-        .and_then(|s| serde_json::from_str::<Vec<String>>(&s).ok())
-        .filter(|v| !v.is_empty());
-      let selected_dose_option = r
-        .try_get::<Option<String>, _>("selected_dose_option")
-        .ok()
-        .flatten()
-        .and_then(|s| serde_json::from_str::<RegimenOptionSnapshot>(&s).ok());
-      let dose_changed: i32 = r.try_get("dose_changed").unwrap_or(0);
-      let visit_date_str: String = r.get("visit_date");
-      let next_appt: Option<String> = r.try_get("next_appointment").ok();
-      let total_pills_summary = selected_dose_option
-        .as_ref()
-        .map(selected_option_summary)
-        .or_else(|| {
-          if let (Some(na), Some(nd)) = (&next_appt, &new_dose_detail) {
-            calculate_pills_summary(&visit_date_str, nd, na)
-          } else {
-            None
-          }
-        });
-
-      Ok(WfVisit {
-        id: r.get("id"),
-        hn: r.get("hn"),
-        visit_date: r.get("visit_date"),
-        inr_value: r.try_get("inr_value").ok(),
-        inr_source: r.try_get("inr_source").ok(),
-        current_dose_mgday: r.try_get("current_dose_mgday").ok(),
-        dose_detail,
-        new_dose_mgday: r.try_get("new_dose_mgday").ok(),
-        new_dose_detail,
-        new_dose_description: r.try_get("new_dose_description").ok(),
-        dose_changed: dose_changed != 0,
-        next_appointment: r.try_get("next_appointment").ok(),
-        next_inr_due: r.try_get("next_inr_due").ok(),
-        physician: r.try_get("physician").ok(),
-        notes: r.try_get("notes").ok(),
-        side_effects,
-        adherence: r.try_get("adherence").ok(),
-        created_by: r.try_get("created_by").ok(),
-        created_at: r.get("created_at"),
-        total_pills_summary,
-        selected_dose_option,
-        reviewed_at: r.try_get("reviewed_at").ok(),
-        reviewed_by: r.try_get("reviewed_by").ok(),
-      })
-    })
-    .collect()
+  Ok(rows.iter().map(map_visit_row).collect())
 }
 
 pub async fn get_visit_by_id(pool: &SqlitePool, visit_id: i64) -> Result<Option<WfVisit>> {
@@ -522,72 +531,7 @@ pub async fn get_visit_by_id(pool: &SqlitePool, visit_id: i64) -> Result<Option<
   .await
   .context("failed to query visit by id")?;
 
-  Ok(row.as_ref().map(|r| {
-    let dose_detail = r
-      .try_get::<Option<String>, _>("dose_detail")
-      .ok()
-      .flatten()
-      .and_then(|s| serde_json::from_str(&s).ok());
-    let new_dose_detail = r
-      .try_get::<Option<String>, _>("new_dose_detail")
-      .ok()
-      .flatten()
-      .and_then(|s| serde_json::from_str::<DoseSchedule>(&s).ok());
-    let side_effects = r
-      .try_get::<Option<String>, _>("side_effects")
-      .ok()
-      .flatten()
-      .and_then(|s| serde_json::from_str::<Vec<String>>(&s).ok())
-      .filter(|v| !v.is_empty());
-    let selected_dose_option = r
-      .try_get::<Option<String>, _>("selected_dose_option")
-      .ok()
-      .flatten()
-      .and_then(|s| serde_json::from_str::<RegimenOptionSnapshot>(&s).ok());
-    let dose_changed: i32 = r.try_get("dose_changed").unwrap_or(0);
-    let visit_date_str: String = r.get("visit_date");
-    let next_appt_str: Option<String> = r.try_get("next_appointment").ok();
-    let new_dose_desc: Option<String> = r.try_get("new_dose_description").ok();
-
-    let total_pills_summary = selected_dose_option
-      .as_ref()
-      .map(selected_option_summary)
-      .or_else(|| {
-        if let (Some(vd), Some(na), Some(nd)) =
-          (Some(&visit_date_str), &next_appt_str, &new_dose_detail)
-        {
-          calculate_pills_summary(vd, nd, na)
-        } else {
-          None
-        }
-      });
-
-    WfVisit {
-      id: r.get("id"),
-      hn: r.get("hn"),
-      visit_date: visit_date_str,
-      inr_value: r.try_get("inr_value").ok(),
-      inr_source: r.try_get("inr_source").ok(),
-      current_dose_mgday: r.try_get("current_dose_mgday").ok(),
-      dose_detail,
-      new_dose_mgday: r.try_get("new_dose_mgday").ok(),
-      new_dose_detail,
-      new_dose_description: new_dose_desc,
-      dose_changed: dose_changed != 0,
-      next_appointment: next_appt_str,
-      next_inr_due: r.try_get("next_inr_due").ok(),
-      physician: r.try_get("physician").ok(),
-      notes: r.try_get("notes").ok(),
-      side_effects,
-      adherence: r.try_get("adherence").ok(),
-      created_by: r.try_get("created_by").ok(),
-      created_at: r.get("created_at"),
-      total_pills_summary,
-      selected_dose_option,
-      reviewed_at: r.try_get("reviewed_at").ok(),
-      reviewed_by: r.try_get("reviewed_by").ok(),
-    }
-  }))
+  Ok(row.as_ref().map(map_visit_row))
 }
 
 pub async fn get_latest_visit_dose_by_hns(
@@ -1185,71 +1129,7 @@ pub async fn get_pending_review_visits(pool: &SqlitePool) -> Result<Vec<WfVisit>
   .await
   .context("failed to query pending review visits")?;
 
-  rows
-    .iter()
-    .map(|r| {
-      let dose_detail = r
-        .try_get::<Option<String>, _>("dose_detail")
-        .ok()
-        .flatten()
-        .and_then(|s| serde_json::from_str::<DoseSchedule>(&s).ok());
-      let new_dose_detail = r
-        .try_get::<Option<String>, _>("new_dose_detail")
-        .ok()
-        .flatten()
-        .and_then(|s| serde_json::from_str::<DoseSchedule>(&s).ok());
-      let side_effects = r
-        .try_get::<Option<String>, _>("side_effects")
-        .ok()
-        .flatten()
-        .and_then(|s| serde_json::from_str::<Vec<String>>(&s).ok())
-        .filter(|v| !v.is_empty());
-      let selected_dose_option = r
-        .try_get::<Option<String>, _>("selected_dose_option")
-        .ok()
-        .flatten()
-        .and_then(|s| serde_json::from_str::<RegimenOptionSnapshot>(&s).ok());
-      let dose_changed: i32 = r.try_get("dose_changed").unwrap_or(0);
-      let visit_date_str: String = r.get("visit_date");
-      let next_appt: Option<String> = r.try_get("next_appointment").ok();
-      let total_pills_summary = selected_dose_option
-        .as_ref()
-        .map(selected_option_summary)
-        .or_else(|| {
-          if let (Some(na), Some(nd)) = (&next_appt, &new_dose_detail) {
-            calculate_pills_summary(&visit_date_str, nd, na)
-          } else {
-            None
-          }
-        });
-
-      Ok(WfVisit {
-        id: r.get("id"),
-        hn: r.get("hn"),
-        visit_date: r.get("visit_date"),
-        inr_value: r.try_get("inr_value").ok(),
-        inr_source: r.try_get("inr_source").ok(),
-        current_dose_mgday: r.try_get("current_dose_mgday").ok(),
-        dose_detail,
-        new_dose_mgday: r.try_get("new_dose_mgday").ok(),
-        new_dose_detail,
-        new_dose_description: r.try_get("new_dose_description").ok(),
-        dose_changed: dose_changed != 0,
-        next_appointment: r.try_get("next_appointment").ok(),
-        next_inr_due: r.try_get("next_inr_due").ok(),
-        physician: r.try_get("physician").ok(),
-        notes: r.try_get("notes").ok(),
-        side_effects,
-        adherence: r.try_get("adherence").ok(),
-        created_by: r.try_get("created_by").ok(),
-        created_at: r.get("created_at"),
-        total_pills_summary,
-        selected_dose_option,
-        reviewed_at: r.try_get("reviewed_at").ok(),
-        reviewed_by: r.try_get("reviewed_by").ok(),
-      })
-    })
-    .collect()
+  Ok(rows.iter().map(map_visit_row).collect())
 }
 
 /// Returns count of visits pending review.
