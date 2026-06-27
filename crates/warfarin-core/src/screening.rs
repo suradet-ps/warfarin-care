@@ -1,13 +1,13 @@
-//! Pure helpers for the patient screening (HOSxP drug search) module.
+//! Pure helpers for the patient screening (`HOSxP` drug search) module.
 //!
 //! Input normalisation that used to live inline in the Tauri command. Kept
-//! here so the clamping rules are unit-testable without a MySQL/SQLite
+//! here so the clamping rules are unit-testable without a `MySQL`/`SQLite`
 //! connection and reusable outside the desktop app.
 
 use crate::models::patient::SearchFilters;
 
 /// Hard cap on `page_size` regardless of what the caller sends. Stops a
-/// malicious or buggy caller from asking the MySQL host for tens of
+/// malicious or buggy caller from asking the `MySQL` host for tens of
 /// thousands of rows in a single round trip. 200 is well above the
 /// practical row count a clinician can scan on a single page.
 pub const MAX_PAGE_SIZE: u32 = 200;
@@ -30,6 +30,7 @@ const DEFAULT_PAGE: u32 = 1;
 ///
 /// Returns the normalised filters so the command can pass them straight to
 /// the data layer.
+#[must_use]
 pub fn normalize_search_filters(mut filters: SearchFilters) -> SearchFilters {
   if filters.page_size == 0 {
     filters.page_size = DEFAULT_PAGE_SIZE;

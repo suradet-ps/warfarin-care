@@ -11,6 +11,7 @@ pub struct ParsedUsageResult {
 
 const DAY_KEYS: [&str; 7] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
+#[must_use]
 pub fn parse_dispensing_usage(strength: &str, usage_text: &str) -> ParsedUsageResult {
   let strength_mg = match extract_strength_mg(strength) {
     Some(value) if value > 0.0 => value,
@@ -41,6 +42,8 @@ pub fn parse_dispensing_usage(strength: &str, usage_text: &str) -> ParsedUsageRe
     set_schedule_value(&mut schedule, *day_index, mg_per_dose);
   }
 
+  // `day_indexes` holds at most 7 entries, so usize→f64 is lossless.
+  #[allow(clippy::cast_precision_loss)]
   let mg_per_week = round_to_two_decimals(day_result.day_indexes.len() as f64 * mg_per_dose);
   let mg_per_day_average = round_to_two_decimals(mg_per_week / 7.0);
   let matched_days = day_result
@@ -154,12 +157,9 @@ fn collect_explicit_day_indexes(tokens: &[String]) -> Vec<usize> {
   let mut matched_days = BTreeSet::new();
   let mut index = 0;
   while index < tokens.len() {
-    let current_day = match parse_day_token(&tokens[index]) {
-      Some(day) => day,
-      None => {
-        index += 1;
-        continue;
-      }
+    let Some(current_day) = parse_day_token(&tokens[index]) else {
+      index += 1;
+      continue;
     };
 
     if let Some((connector_index, end_day_index, end_day)) = find_day_range(tokens, index)
@@ -384,6 +384,9 @@ fn round_to_two_decimals(value: f64) -> f64 {
 }
 
 #[cfg(test)]
+// Parsed doses are deterministic f64 values (e.g. 25.0, 7.0); exact
+// `assert_eq!` comparisons are appropriate, so float_cmp is relaxed.
+#[allow(clippy::float_cmp)]
 mod tests {
   use super::parse_dispensing_usage;
 

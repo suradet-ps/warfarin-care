@@ -94,6 +94,7 @@ fn round_to_half_mg(value: f64) -> f64 {
 /// | 0.5–1.0 below `target_low`    | +10%       | caution | 14 d    |
 /// | > 1.0 below `target_low`      | +20%       | urgent  | 7–14 d  |
 /// | INR < 1.5 (any target)        | +20%       | urgent  | 7–14 d  |
+#[must_use]
 pub fn suggest_dose(
   current_dose_weekly: f64,
   inr: f64,
@@ -212,6 +213,7 @@ pub fn suggest_dose(
 /// # Returns
 /// TTR as a percentage (0.0 – 100.0), or `None` if there are fewer than 2
 /// readings in the window.
+#[must_use]
 pub fn calculate_ttr(
   inr_records: &[(String, f64)],
   target_low: f64,
@@ -252,6 +254,9 @@ pub fn calculate_ttr(
     }
 
     // For each day in the interval, linearly interpolate the INR.
+    // `day_offset` and `span` are small day counts (< 2^52), so the
+    // i64→f64 casts are lossless here.
+    #[allow(clippy::cast_precision_loss)]
     for day_offset in 0..span {
       let fraction = day_offset as f64 / span as f64;
       let interpolated_inr = inr1 + fraction * (inr2 - inr1);
@@ -267,10 +272,16 @@ pub fn calculate_ttr(
     return None;
   }
 
+  // Day counts are tiny relative to f64's 52-bit mantissa.
+  #[allow(clippy::cast_precision_loss)]
   Some((in_range_days as f64 / total_days as f64) * 100.0)
 }
 
 #[cfg(test)]
+// The dose tests assert exact f64 results (e.g. 0.0, -10.0, 35.0) produced
+// by deterministic arithmetic; `assert_eq!` on those exact representations
+// is correct here, so the pedantic float-comparison lint is relaxed.
+#[allow(clippy::float_cmp)]
 mod tests {
   use super::*;
 

@@ -5,6 +5,8 @@
 //! Tauri runtime. It is intentionally kept dependency-light so it can be
 //! unit-tested in isolation and reused outside the desktop app.
 
+#![warn(clippy::pedantic)]
+
 pub mod dose;
 pub mod encrypt;
 pub mod models;

@@ -3,7 +3,7 @@
 //! Pure functions that turn a per-day dose schedule into a count of whole
 //! and half pills of each strength (2/3/5 mg), plus a Thai-language
 //! dispense summary used on the physician communication slip. Extracted
-//! from the SQLite layer so the algorithm is unit-testable without a DB.
+//! from the `SQLite` layer so the algorithm is unit-testable without a `DB`.
 
 use std::collections::HashMap;
 
@@ -24,6 +24,9 @@ use crate::models::visit::{
 /// not a multiple of 0.5 mg (e.g. 4.7 mg) is rounded to the nearest 0.5.
 /// Doses that are still unrepresentable with these pieces (e.g. 0.5 mg
 /// exactly — there's no 1 mg pill to half) are skipped.
+// `dose_mg` is a warfarin daily dose (≤ ~15 mg), so `round()` yields a small
+// integer that fits `i32` without truncation.
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn pills_for_dose(dose_mg: f64) -> Vec<(u8, bool)> {
   if dose_mg <= 0.0 {
     return vec![];
@@ -86,6 +89,8 @@ pub(crate) fn pills_for_dose(dose_mg: f64) -> Vec<(u8, bool)> {
   best.unwrap_or_default()
 }
 
+// `w5`/`w3`/`w2` are loop counters (0..=3/5/7), always non-negative.
+#[allow(clippy::cast_sign_loss)]
 fn w_count(strength: u8, w5: i32, w3: i32, w2: i32) -> usize {
   match strength {
     5 => w5 as usize,
@@ -95,6 +100,8 @@ fn w_count(strength: u8, w5: i32, w3: i32, w2: i32) -> usize {
   }
 }
 
+// `h5`/`h3`/`h2` are loop counters (0..=1), always non-negative.
+#[allow(clippy::cast_sign_loss)]
 fn h_count(strength: u8, h5: i32, h3: i32, h2: i32) -> usize {
   match strength {
     5 => h5 as usize,
@@ -108,6 +115,7 @@ fn h_count(strength: u8, h5: i32, h3: i32, h2: i32) -> usize {
 /// (whole, half) count per pill strength. Pure function — no I/O — so the
 /// caller (`calculate_pills_summary`) handles the date range and the unit
 /// tests can target the algorithm directly.
+#[must_use]
 pub fn tally_pills(day_doses: &[f64]) -> HashMap<u8, (u32, u32)> {
   let mut pill_counts: HashMap<u8, (u32, u32)> = HashMap::new();
   for &dose in day_doses {
@@ -123,6 +131,7 @@ pub fn tally_pills(day_doses: &[f64]) -> HashMap<u8, (u32, u32)> {
   pill_counts
 }
 
+#[must_use]
 pub fn calculate_pills_summary(
   visit_date: &str,
   new_dose_detail: &DoseSchedule,
@@ -147,6 +156,9 @@ pub fn calculate_pills_summary(
     new_dose_detail.sat,
     new_dose_detail.sun,
   ];
+  // `days` is a small positive day count (guarded above); i64→usize is
+  // safe on all targets.
+  #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
   let mut day_doses: Vec<f64> = Vec::with_capacity(days as usize);
   for d in 0..days {
     let current = visit + Duration::days(d);
@@ -168,7 +180,7 @@ pub fn calculate_pills_summary(
         },
         mg,
         if half > 0 {
-          format!("{}+{}", dispensed, half)
+          format!("{dispensed}+{half}")
         } else {
           dispensed.to_string()
         },
@@ -186,10 +198,7 @@ pub fn calculate_pills_summary(
     return None;
   }
 
-  let header = format!(
-    "รวมยาถึงวันนัด ({} วัน): {} - {}",
-    days, visit_date, next_appointment
-  );
+  let header = format!("รวมยาถึงวันนัด ({days} วัน): {visit_date} - {next_appointment}");
 
   Some(TotalPillsSummary {
     header,
@@ -197,6 +206,7 @@ pub fn calculate_pills_summary(
   })
 }
 
+#[must_use]
 pub fn selected_option_summary(snapshot: &RegimenOptionSnapshot) -> TotalPillsSummary {
   TotalPillsSummary {
     header: snapshot.total_pills_summary.header.clone(),
@@ -242,9 +252,9 @@ mod pill_counter_tests {
   fn one_day_4mg_picks_a_valid_split() {
     // 4 mg = 1 × 3 + ½ × 2 OR 2 × 2 OR ½×5 + ½×3 (all 2 pieces, all 4 mg).
     let counts = tally_pills(&[4.0]);
-    let total_half_units: i32 = counts
+    let total_half_units: u32 = counts
       .iter()
-      .map(|(s, (w, h))| (*s as i32) * 2 * (*w as i32) + (*s as i32) * (*h as i32))
+      .map(|(s, (w, h))| u32::from(*s) * 2 * w + u32::from(*s) * h)
       .sum();
     assert_eq!(total_half_units, 8, "4 mg dose should dispense 4 mg total");
     let total_pieces: u32 = counts.values().map(|(w, h)| w + h).sum();
@@ -255,9 +265,9 @@ mod pill_counter_tests {
   fn one_day_4_5mg_picks_a_valid_split() {
     // 4.5 mg = 1 × 3 + ½ × 3 OR ½ × 5 + 1 × 2 (both 2 pieces, both 4.5 mg).
     let counts = tally_pills(&[4.5]);
-    let total_half_units: i32 = counts
+    let total_half_units: u32 = counts
       .iter()
-      .map(|(s, (w, h))| (*s as i32) * 2 * (*w as i32) + (*s as i32) * (*h as i32))
+      .map(|(s, (w, h))| u32::from(*s) * 2 * w + u32::from(*s) * h)
       .sum();
     assert_eq!(
       total_half_units, 9,
@@ -270,7 +280,7 @@ mod pill_counter_tests {
   #[test]
   fn multi_week_schedule_sums_correctly() {
     // Two weeks of "5 mg Mon-Fri" = 10 whole 5 mg pills.
-    let doses = vec![5.0, 5.0, 5.0, 5.0, 5.0, 0.0, 0.0];
+    let doses = [5.0, 5.0, 5.0, 5.0, 5.0, 0.0, 0.0];
     let doses: Vec<f64> = doses.iter().cycle().take(14).copied().collect();
     let counts = tally_pills(&doses);
     assert_eq!(counts.get(&5).copied(), Some((10, 0)));

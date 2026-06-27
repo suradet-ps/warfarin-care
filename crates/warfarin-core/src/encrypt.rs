@@ -19,6 +19,7 @@ pub struct EncryptedData {
   pub ciphertext: String,
 }
 
+#[must_use]
 pub fn generate_key() -> [u8; KEY_SIZE] {
   let mut key = [0u8; KEY_SIZE];
   rand::rng().fill_bytes(&mut key);
@@ -33,6 +34,13 @@ fn derive_key(machine_id: &str) -> [u8; KEY_SIZE] {
   key
 }
 
+/// Encrypts `plaintext` with `key` and returns the base64-encoded nonce and
+/// ciphertext.
+///
+/// # Errors
+///
+/// Returns an error string if `key` is not a valid AES-256 key length or the
+/// underlying AEAD encryption fails.
 pub fn encrypt(plaintext: &str, key: &[u8; KEY_SIZE]) -> Result<EncryptedData, String> {
   let cipher = Aes256Gcm::new_from_slice(key).map_err(|e| e.to_string())?;
 
@@ -50,6 +58,13 @@ pub fn encrypt(plaintext: &str, key: &[u8; KEY_SIZE]) -> Result<EncryptedData, S
   })
 }
 
+/// Decrypts `encrypted` with `key` and returns the plaintext.
+///
+/// # Errors
+///
+/// Returns an error string if `key` is invalid, the base64 payload cannot be
+/// decoded, the AEAD decryption fails (wrong key / tampered ciphertext), or
+/// the plaintext is not valid UTF-8.
 pub fn decrypt(encrypted: &EncryptedData, key: &[u8; KEY_SIZE]) -> Result<String, String> {
   let cipher = Aes256Gcm::new_from_slice(key).map_err(|e| e.to_string())?;
 
@@ -70,6 +85,10 @@ pub fn decrypt(encrypted: &EncryptedData, key: &[u8; KEY_SIZE]) -> Result<String
 /// Encrypts a plaintext value with a deterministic key derived from `machine_id`.
 ///
 /// Returns a base64 payload containing `nonce || ciphertext`.
+///
+/// # Errors
+///
+/// Returns an error string if key derivation or the AEAD encryption fails.
 pub fn encrypt_value(plaintext: &str, machine_id: &str) -> Result<String, String> {
   let key = derive_key(machine_id);
   let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
@@ -88,6 +107,12 @@ pub fn encrypt_value(plaintext: &str, machine_id: &str) -> Result<String, String
 }
 
 /// Decrypts a base64 payload produced by [`encrypt_value`].
+///
+/// # Errors
+///
+/// Returns an error string if the payload is not valid base64, is too short
+/// to contain a nonce, the AEAD decryption fails (wrong `machine_id` or
+/// tampered data), or the plaintext is not valid UTF-8.
 pub fn decrypt_value(encoded: &str, machine_id: &str) -> Result<String, String> {
   let combined = BASE64.decode(encoded).map_err(|e| e.to_string())?;
   if combined.len() <= NONCE_SIZE {
@@ -106,12 +131,24 @@ pub fn decrypt_value(encoded: &str, machine_id: &str) -> Result<String, String> 
   String::from_utf8(plaintext).map_err(|e| e.to_string())
 }
 
+/// Encrypts a serializable value as a JSON envelope (see [`EncryptedData`]).
+///
+/// # Errors
+///
+/// Returns an error string if `data` cannot be serialized to JSON or the
+/// inner [`encrypt`] call fails.
 pub fn encrypt_json<T: Serialize>(data: &T, key: &[u8; KEY_SIZE]) -> Result<String, String> {
   let plaintext = serde_json::to_string(data).map_err(|e| e.to_string())?;
   let encrypted = encrypt(&plaintext, key)?;
   serde_json::to_string(&encrypted).map_err(|e| e.to_string())
 }
 
+/// Decrypts a JSON envelope produced by [`encrypt_json`] into `T`.
+///
+/// # Errors
+///
+/// Returns an error string if the envelope cannot be parsed, the inner
+/// [`decrypt`] call fails, or the plaintext cannot be deserialized into `T`.
 pub fn decrypt_json<T: for<'de> serde::Deserialize<'de>>(
   encrypted_json: &str,
   key: &[u8; KEY_SIZE],
@@ -151,8 +188,8 @@ mod tests {
       password: "secret123".to_string(),
     };
 
-    let encrypted_json = encrypt_json(&config, &key).unwrap();
-    let decrypted: Config = decrypt_json(&encrypted_json, &key).unwrap();
+    let encrypted_json = encrypt_json(&config, &key)?;
+    let decrypted: Config = decrypt_json(&encrypted_json, &key)?;
 
     assert_eq!(config, decrypted);
     Ok(())
