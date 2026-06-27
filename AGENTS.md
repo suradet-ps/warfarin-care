@@ -720,45 +720,66 @@ uuid = { version = "1", features = ["v4", "serde"] }
 
 ## Project File Structure
 
+> This project is a **Cargo workspace** (see `AGENTS-RUST.md` §14 Project
+> Overrides). Pure domain logic lives in `crates/warfarin-core`, the sqlx
+> data layer in `crates/warfarin-db`, and `src-tauri/` is a thin Tauri
+> wrapper. `crates/*` MUST NOT depend on `tauri`.
+
 ```
 warfarin-care/
-├── src-tauri/
-│   ├── src/
-│   │   ├── main.rs
-│   │   ├── lib.rs
-│   │   ├── encrypt.rs              # AES-256-GCM encryption for credentials
-│   │   ├── db/
-│   │   │   ├── mod.rs
-│   │   │   ├── mysql.rs           # HosXP queries: screening, dispensing, INR
-│   │   │   └── sqlite.rs          # Migrations, CRUD
-│   │   ├── commands/
-│   │   │   ├── mod.rs
-│   │   │   ├── screening.rs        # search_warfarin_patients
-│   │   │   ├── patients.rs         # enroll, get_active, update_status
-│   │   │   ├── visits.rs           # save_visit, get_visit_history
-│   │   │   ├── inr.rs              # get_inr_history, get_latest_inr
-│   │   │   ├── appointments.rs     # schedule, update status
-│   │   │   ├── alerts.rs           # get_patient_alerts
-│   │   │   ├── reports.rs          # TTR, census, adverse events
-│   │   │   ├── settings.rs         # test_connection, config CRUD
-│   │   │   ├── outcomes.rs         # record_adverse_event
-│   │   │   ├── interaction.rs      # drug interactions CRUD (0006)
-│   │   │   └── slip.rs             # Physician Communication Slip
-│   │   ├── dose/
-│   │   │   ├── mod.rs
-│   │   │   ├── calculator.rs       # suggest_dose, DoseSuggestion, TTR
-│   │   │   └── usage_parser.rs     # parse dose_detail JSON
-│   │   └── models/
-│   │       ├── mod.rs
-│   │       ├── patient.rs
-│   │       ├── inr.rs
-│   │       ├── visit.rs
-│   │       ├── appointment.rs
-│   │       ├── alert.rs
-│   │       ├── dispensing.rs
-│   │       ├── outcome.rs          # Adverse events model
-│   │       └── interaction.rs      # Drug interaction model
-│   └── Cargo.toml
+├── Cargo.toml                       # [workspace] root — no [workspace.dependencies]
+├── .cargo/config.toml               # ws-check / ws-test / ws-clippy aliases
+├── .clippy.toml                     # msrv = "1.85"
+├── rustfmt.toml                     # shared formatting (max_width=100, tab_spaces=2)
+├── crates/
+│   ├── warfarin-core/               # pure domain logic — NO sqlx, NO tauri
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       ├── lib.rs
+│   │       ├── encrypt.rs           # AES-256-GCM encryption for credentials
+│   │       ├── screening.rs         # normalize_search_filters (input clamping)
+│   │       ├── pills.rs             # pill decomposition + dispense summary
+│   │       ├── dose/
+│   │       │   ├── mod.rs
+│   │       │   ├── calculator.rs    # suggest_dose, suggest_dose_from_daily, TTR
+│   │       │   └── usage_parser.rs  # parse dispensing usage text → DoseSchedule
+│   │       └── models/
+│   │           ├── mod.rs
+│   │           ├── patient.rs
+│   │           ├── inr.rs
+│   │           ├── visit.rs         # DoseSchedule, WfVisit, DoseSuggestion, ...
+│   │           ├── appointment.rs
+│   │           ├── alert.rs
+│   │           ├── dispensing.rs
+│   │           ├── outcome.rs       # Adverse events model
+│   │           └── interaction.rs   # Drug interaction model
+│   └── warfarin-db/                 # sqlx data layer — NO tauri
+│       ├── Cargo.toml
+│       ├── migrations/              # 0001..0010 SQL migrations (sqlx::migrate!)
+│       └── src/
+│           ├── lib.rs
+│           ├── mysql.rs             # HosXP read-only queries: screening, dispensing, INR
+│           ├── sqlite.rs            # local CRUD, AppState, map_visit_row
+│           └── sync_models.rs       # cloud-sync row types (derive sqlx::FromRow)
+├── src-tauri/                       # thin Tauri wrapper — commands + IPC glue only
+│   ├── Cargo.toml                   # depends on warfarin-core + warfarin-db (path)
+│   └── src/
+│       ├── main.rs
+│       ├── lib.rs                   # plugin setup, AppState wiring, 46 commands
+│       └── commands/
+│           ├── mod.rs
+│           ├── screening.rs         # search_warfarin_patients
+│           ├── patients.rs          # enroll, get_active, update_status
+│           ├── visits.rs            # save_visit, get_visit_history, suggest_dose
+│           ├── inr.rs               # get_inr_history, get_latest_inr
+│           ├── appointments.rs      # schedule, update status
+│           ├── alerts.rs            # get_patient_alerts
+│           ├── reports.rs           # TTR, census, adverse events
+│           ├── settings.rs          # test_connection, config CRUD, keyring
+│           ├── outcomes.rs          # record_adverse_event
+│           ├── interaction.rs       # drug interactions CRUD (0006)
+│           ├── sync.rs              # Supabase push/pull (CLOUD-SYNC.md)
+│           └── slip.rs              # PDF export (path validation is FS glue)
 ├── src/
 │   ├── main.ts
 │   ├── App.vue
@@ -817,6 +838,7 @@ warfarin-care/
 │       └── dispensing.ts
 ├── DESIGN.md
 ├── AGENTS.md
+├── AGENTS-RUST.md                   # Rust workspace rules + project overrides
 └── CLOUD-SYNC.md                    # Cloud sync implementation spec
 ```
 
