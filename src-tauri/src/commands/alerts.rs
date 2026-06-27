@@ -6,9 +6,8 @@ use tauri::State;
 use crate::{
   commands::patients::get_inr_records_by_hns,
   db::sqlite::{AppState, get_active_patients, get_pending_appointments},
-  dose::calculator::calculate_ttr,
-  models::alert::PatientAlert,
 };
+use warfarin_core::{dose::calculator::calculate_ttr, models::alert::PatientAlert};
 
 const TTR_RED_THRESHOLD: f64 = 50.0;
 const TTR_YELLOW_THRESHOLD: f64 = 65.0;

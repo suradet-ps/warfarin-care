@@ -1,7 +1,5 @@
 pub mod commands;
 pub mod db;
-pub mod dose;
-pub mod encrypt;
 pub mod models;
 
 use anyhow::{Context, Result};

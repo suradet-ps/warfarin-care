@@ -3,7 +3,8 @@
 
 use tauri::State;
 
-use crate::{commands::patients::get_inr_records, db::sqlite::AppState, models::inr::InrRecord};
+use crate::{commands::patients::get_inr_records, db::sqlite::AppState};
+use warfarin_core::models::inr::InrRecord;
 
 #[tauri::command]
 pub async fn get_inr_history(

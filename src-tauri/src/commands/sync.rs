@@ -8,13 +8,11 @@ use tauri_plugin_store::StoreExt;
 use uuid::Uuid;
 
 use crate::db::sqlite::AppState;
-use crate::{
-  encrypt::{decrypt_value, encrypt_value},
-  models::sync::{
-    ConnectionTestResult, PulledRow, SyncResult, SyncStatus, SyncSummary, WfAppointmentSync,
-    WfDoseHistorySync, WfOutcomeSync, WfPatientStatusHistorySync, WfPatientSync, WfVisitSync,
-  },
+use crate::models::sync::{
+  ConnectionTestResult, PulledRow, SyncResult, SyncStatus, SyncSummary, WfAppointmentSync,
+  WfDoseHistorySync, WfOutcomeSync, WfPatientStatusHistorySync, WfPatientSync, WfVisitSync,
 };
+use warfarin_core::encrypt::{decrypt_value, encrypt_value};
 
 /// Alias for an async block that performs a SQLite write and returns either
 /// the number of rows touched or an error string. Used by `pull_table` to

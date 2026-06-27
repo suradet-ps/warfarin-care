@@ -5,13 +5,11 @@
 
 use tauri::State;
 
-use crate::{
-  db::{
-    mysql::search_hosxp_warfarin_patients,
-    sqlite::{AppState, get_all_enrolled_hns},
-  },
-  models::patient::{SearchFilters, SearchResponse},
+use crate::db::{
+  mysql::search_hosxp_warfarin_patients,
+  sqlite::{AppState, get_all_enrolled_hns},
 };
+use warfarin_core::models::patient::{SearchFilters, SearchResponse};
 
 /// Hard cap on `page_size` regardless of what the FE sends. Stops a malicious
 /// or buggy caller from asking the MySQL host for tens of thousands of rows

@@ -1,11 +1,9 @@
 use tauri::State;
 
-use crate::{
-  db::sqlite::{
-    AppState, get_outcomes as db_get_outcomes, record_adverse_event as db_record_outcome,
-  },
-  models::outcome::{OutcomeInput, WfOutcome},
+use crate::db::sqlite::{
+  AppState, get_outcomes as db_get_outcomes, record_adverse_event as db_record_outcome,
 };
+use warfarin_core::models::outcome::{OutcomeInput, WfOutcome};
 
 #[tauri::command]
 pub async fn get_outcomes(

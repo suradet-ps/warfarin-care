@@ -1,11 +1,11 @@
 use crate::db::mysql;
-use crate::models::interaction::{DrugInteraction, DrugInteractionInput};
 use anyhow::Result;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{MySql, QueryBuilder, Row};
 use std::collections::BTreeMap;
 use tauri::State;
+use warfarin_core::models::interaction::{DrugInteraction, DrugInteractionInput};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

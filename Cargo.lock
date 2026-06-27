@@ -5018,18 +5018,13 @@ dependencies = [
 name = "warfarin-care"
 version = "2.1.3"
 dependencies = [
- "aes-gcm",
  "anyhow",
  "base64 0.22.1",
  "chrono",
- "hkdf",
  "keyring",
- "rand 0.10.1",
- "regex",
  "reqwest",
  "serde",
  "serde_json",
- "sha2 0.11.0",
  "sqlx",
  "tauri",
  "tauri-build",
@@ -5046,6 +5041,17 @@ dependencies = [
 [[package]]
 name = "warfarin-core"
 version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "base64 0.22.1",
+ "chrono",
+ "hkdf",
+ "rand 0.10.1",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+]
 
 [[package]]
 name = "warfarin-db"

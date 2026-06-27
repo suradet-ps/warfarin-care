@@ -19,8 +19,8 @@ use std::{
 };
 use tokio::sync::RwLock;
 
-use crate::dose::usage_parser::parse_dispensing_usage;
-use crate::models::{
+use warfarin_core::dose::usage_parser::parse_dispensing_usage;
+use warfarin_core::models::{
   dispensing::DispensingRecord,
   inr::InrRecord,
   patient::{HosxpPatient, PatientDrugRecord, SearchFilters, SearchResponse},

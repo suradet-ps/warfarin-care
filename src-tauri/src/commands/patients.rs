@@ -3,15 +3,15 @@
 use chrono::Utc;
 use tauri::State;
 
-use crate::{
-  db::{
-    mysql::{get_dispensing_history, get_hosxp_patient},
-    sqlite::{
-      AppState, enroll_patient as db_enroll, get_active_patients as db_get_active,
-      get_inr_from_visits, get_latest_visit_dose_by_hns, get_patient_by_hn,
-      get_pending_appointments, get_visit_history, update_patient_status as db_update_status,
-    },
+use crate::db::{
+  mysql::{get_dispensing_history, get_hosxp_patient},
+  sqlite::{
+    AppState, enroll_patient as db_enroll, get_active_patients as db_get_active,
+    get_inr_from_visits, get_latest_visit_dose_by_hns, get_patient_by_hn, get_pending_appointments,
+    get_visit_history, update_patient_status as db_update_status,
   },
+};
+use warfarin_core::{
   dose::calculator::calculate_ttr,
   models::{
     inr::InrRecord,
@@ -227,7 +227,7 @@ async fn try_get_hosxp_patient(state: &AppState, hn: &str) -> HosxpPatient {
 async fn try_get_dispensing_history(
   state: &AppState,
   hn: &str,
-) -> Vec<crate::models::dispensing::DispensingRecord> {
+) -> Vec<warfarin_core::models::dispensing::DispensingRecord> {
   let config_result = crate::commands::settings::get_mysql_config_internal(&state.pool)
     .await
     .ok()
@@ -289,7 +289,7 @@ pub(crate) async fn get_inr_records(state: &AppState, hn: &str) -> Vec<InrRecord
 }
 
 fn find_next_appointment(
-  appointments: &[crate::models::appointment::WfAppointment],
+  appointments: &[warfarin_core::models::appointment::WfAppointment],
   hn: &str,
   today: &str,
 ) -> Option<String> {

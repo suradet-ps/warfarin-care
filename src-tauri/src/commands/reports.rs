@@ -6,8 +6,8 @@ use tauri::State;
 use crate::{
   commands::patients::{get_inr_records, get_inr_records_by_hns},
   db::sqlite::{AppState, get_active_patients, get_outcome_counts_by_hns},
-  dose::calculator::calculate_ttr as calc_ttr,
 };
+use warfarin_core::dose::calculator::calculate_ttr as calc_ttr;
 
 /// Calculates TTR (Rosendaal method) for a single patient over a given window.
 ///
