@@ -1,0 +1,9 @@
+# Clippy configuration shared across the warfarin-care workspace.
+#
+# Run with: cargo clippy --all-targets -- -D warnings
+#
+# `clippy::pedantic` and `clippy::nursery` are intentionally NOT enabled here
+# yet — they will be adopted in a follow-up once the workspace is stable, so
+# that this foundational refactor stays low-risk and surgical.
+
+msrv = "1.85"

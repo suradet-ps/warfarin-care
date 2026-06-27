@@ -1,0 +1,10 @@
+# Shared Cargo configuration for the warfarin-care workspace.
+#
+# Lint enforcement lives in `.clippy.toml` and is run via `cargo clippy`,
+# not as hard `rustflags`, so `cargo build` stays fast and warning-free.
+
+[alias]
+# Convenience aliases used in CI and local dev.
+ws-check = "check --workspace"
+ws-test = "test --workspace"
+ws-clippy = "clippy --all-targets -- -D warnings"

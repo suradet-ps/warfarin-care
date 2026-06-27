@@ -13,6 +13,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+# Workspace crates — pure logic + data access. Tauri coupling stays in this
+# crate only; never add `tauri` as a dependency of `crates/*`.
+warfarin-core = { path = "../crates/warfarin-core" }
+warfarin-db = { path = "../crates/warfarin-db" }
+
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 tauri-plugin-store = "2"

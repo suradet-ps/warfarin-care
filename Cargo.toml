@@ -1,0 +1,14 @@
+# Warfarin Care — Cargo workspace root.
+#
+# Pure-Rust domain logic lives under `crates/` and must NEVER depend on Tauri.
+# The Tauri application under `src-tauri/` is a thin wrapper that delegates to
+# the workspace crates. See `AGENTS-RUST.md` for the full workspace rules.
+#
+# Per the workspace guidelines, each member crate declares its own dependency
+# versions explicitly — `[workspace.dependencies]` inheritance is intentionally
+# NOT used so every crate stays self-contained and independently readable.
+
+[workspace]
+resolver = "3"
+members = ["crates/warfarin-core", "crates/warfarin-db", "src-tauri"]
+default-members = ["src-tauri"]

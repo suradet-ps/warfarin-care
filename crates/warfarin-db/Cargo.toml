@@ -1,0 +1,10 @@
+[package]
+name = "warfarin-db"
+version = "0.1.0"
+description = "HOSxP MySQL + local SQLite data access for warfarin-care (no Tauri)"
+edition = "2024"
+authors = ["Suradet Pratomsak"]
+license = "MIT"
+
+[lib]
+name = "warfarin_db"

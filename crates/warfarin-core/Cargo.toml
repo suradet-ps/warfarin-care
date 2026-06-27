@@ -1,0 +1,10 @@
+[package]
+name = "warfarin-core"
+version = "0.1.0"
+description = "Pure domain logic for warfarin-care (no I/O, no Tauri)"
+edition = "2024"
+authors = ["Suradet Pratomsak"]
+license = "MIT"
+
+[lib]
+name = "warfarin_core"
