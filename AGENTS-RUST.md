@@ -340,3 +340,48 @@ When applying these standards to an existing codebase, follow this sequence:
 
 > Add project-specific rules here. Conflicting rules override the baseline above.
 > Format: `[OVERRIDE §<section>] <rule>`
+
+### Workspace Layout
+
+This project is a **Cargo workspace** (root `Cargo.toml`). Pure domain logic
+and the data access layer are separated from the Tauri shell:
+
+```
+warfarin-care/
+├── Cargo.toml              # [workspace] root — no [workspace.dependencies]
+├── .cargo/config.toml      # ws-check / ws-test / ws-clippy aliases
+├── .clippy.toml            # msrv = "1.85"
+├── rustfmt.toml            # shared formatting (max_width=100, tab_spaces=2)
+├── crates/
+│   ├── warfarin-core/      # pure logic: models, dose, encrypt, pills — NO sqlx, NO tauri
+│   └── warfarin-db/        # sqlx data layer: mysql, sqlite, sync_models, migrations — NO tauri
+└── src-tauri/              # thin Tauri wrapper: commands + AppState wiring
+```
+
+[OVERRIDE §4.2] **Do NOT use `[workspace.dependencies]` inheritance.** Each
+crate declares its own dependency versions explicitly so every crate stays
+self-contained and independently readable.
+
+[OVERRIDE §4.2] **`crates/*` MUST NOT depend on `tauri`, `tauri-build`, or
+any Tauri plugin.** `src-tauri/` is the only member allowed to pull in Tauri.
+Business logic, algorithms, and data access belong in `crates/*`.
+
+[OVERRIDE §1.2] **`src-tauri/src/` holds only `#[tauri::command]` wrappers,
+plugin setup, and IPC glue.** Reusable logic MUST live in `warfarin-core`
+(pure) or `warfarin-db` (sqlx). When a command needs a calculation, parse,
+or validation, call the corresponding `warfarin_core::*` function — do not
+inline the logic in the command.
+
+### Commands
+
+```bash
+cargo ws-check    # cargo check --workspace
+cargo ws-test     # cargo test --workspace
+cargo ws-clippy   # cargo clippy --all-targets -- -D warnings
+cargo tauri build # build the desktop app
+npm run type-check # frontend type-check
+```
+
+`clippy::pedantic` / `clippy::nursery` are NOT yet enforced (see
+`.clippy.toml`); they will be adopted in a follow-up. The default Clippy
+level plus `-D warnings` is the current bar.
