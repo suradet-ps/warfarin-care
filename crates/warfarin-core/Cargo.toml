@@ -24,7 +24,7 @@ thiserror = "2"
 regex = "1"
 
 # AES-256-GCM encryption of MySQL/Supabase credentials at rest.
-aes-gcm = "0.10"
+aes-gcm = "0.11"
 hkdf = "0.13"
 rand = "0.10"
 sha2 = "0.11"
