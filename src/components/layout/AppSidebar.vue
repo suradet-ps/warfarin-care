@@ -29,7 +29,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <nav class="sidebar">
+  <nav class="sidebar" aria-label="เมนูหลัก">
     <div class="sidebar-logo">
       <svg class="sidebar-logo-icon" width="40" height="40" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
         <defs>
@@ -48,13 +48,13 @@ onMounted(() => {
         <span class="sidebar-logo-sub">Clinic</span>
       </div>
     </div>
-    <ul class="sidebar-nav">
+    <ul class="sidebar-nav" role="list">
       <li v-for="item in navItems" :key="item.name">
-        <RouterLink :to="item.path" class="sidebar-nav-item" :class="{ active: route.path.startsWith(item.path) }">
-          <component :is="item.icon" :size="20" />
+        <RouterLink :to="item.path" class="sidebar-nav-item" :class="{ active: route.path.startsWith(item.path) }" :aria-current="route.path.startsWith(item.path) ? 'page' : undefined">
+          <component :is="item.icon" :size="20" aria-hidden="true" />
           <span>{{ item.label }}</span>
-          <span v-if="item.name === 'active' && totalAlerts > 0" class="sidebar-badge">{{ totalAlerts }}</span>
-          <span v-if="item.name === 'review' && pendingReviewCount > 0" class="sidebar-badge review-badge">{{ pendingReviewCount }}</span>
+          <span v-if="item.name === 'active' && totalAlerts > 0" class="sidebar-badge" :aria-label="`${totalAlerts} แจ้งเตือน`">{{ totalAlerts }}</span>
+          <span v-if="item.name === 'review' && pendingReviewCount > 0" class="sidebar-badge review-badge" :aria-label="`${pendingReviewCount} รายการรอตรวจสอบ`">{{ pendingReviewCount }}</span>
         </RouterLink>
       </li>
     </ul>

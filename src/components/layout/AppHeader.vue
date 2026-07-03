@@ -39,19 +39,19 @@ onMounted(() => {
 </script>
 
 <template>
-  <header class="app-header">
+  <header class="app-header" role="banner">
     <div>
       <h1 class="header-title">{{ pageTitle }}</h1>
       <p class="caption header-subtitle">ติดตาม INR, ขนาดยา และนัดหมายอย่างต่อเนื่อง</p>
     </div>
     <div class="header-actions">
-      <div v-if="authStore.currentUser" class="user-pill" :title="`ผู้ใช้: ${authStore.currentUser.username}`">
+      <div v-if="authStore.currentUser" class="user-pill" :title="`ผู้ใช้: ${authStore.currentUser.username}`" :aria-label="`ผู้ใช้ปัจจุบัน ${authStore.currentUser.username} ตำแหน่ง ${authStore.currentUser.role}`">
         <span class="user-pill-name">{{ authStore.currentUser.username }}</span>
         <span class="user-pill-role">{{ authStore.currentUser.role }}</span>
       </div>
-      <div v-if="totalAlerts > 0" class="alert-pill"><Bell :size="18" /><span>{{ totalAlerts }} แจ้งเตือน</span></div>
-      <button v-if="authStore.currentUser" type="button" class="logout-btn" title="ออกจากระบบ" @click="handleLogout">
-        <LogOut :size="18" />
+      <div v-if="totalAlerts > 0" class="alert-pill" role="status" :aria-label="`${totalAlerts} แจ้งเตือน`"><Bell :size="18" aria-hidden="true" /><span>{{ totalAlerts }} แจ้งเตือน</span></div>
+      <button v-if="authStore.currentUser" type="button" class="logout-btn" title="ออกจากระบบ" aria-label="ออกจากระบบ" @click="handleLogout">
+        <LogOut :size="18" aria-hidden="true" />
         <span>ออกจากระบบ</span>
       </button>
     </div>

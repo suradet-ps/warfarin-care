@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useRouter } from 'vue-router'
 import { AlertTriangle, Search, Users } from 'lucide-vue-next'
@@ -18,6 +18,7 @@ const summaries = ref<ActivePatientSummary[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
+const searchInputRef = ref<HTMLInputElement | null>(null)
 
 const criticalAlerts = computed(() => alertStore.alerts.filter((a) => a.severity === 'critical'))
 
@@ -31,6 +32,13 @@ const filteredSummaries = computed(() => {
     return hn.includes(query) || fname.includes(query) || lname.includes(query)
   })
 })
+
+function handleKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    e.preventDefault()
+    searchInputRef.value?.focus()
+  }
+}
 
 async function loadRows() {
   loading.value = true
@@ -62,52 +70,61 @@ async function handleSaved(visitId: number) {
 
 onMounted(() => {
   void loadRows()
+  document.addEventListener('keydown', handleKeydown)
+})
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
 <template>
   <div class="active-view">
-    <div v-if="criticalAlerts.length" class="card card-feature-coral alert-banner">
-      <div class="alert-banner-head">
-        <div>
-          <h2 class="heading-md">แจ้งเตือนวิกฤต {{ criticalAlerts.length }} รายการ</h2>
-          <p class="body-sm">{{ criticalAlerts[0]?.message }}</p>
+    <div v-if="criticalAlerts.length" class="critical-alert-banner" role="alert" aria-live="assertive">
+      <div class="critical-alert-inner">
+        <AlertTriangle :size="20" class="critical-alert-icon" />
+        <div class="critical-alert-content">
+          <h2 class="body-sm-medium">แจ้งเตือนวิกฤต {{ criticalAlerts.length }} รายการ</h2>
+          <p class="caption" v-for="alert in criticalAlerts.slice(0, 3)" :key="alert.hn">
+            HN {{ alert.hn }}: {{ alert.message }}
+          </p>
+          <p v-if="criticalAlerts.length > 3" class="caption">และอีก {{ criticalAlerts.length - 3 }} รายการ...</p>
         </div>
-        <AlertTriangle :size="20" />
       </div>
     </div>
 
     <div class="page-toolbar">
       <div class="stat-row">
-        <div class="stat-chip card">
-          <Users :size="16" class="stat-icon" />
+        <div class="stat-chip card" aria-label="จำนวนผู้ป่วยทั้งหมด">
+          <Users :size="16" class="stat-icon" aria-hidden="true" />
           <span class="body-sm">ผู้ป่วย <strong>{{ filteredSummaries.length }}</strong> ราย</span>
         </div>
       </div>
       <div class="search-box">
-        <Search :size="16" class="search-icon" />
+        <Search :size="16" class="search-icon" aria-hidden="true" />
         <input
+          ref="searchInputRef"
           v-model="searchQuery"
           type="text"
-          placeholder="ค้นหา HN, ชื่อ, สกุล"
+          placeholder="ค้นหา HN, ชื่อ, สกุล (Ctrl+F)"
           class="search-input"
+          aria-label="ค้นหาผู้ป่วย"
         />
       </div>
     </div>
 
-    <div v-if="loading" class="card loading-state body-sm">กำลังโหลด...</div>
-    <div v-else-if="error" class="card card-feature-coral">{{ error }}</div>
+    <LoadingState v-if="loading" message="กำลังโหลดรายชื่อผู้ป่วย..." />
+    <ErrorState v-else-if="error" :message="error" @retry="loadRows" />
     <div v-else class="table-wrap card">
-      <table class="table">
+      <table class="table" aria-label="รายชื่อผู้ป่วยคลินิกวาร์ฟาริน">
         <thead>
           <tr>
-            <th>HN / ชื่อ-นามสกุล</th>
-            <th>INR ล่าสุด</th>
-            <th>ขนาดยา (mg/สัปดาห์)</th>
-            <th>TTR</th>
-            <th>นัดต่อไป</th>
-            <th>การแจ้งเตือน</th>
-            <th></th>
+            <th scope="col">HN / ชื่อ-นามสกุล</th>
+            <th scope="col">INR ล่าสุด</th>
+            <th scope="col">ขนาดยา (mg/สัปดาห์)</th>
+            <th scope="col">TTR</th>
+            <th scope="col">นัดต่อไป</th>
+            <th scope="col">การแจ้งเตือน</th>
+            <th scope="col"><span class="sr-only">การกระทำ</span></th>
           </tr>
         </thead>
         <tbody>
@@ -135,7 +152,33 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--spacing-xl);
 }
-.alert-banner-head,
+.critical-alert-banner {
+  background: var(--color-inr-high-bg);
+  border: 2px solid var(--color-inr-high);
+  border-radius: var(--rounded-xl);
+  padding: var(--spacing-md) var(--spacing-lg);
+  animation: pulse-border 2s ease-in-out infinite;
+}
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--color-inr-high); }
+  50% { border-color: var(--color-inr-critical); }
+}
+.critical-alert-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+.critical-alert-icon {
+  color: var(--color-inr-high);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.critical-alert-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  color: var(--color-inr-high);
+}
 .page-toolbar {
   display: flex;
   justify-content: space-between;
@@ -147,13 +190,25 @@ onMounted(() => {
 .stat-icon { color: var(--color-slate); }
 .search-box { display: flex; align-items: center; gap: var(--spacing-xs); background: var(--color-canvas); border: 1px solid var(--color-hairline-soft); border-radius: var(--rounded-md); padding: var(--spacing-sm) var(--spacing-md); }
 .search-icon { color: var(--color-stone); flex-shrink: 0; }
-.search-input { border: none; outline: none; background: transparent; font-size: var(--typography-body-sm-size); color: var(--color-ink); width: 200px; }
+.search-input { border: none; outline: none; background: transparent; font-size: var(--typography-body-sm-size); color: var(--color-ink); width: 240px; }
 .search-input::placeholder { color: var(--color-stone); }
-.loading-state, .empty-cell {
+.search-input:focus { outline: 2px solid var(--color-primary); outline-offset: -2px; border-radius: var(--rounded-md); }
+.empty-cell {
   padding: var(--spacing-xxl);
   text-align: center;
   color: var(--color-slate);
 }
 .table-wrap { padding: 0; overflow-x: auto; }
 .table-wrap .table { min-width: 980px; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
 </style>

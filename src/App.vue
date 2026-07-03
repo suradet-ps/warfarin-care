@@ -1,20 +1,30 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppSidebar from '#/components/layout/AppSidebar.vue'
 import AppHeader from '#/components/layout/AppHeader.vue'
 import { useAuthStore } from '#/stores/auth'
 import { useSyncStore } from '#/stores/sync'
 
 const route = useRoute()
+const router = useRouter()
 const syncStore = useSyncStore()
 const authStore = useAuthStore()
 
-// The login + first-time setup views are full-page layouts. Render them
-// without the sidebar/header chrome so the auth experience is uncluttered.
 const isAuthScreen = computed(
   () => route.path === '/login' || route.path === '/setup',
 )
+
+function handleGlobalKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+    e.preventDefault()
+    if (route.path.startsWith('/patient/')) {
+      const hn = route.params.hn as string
+      const event = new CustomEvent('open-visit-panel', { detail: { hn } })
+      window.dispatchEvent(event)
+    }
+  }
+}
 
 const hideSplash = () => {
   const splash = document.getElementById('splash-overlay')
@@ -29,11 +39,7 @@ const hideSplash = () => {
 }
 
 onMounted(async () => {
-  // Minimum splash display time (1.2s) for visual smoothness
   setTimeout(hideSplash, 1200)
-
-  // The router guard also calls `bootstrap` lazily, but doing it here lets
-  // the auth store settle before any app-shell fetches fire.
   try {
     await authStore.bootstrap()
   } catch (error) {
@@ -48,6 +54,12 @@ onMounted(async () => {
     }
     syncStore.startAutoSync()
   }
+
+  document.addEventListener('keydown', handleGlobalKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 
@@ -56,10 +68,11 @@ onMounted(async () => {
     <RouterView />
   </div>
   <div v-else class="app-shell">
+    <a href="#main-content" class="skip-link">ข้ามไปยังเนื้อหาหลัก</a>
     <AppSidebar />
     <div class="app-main">
       <AppHeader />
-      <main class="app-content">
+      <main id="main-content" class="app-content" tabindex="-1">
         <RouterView />
       </main>
     </div>

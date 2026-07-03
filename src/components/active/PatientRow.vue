@@ -38,21 +38,21 @@ const appointmentText = computed(() => {
   <tr>
     <td>
       <div class="cell-stack">
-        <RouterLink :to="`/patient/${summary.patient.hn}`" class="hn-link body-sm-medium">{{ summary.patient.hn }}</RouterLink>
+        <RouterLink :to="`/patient/${summary.patient.hn}`" class="hn-link body-sm-medium" :aria-label="`ดูข้อมูลผู้ป่วย HN ${summary.patient.hn}`">{{ summary.patient.hn }}</RouterLink>
         <span class="body-sm">{{ patientFullName(summary.hosxpInfo) }}</span>
       </div>
     </td>
     <td>
       <InrStatusBadge :inr-value="summary.latestInr?.value" :target-low="summary.patient.targetInrLow" :target-high="summary.patient.targetInrHigh" :days-since-last-inr="inrDays" />
     </td>
-    <td>{{ summary.currentDoseMgday !== null && summary.currentDoseMgday !== undefined ? `${(summary.currentDoseMgday * 7).toFixed(1)} mg/สัปดาห์` : '-' }}</td>
+    <td>{{ summary.currentDoseMgday !== null && summary.currentDoseMgday !== undefined ? `${(summary.currentDoseMgday * 7).toFixed(1)} mg/สัปดาห์ (เฉลี่ย ${summary.currentDoseMgday.toFixed(1)} mg/วัน)` : '-' }}</td>
     <td><TtrBadge :ttr="summary.ttr6months" /></td>
     <td>{{ appointmentText }}</td>
     <td><AlertBadge :alerts="alerts ?? []" /></td>
     <td>
       <div class="row-actions">
-        <RouterLink :to="`/patient/${summary.patient.hn}`" class="btn btn-ghost action-button"><FileText :size="16" />ดูข้อมูล</RouterLink>
-        <button type="button" class="btn btn-secondary action-button" @click="emit('openVisit', summary.patient.hn)"><FilePenLine :size="16" />บันทึก</button>
+        <RouterLink :to="`/patient/${summary.patient.hn}`" class="btn btn-ghost action-button" :aria-label="`ดูข้อมูลผู้ป่วย ${patientFullName(summary.hosxpInfo)}`"><FileText :size="16" aria-hidden="true" />ดูข้อมูล</RouterLink>
+        <button type="button" class="btn btn-secondary action-button" @click="emit('openVisit', summary.patient.hn)" :aria-label="`บันทึกการทำคลินิก ${patientFullName(summary.hosxpInfo)}`"><FilePenLine :size="16" aria-hidden="true" />บันทึก</button>
       </div>
     </td>
   </tr>

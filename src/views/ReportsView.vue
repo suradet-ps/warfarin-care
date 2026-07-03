@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { Download } from 'lucide-vue-next'
+import { Calendar, Download } from 'lucide-vue-next'
 
 interface CensusReport { active: number; inactive: number; transferred: number; discharged: number; deceased: number; total: number }
 interface TtrReport { meanTtr: number }
@@ -19,6 +19,8 @@ const missedAppts = ref<MissedAppointmentsReport | null>(null)
 const doseAdj = ref<DoseAdjReport | null>(null)
 const monthlyCohort = ref<MonthlyCohortReport | null>(null)
 const loading = ref(false)
+const dateFrom = ref('')
+const dateTo = ref('')
 
 const reportCards = computed(() => [
   {
@@ -147,19 +149,36 @@ onMounted(() => {
 
 <template>
   <div class="reports-view">
-    <div v-if="loading" class="card">กำลังโหลดรายงาน...</div>
-    <div class="reports-grid">
-      <section v-for="report in reportCards" :key="report.key" :class="['report-card', 'card', report.tone]">
+    <div class="reports-toolbar">
+      <div class="date-filter">
+        <Calendar :size="16" class="filter-icon" aria-hidden="true" />
+        <label class="date-field">
+          <span class="caption">จาก</span>
+          <input v-model="dateFrom" type="date" class="input input-sm" aria-label="วันที่เริ่มต้น" />
+        </label>
+        <label class="date-field">
+          <span class="caption">ถึง</span>
+          <input v-model="dateTo" type="date" class="input input-sm" aria-label="วันที่สิ้นสุด" />
+        </label>
+        <button type="button" class="btn btn-secondary btn-sm" @click="loadReports" aria-label="รีเฟรชข้อมูลรายงาน">
+          โหลดใหม่
+        </button>
+      </div>
+    </div>
+
+    <LoadingState v-if="loading" message="กำลังโหลดรายงาน..." />
+    <div v-else class="reports-grid">
+      <section v-for="report in reportCards" :key="report.key" :class="['report-card', 'card', report.tone]" :aria-label="report.title">
         <div class="card-head">
           <div>
             <h3 class="h5">{{ report.title }}</h3>
             <p class="body-sm report-description">{{ report.description }}</p>
           </div>
-          <button type="button" class="btn btn-secondary" @click="exportCsv(report.key, report.rows)"><Download :size="16" />CSV</button>
+          <button type="button" class="btn btn-secondary" @click="exportCsv(report.key, report.rows)" :aria-label="`ส่งออก ${report.title} เป็น CSV`"><Download :size="16" aria-hidden="true" />CSV</button>
         </div>
         <p class="report-value">{{ report.value }}</p>
-        <div class="report-table">
-          <div v-for="row in report.rows" :key="row[0]" class="report-row">
+        <div class="report-table" role="list">
+          <div v-for="row in report.rows" :key="row[0]" class="report-row" role="listitem">
             <span class="body-sm">{{ row[0] }}</span>
             <strong class="body-sm-medium">{{ row[1] }}</strong>
           </div>
@@ -171,6 +190,32 @@ onMounted(() => {
 
 <style scoped>
 .reports-view { display: flex; flex-direction: column; gap: var(--spacing-xl); }
+.reports-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+.date-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+.filter-icon { color: var(--color-stone); }
+.date-field {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+.input-sm {
+  min-height: 36px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--typography-body-sm-size);
+}
+.btn-sm {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--typography-body-sm-size);
+}
 .reports-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--spacing-xl); }
 .report-card { display: flex; flex-direction: column; gap: var(--spacing-lg); }
 .card-head,.report-row { display: flex; justify-content: space-between; gap: var(--spacing-md); }

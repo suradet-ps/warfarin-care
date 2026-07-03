@@ -109,12 +109,8 @@ onMounted(() => { void loadPatient() })
 
 <template>
   <div class="patient-detail">
-    <div v-if="loading" class="body-sm" style="color: var(--color-stone); padding: var(--spacing-xxl)">
-      กำลังโหลด...
-    </div>
-    <div v-else-if="error" class="card card-feature-coral body-sm" style="padding: var(--spacing-md)">
-      {{ error }}
-    </div>
+    <LoadingState v-if="loading" message="กำลังโหลดข้อมูลผู้ป่วย..." />
+    <ErrorState v-else-if="error" :message="error" @retry="loadPatient" />
 
     <template v-else-if="patientDetail">
       <section class="card header-card">
@@ -165,43 +161,54 @@ onMounted(() => { void loadPatient() })
         </div>
       </section>
 
-      <div class="tab-bar">
+      <div class="tab-bar" role="tablist" aria-label="แท็บข้อมูลผู้ป่วย">
         <button
           v-for="tab in tabs"
           :key="tab.key"
           :class="['tab-pill', { active: activeTab === tab.key }]"
+          role="tab"
+          :aria-selected="activeTab === tab.key"
+          :aria-controls="`tab-panel-${tab.key}`"
           @click="activeTab = tab.key"
         >
-          <component :is="tab.icon" :size="14" />
+          <component :is="tab.icon" :size="14" aria-hidden="true" />
           {{ tab.label }}
         </button>
       </div>
 
       <div class="tab-content">
-        <template v-if="activeTab === 'inr'">
+        <div v-if="activeTab === 'inr'" id="tab-panel-inr" role="tabpanel" aria-label="กราฟแนวโน้ม INR">
           <InrTrendChart
             :inr-records="patientDetail.inrHistory ?? []"
             :target-low="patientDetail.patient.targetInrLow"
             :target-high="patientDetail.patient.targetInrHigh"
           />
-        </template>
+        </div>
 
-        <VisitList v-else-if="activeTab === 'visits'" :visits="visits" :hn="hn" @deleted="handleVisitDeleted" @edit="handleEditVisit" />
+        <div v-else-if="activeTab === 'visits'" id="tab-panel-visits" role="tabpanel" aria-label="ประวัติการทำคลินิก">
+          <VisitList :visits="visits" :hn="hn" @deleted="handleVisitDeleted" @edit="handleEditVisit" />
+        </div>
 
-        <DispensingTable
-          v-else-if="activeTab === 'dispensing'"
-          :records="patientDetail.dispensingHistory ?? []"
-        />
+        <div v-else-if="activeTab === 'dispensing'" id="tab-panel-dispensing" role="tabpanel" aria-label="ประวัติยา">
+          <DispensingTable
+            :records="patientDetail.dispensingHistory ?? []"
+          />
+        </div>
 
-        <DrugInteractionTable
-          v-else-if="activeTab === 'interactions'"
-          :hn="hn"
-          :mysql-config="settingsStore.mysqlConfig"
-        />
+        <div v-else-if="activeTab === 'interactions'" id="tab-panel-interactions" role="tabpanel" aria-label="Drug interaction">
+          <DrugInteractionTable
+            :hn="hn"
+            :mysql-config="settingsStore.mysqlConfig"
+          />
+        </div>
 
-        <AppointmentTimeline v-else-if="activeTab === 'appointments'" :key="appointmentTimelineKey" :hn="hn" />
+        <div v-else-if="activeTab === 'appointments'" id="tab-panel-appointments" role="tabpanel" aria-label="นัดหมาย">
+          <AppointmentTimeline :key="appointmentTimelineKey" :hn="hn" />
+        </div>
 
-        <AdverseEventList v-else-if="activeTab === 'adverse'" :hn="hn" />
+        <div v-else-if="activeTab === 'adverse'" id="tab-panel-adverse" role="tabpanel" aria-label="เหตุการณ์ไม่พึงประสงค์">
+          <AdverseEventList :hn="hn" />
+        </div>
       </div>
     </template>
 

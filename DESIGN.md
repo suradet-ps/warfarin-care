@@ -297,6 +297,53 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 
 ---
 
+## Healthcare UX Guidelines
+
+> Principles derived from 2026 healthcare UX research for clinical desktop applications.
+
+### Safety-First Design
+- **Dose Change Confirmation**: Every dose change MUST show a confirmation dialog before saving. The dialog must display: current dose → new dose, difference in mg/week, and a clear "ยืนยันการเปลี่ยนขนาดยา" button.
+- **Critical INR Persistent Banner**: INR > 5.0 or < 1.5 must be displayed as a persistent top-of-screen alert bar with `AlertTriangle` icon, not just a badge. The banner must include the patient HN and a direct link to their detail page.
+- **Undo Support**: Dose changes should include an undo mechanism within 30 seconds of saving.
+
+### Cognitive Load Management
+- **Progressive Disclosure**: Show summary data first; drill into details on demand. Never present more than 3 levels of hierarchy on a single screen.
+- **Visual Hierarchy**: Use color, contrast, and typography to guide the eye to critical information first. Abnormal lab values must be immediately distinguishable.
+- **Task-Focused Flows**: Each screen should answer one primary question. Secondary actions are accessible but not competing for attention.
+
+### Calm Visual Language
+- **Restrained Color Usage**: Reserve red for clinical urgency only (INR critical, active bleeding). Use amber/yellow for warnings. Use green for "in range" / safe.
+- **Generous Whitespace**: Allow data to "breathe". Minimum spacing between data sections: `{spacing-xl}` (24px).
+- **No Alert Fatigue**: Only surface alerts that require action. Suppressed/minor alerts should be accessible via "ดูทั้งหมด" link, not forced into the primary view.
+
+### Data Visualization Standards
+- **Color-Coded Data Points**: Every data point on clinical charts (INR trend, dose history) MUST be colored by its clinical status using the INR Status color tokens. Never use a single color for all data points.
+- **Target Band Overlay**: INR trend charts must show the target range as a shaded green band with dashed boundary lines.
+- **Reference Lines**: Critical thresholds (INR 1.5 and 4.0) should be shown as subtle reference lines.
+
+### Error, Loading & Empty States
+- **Error State**: Coral background card (`card-feature-coral`) with error message and retry button. Never show raw error objects.
+- **Loading State**: Centered spinner or "กำลังโหลด..." text in `{color-stone}` on `{color-surface}` background.
+- **Empty State**: Centered message in `{color-stone}` with a brief explanation and optional action button (e.g., "เพิ่มผู้ป่วยคนแรก").
+
+### Accessibility (WCAG 2.2 AA)
+- **ARIA Labels**: All interactive elements must have `aria-label` or `aria-labelledby`. Navigation must have `aria-label="เมนูหลัก"`.
+- **Focus Management**: When a slide panel opens, focus must move to the first focusable element inside. When it closes, focus returns to the trigger element.
+- **Keyboard Navigation**: All actions must be completable via keyboard. Tab order must be logical. Escape closes modals and panels.
+- **Color Contrast**: Minimum 4.5:1 for normal text, 3:1 for large text. Never rely on color alone to convey information — always pair with text or icon.
+
+### Dose Unit Consistency
+- All dose displays MUST include units: `mg/วัน` (per day) or `mg/สัปดาห์` (per week).
+- Never show a bare number without its unit when displaying clinical dosing information.
+- The dose calculator suggestion must clearly state whether it is per-day or per-week.
+
+### Desktop-Specific Patterns
+- **Keyboard Shortcuts**: Global shortcuts for common actions (displayed in tooltips): `Ctrl+N` = new visit, `Ctrl+F` = search, `Escape` = close panel/modal.
+- **Native Scroll**: Use OS-native scroll behavior in tables and lists.
+- **Focus Visible**: All focusable elements must show a visible focus ring (`:focus-visible` with `{color-primary}` outline).
+
+---
+
 ## Do's and Don'ts
 
 ### Do

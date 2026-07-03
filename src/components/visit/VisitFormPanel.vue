@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { X } from 'lucide-vue-next'
 import DayDoseTable from '#/components/visit/DayDoseTable.vue'
 import DoseOptionsPanel from '#/components/visit/DoseOptionsPanel.vue'
+import ConfirmDialog from '#/components/shared/ConfirmDialog.vue'
 import type { AppointmentDayLoad } from '#/types/appointment'
 import type { DispensingRecord } from '#/types/dispensing'
 import type { InrRecord } from '#/types/inr'
@@ -71,6 +72,9 @@ const availablePills = ref<AvailablePills>({ ...DEFAULT_AVAILABLE_PILLS })
 const allowHalf = ref(true)
 const specialDayPattern = ref<'fri-sun' | 'mon-wed-fri'>('fri-sun')
 const appointmentDayLoad = ref<AppointmentDayLoad | null>(null)
+const panelRef = ref<HTMLDivElement | null>(null)
+const showDoseConfirm = ref(false)
+const pendingSave = ref(false)
 
 const sideEffectOptionsHigh = [
   { key: 'body_bleeding', label: 'เลือดออกตามร่างกาย' },
@@ -337,6 +341,12 @@ async function handleSubmit() {
     return
   }
 
+  if (doseChanged.value && !pendingSave.value) {
+    showDoseConfirm.value = true
+    return
+  }
+
+  showDoseConfirm.value = false
   saving.value = true
   error.value = null
   try {
@@ -371,24 +381,57 @@ async function handleSubmit() {
     error.value = String(e)
   } finally {
     saving.value = false
+    pendingSave.value = false
   }
+}
+
+function confirmDoseChange() {
+  pendingSave.value = true
+  showDoseConfirm.value = false
+  void handleSubmit()
+}
+
+function cancelDoseChange() {
+  showDoseConfirm.value = false
 }
 
 const lastLoaded = ref<{ hn: string; date: string; editId: number | null } | null>(null)
 
+function handlePanelKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    modelValue.value = false
+  }
+}
+
 watch(() => modelValue.value, (open) => {
-  if (open) void loadDefaults()
+  if (open) {
+    void loadDefaults()
+    void nextTick(() => {
+      const panel = panelRef.value
+      if (panel) {
+        const firstInput = panel.querySelector('input, select, textarea, button:not([aria-hidden])') as HTMLElement | null
+        firstInput?.focus()
+      }
+    })
+    document.addEventListener('keydown', handlePanelKeydown)
+  } else {
+    document.removeEventListener('keydown', handlePanelKeydown)
+    pendingSave.value = false
+    showDoseConfirm.value = false
+  }
 })
 onMounted(() => { if (modelValue.value) void loadDefaults() })
+onUnmounted(() => { document.removeEventListener('keydown', handlePanelKeydown) })
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="modelValue" class="panel-overlay" @click.self="modelValue = false">
-      <div class="visit-panel card">
+    <div v-if="modelValue" class="panel-overlay" @click.self="modelValue = false" role="dialog" aria-modal="true" aria-label="บันทึกการทำคลินิก">
+      <div ref="panelRef" class="visit-panel card">
         <div class="panel-header">
           <h3 class="h4">{{ isEditMode ? 'แก้ไขประวัติการทำคลินิก' : 'บันทึกการทำคลินิก' }}</h3>
-          <button class="btn btn-ghost" @click="modelValue = false"><X :size="18" /></button>
+          <button class="btn btn-ghost" @click="modelValue = false" aria-label="ปิด面板"><X :size="18" /></button>
         </div>
 
         <div v-if="error" class="card card-feature-coral body-sm" style="padding: var(--spacing-md)">{{ error }}</div>
@@ -397,11 +440,11 @@ onMounted(() => { if (modelValue.value) void loadDefaults() })
           <div class="form-row">
             <label class="form-field">
               <span class="caption label">วันที่</span>
-              <input class="input" type="date" v-model="visitDate" />
+              <input class="input" type="date" v-model="visitDate" aria-label="วันที่ทำคลินิก" />
             </label>
             <label class="form-field">
               <span class="caption label">ค่า INR</span>
-              <input class="input" type="number" step="0.1" v-model.number="inrValue" />
+              <input class="input" type="number" step="0.1" v-model.number="inrValue" aria-label="ค่า INR วัดได้" />
             </label>
           </div>
 
@@ -512,6 +555,15 @@ onMounted(() => { if (modelValue.value) void loadDefaults() })
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      :open="showDoseConfirm"
+      title="ยืนยันการเปลี่ยนขนาดยา"
+      :message="`ขนาดยาจะเปลี่ยนจาก ${currentDoseWeek.toFixed(1)} mg/สัปดาห์ เป็น ${newDoseWeek.toFixed(1)} mg/สัปดาห์ (${doseChanged ? 'เปลี่ยน' : 'คงเดิม'}) กรุณาตรวจสอบและยืนยันการบันทึก`"
+      confirm-label="ยืนยันการเปลี่ยนขนาดยา"
+      @confirm="confirmDoseChange"
+      @cancel="cancelDoseChange"
+    />
   </Teleport>
 </template>
 

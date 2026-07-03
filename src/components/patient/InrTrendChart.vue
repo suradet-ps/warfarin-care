@@ -13,7 +13,24 @@ const chartWidth = 960
 const chartHeight = 320
 const padding = { top: 20, right: 56, bottom: 40, left: 20 }
 
-type ChartPoint = InrRecord & { x: number; y: number }
+type InrPointStatus = 'in_range' | 'above' | 'below' | 'critical_high' | 'critical_low'
+type ChartPoint = InrRecord & { x: number; y: number; status: InrPointStatus }
+
+function classifyInr(value: number, low: number, high: number): InrPointStatus {
+  if (value > 4.0) return 'critical_high'
+  if (value < 1.5) return 'critical_low'
+  if (value > high) return 'above'
+  if (value < low) return 'below'
+  return 'in_range'
+}
+
+const inrPointColors: Record<InrPointStatus, string> = {
+  in_range: 'var(--color-inr-safe)',
+  above: 'var(--color-inr-high)',
+  below: 'var(--color-inr-low)',
+  critical_high: 'var(--color-inr-critical)',
+  critical_low: 'var(--color-inr-critical)',
+}
 
 const displayRecords = computed(() => {
   const ordered = [...props.inrRecords].sort((a, b) => a.date.localeCompare(b.date))
@@ -69,6 +86,7 @@ const points = computed<ChartPoint[]>(() =>
     ...record,
     x: xForDate(record.date),
     y: yForValue(record.value),
+    status: classifyInr(record.value, props.targetLow, props.targetHigh),
   })),
 )
 
@@ -95,6 +113,26 @@ function buildSmoothPath(series: ChartPoint[]): string {
 }
 
 const linePath = computed(() => buildSmoothPath(points.value))
+
+const lineSegments = computed(() => {
+  if (points.value.length < 2) return []
+  const segments: { path: string; color: string }[] = []
+  for (let i = 0; i < points.value.length - 1; i++) {
+    const p1 = points.value[i]
+    const p2 = points.value[i + 1]
+    const segPoints = [p1, p2]
+    const path = buildSmoothPath(segPoints)
+    const color = p1.status === 'in_range' && p2.status === 'in_range'
+      ? 'var(--color-inr-safe)'
+      : (p1.status.startsWith('critical') || p2.status.startsWith('critical'))
+        ? 'var(--color-inr-critical)'
+        : (p1.status === 'above' || p2.status === 'above')
+          ? 'var(--color-inr-high)'
+          : 'var(--color-inr-low)'
+    segments.push({ path, color })
+  }
+  return segments
+})
 
 const targetBand = computed(() => {
   if (!valueRange.value) return null
@@ -158,8 +196,15 @@ const xTicks = computed(() => {
       <p class="body-sm" style="color: var(--color-stone)">ไม่มีข้อมูล INR</p>
     </div>
 
-    <div v-else class="chart-shell">
-      <svg class="chart-svg" :viewBox="`0 0 ${chartWidth} ${chartHeight}`" role="img" aria-label="กราฟแนวโน้ม INR">
+    <div v-else class="chart-legend" aria-label="ตำนานสีกราฟ INR">
+      <span class="legend-item"><span class="legend-dot" style="background: var(--color-inr-safe)"></span>อยู่ในเป้าหมาย</span>
+      <span class="legend-item"><span class="legend-dot" style="background: var(--color-inr-low)"></span>ต่ำกว่าเป้าหมาย</span>
+      <span class="legend-item"><span class="legend-dot" style="background: var(--color-inr-high)"></span>สูงกว่าเป้าหมาย</span>
+      <span class="legend-item"><span class="legend-dot" style="background: var(--color-inr-critical)"></span>วิกฤต</span>
+    </div>
+
+    <div v-if="displayRecords.length" class="chart-shell">
+      <svg class="chart-svg" :viewBox="`0 0 ${chartWidth} ${chartHeight}`" role="img" :aria-label="`กราฟแนวโน้ม INR แสดง ${displayRecords.length} ค่าย้อนหลัง 1 ปี เป้าหมาย ${targetLow.toFixed(1)} ถึง ${targetHigh.toFixed(1)}`">
         <rect
           v-if="targetBand"
           :x="padding.left"
@@ -197,7 +242,17 @@ const xTicks = computed(() => {
           />
         </g>
 
-        <path :d="linePath" class="trend-line" />
+        <path
+          v-for="(seg, idx) in lineSegments"
+          :key="`seg-${idx}`"
+          :d="seg.path"
+          :stroke="seg.color"
+          fill="none"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="trend-line-segment"
+        />
 
         <g class="point-layer">
           <circle
@@ -205,8 +260,12 @@ const xTicks = computed(() => {
             :key="`${point.date}-${point.value}`"
             :cx="point.x"
             :cy="point.y"
-            r="4"
+            r="5"
+            :fill="inrPointColors[point.status]"
+            stroke="var(--color-canvas)"
+            stroke-width="2"
             class="trend-point"
+            :aria-label="`INR ${point.value.toFixed(2)} วันที่ ${point.date} — ${point.status === 'in_range' ? 'อยู่ในเป้าหมาย' : point.status === 'above' ? 'สูงกว่าเป้าหมาย' : point.status === 'below' ? 'ต่ำกว่าเป้าหมาย' : 'วิกฤต'}`"
           />
         </g>
 
@@ -238,6 +297,25 @@ const xTicks = computed(() => {
 .trend-header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--spacing-md); }
 .trend-meta { color: var(--color-slate); }
 .trend-empty { display: grid; place-items: center; min-height: 16rem; }
+.chart-legend {
+  display: flex;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+  padding: var(--spacing-xs) 0;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--typography-caption-size);
+  color: var(--color-slate);
+}
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 .chart-shell {
   border: 1px solid var(--color-hairline-soft);
   border-radius: var(--rounded-xl);
@@ -262,17 +340,15 @@ const xTicks = computed(() => {
   stroke-width: 1.5;
   stroke-dasharray: 7 7;
 }
-.trend-line {
-  fill: none;
-  stroke: var(--color-primary);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.trend-line-segment {
+  opacity: 0.85;
 }
 .trend-point {
-  fill: var(--color-primary);
-  stroke: var(--color-canvas);
-  stroke-width: 2;
+  cursor: pointer;
+  transition: r 0.15s ease;
+}
+.trend-point:hover {
+  r: 7;
 }
 .x-axis text,
 .y-axis text {
