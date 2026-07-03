@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import AppSidebar from '#/components/layout/AppSidebar.vue'
 import AppHeader from '#/components/layout/AppHeader.vue'
+import { useAuthStore } from '#/stores/auth'
 import { useSyncStore } from '#/stores/sync'
 
+const route = useRoute()
 const syncStore = useSyncStore()
+const authStore = useAuthStore()
+
+// The login + first-time setup views are full-page layouts. Render them
+// without the sidebar/header chrome so the auth experience is uncluttered.
+const isAuthScreen = computed(
+  () => route.path === '/login' || route.path === '/setup',
+)
 
 const hideSplash = () => {
   const splash = document.getElementById('splash-overlay')
@@ -22,17 +32,30 @@ onMounted(async () => {
   // Minimum splash display time (1.2s) for visual smoothness
   setTimeout(hideSplash, 1200)
 
+  // The router guard also calls `bootstrap` lazily, but doing it here lets
+  // the auth store settle before any app-shell fetches fire.
   try {
-    await syncStore.refreshAll()
+    await authStore.bootstrap()
   } catch (error) {
-    console.error('Failed to refresh sync status:', error)
+    console.error('Failed to bootstrap auth:', error)
   }
-  syncStore.startAutoSync()
+
+  if (authStore.currentUser) {
+    try {
+      await syncStore.refreshAll()
+    } catch (error) {
+      console.error('Failed to refresh sync status:', error)
+    }
+    syncStore.startAutoSync()
+  }
 })
 </script>
 
 <template>
-  <div class="app-shell">
+  <div v-if="isAuthScreen" class="auth-router">
+    <RouterView />
+  </div>
+  <div v-else class="app-shell">
     <AppSidebar />
     <div class="app-main">
       <AppHeader />
@@ -60,5 +83,9 @@ onMounted(async () => {
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-xl);
+}
+.auth-router {
+  height: 100vh;
+  width: 100%;
 }
 </style>

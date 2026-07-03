@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { Bell } from 'lucide-vue-next'
+import { useRoute, useRouter } from 'vue-router'
+import { Bell, LogOut } from 'lucide-vue-next'
 import { useAlertStore } from '#/stores/alerts'
+import { useAuthStore } from '#/stores/auth'
 
 const route = useRoute()
+const router = useRouter()
 const alertStore = useAlertStore()
+const authStore = useAuthStore()
 
 const pageTitle = computed(() => {
   const map: Record<string, string> = {
@@ -23,6 +26,11 @@ const pageTitle = computed(() => {
 
 const totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount)
 
+async function handleLogout() {
+  await authStore.logout()
+  await router.replace('/login')
+}
+
 onMounted(() => {
   if (!alertStore.alerts.length) {
     void alertStore.fetchAlerts()
@@ -37,7 +45,15 @@ onMounted(() => {
       <p class="caption header-subtitle">ติดตาม INR, ขนาดยา และนัดหมายอย่างต่อเนื่อง</p>
     </div>
     <div class="header-actions">
+      <div v-if="authStore.currentUser" class="user-pill" :title="`ผู้ใช้: ${authStore.currentUser.username}`">
+        <span class="user-pill-name">{{ authStore.currentUser.username }}</span>
+        <span class="user-pill-role">{{ authStore.currentUser.role }}</span>
+      </div>
       <div v-if="totalAlerts > 0" class="alert-pill"><Bell :size="18" /><span>{{ totalAlerts }} แจ้งเตือน</span></div>
+      <button v-if="authStore.currentUser" type="button" class="logout-btn" title="ออกจากระบบ" @click="handleLogout">
+        <LogOut :size="18" />
+        <span>ออกจากระบบ</span>
+      </button>
     </div>
   </header>
 </template>
@@ -58,7 +74,26 @@ onMounted(() => {
   color: var(--color-ink);
 }
 .header-subtitle { color: var(--color-slate); }
-.header-actions { display: flex; align-items: center; }
+.header-actions { display: flex; align-items: center; gap: var(--spacing-sm); }
+.user-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--rounded-full);
+  background: var(--color-pink-50);
+  color: var(--color-charcoal);
+}
+.user-pill-name {
+  font-size: var(--typography-body-sm-medium-size);
+  font-weight: var(--typography-body-sm-medium-weight);
+  color: var(--color-ink);
+}
+.user-pill-role {
+  font-size: var(--typography-micro-size);
+  color: var(--color-slate);
+}
 .alert-pill {
   display: inline-flex;
   align-items: center;
@@ -69,5 +104,25 @@ onMounted(() => {
   color: var(--color-inr-high);
   font-size: var(--typography-body-sm-medium-size);
   font-weight: var(--typography-body-sm-medium-weight);
+}
+.logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--rounded-full);
+  background: var(--color-canvas);
+  color: var(--color-charcoal);
+  font-size: var(--typography-body-sm-medium-size);
+  font-weight: var(--typography-body-sm-medium-weight);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.logout-btn:hover {
+  background: var(--color-pink-50);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 </style>
