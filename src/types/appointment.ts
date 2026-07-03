@@ -6,6 +6,13 @@ export interface WfAppointment {
   status: 'scheduled' | 'completed' | 'missed' | 'cancelled'
   notes?: string
   createdAt: string
+  /**
+   * Backend-computed: true only when the appointment is in the past, the
+   * clinic ran that day, and the patient has no visit record for that day.
+   * Use this to decide whether to show "เกินนัด" badges. Optional because
+   * older callers that don't use the new query leave it undefined.
+   */
+  isOverdue?: boolean
 }
 
 export interface AppointmentInput {

@@ -858,16 +858,43 @@ pub async fn get_appointments(pool: &SqlitePool, hn: &str) -> Result<Vec<WfAppoi
         status: r.get("status"),
         notes: r.try_get("notes").ok(),
         created_at: r.get("created_at"),
+        is_overdue: None,
       })
       .collect(),
   )
 }
 
 /// Returns all pending (scheduled) appointments across all patients.
+///
+/// Each row also carries a computed `is_overdue` flag set when:
+/// - `appt_date < today`, AND
+/// - at least one `wf_visits` row exists for that day (clinic ran), AND
+/// - no `wf_visits` row exists for the same `hn` on that day (patient
+///   didn't attend).
+///
+/// An appointment is therefore overdue only when the clinic actually ran
+/// and the patient did not show up. Pure past dates on which the clinic
+/// was closed (no visit record at all) do not count.
 pub async fn get_pending_appointments(pool: &SqlitePool) -> Result<Vec<WfAppointment>> {
   let rows = sqlx::query(
-    "SELECT id, hn, appt_date, appt_type, status, notes, created_at \
-      FROM wf_appointments WHERE status = 'scheduled' AND deleted_at IS NULL ORDER BY appt_date ASC",
+    "SELECT a.id, a.hn, a.appt_date, a.appt_type, a.status, a.notes, a.created_at, \
+            CASE \
+              WHEN a.appt_date >= date('now') THEN 0 \
+              WHEN NOT EXISTS ( \
+                SELECT 1 FROM wf_visits v \
+                 WHERE v.visit_date = a.appt_date AND v.deleted_at IS NULL \
+              ) THEN 0 \
+              WHEN EXISTS ( \
+                SELECT 1 FROM wf_visits v \
+                 WHERE v.hn = a.hn \
+                   AND v.visit_date = a.appt_date \
+                   AND v.deleted_at IS NULL \
+              ) THEN 0 \
+              ELSE 1 \
+            END AS is_overdue \
+       FROM wf_appointments a \
+      WHERE a.status = 'scheduled' AND a.deleted_at IS NULL \
+      ORDER BY a.appt_date ASC",
   )
   .fetch_all(pool)
   .await
@@ -876,14 +903,18 @@ pub async fn get_pending_appointments(pool: &SqlitePool) -> Result<Vec<WfAppoint
   Ok(
     rows
       .iter()
-      .map(|r| WfAppointment {
-        id: r.get("id"),
-        hn: r.get("hn"),
-        appt_date: r.get("appt_date"),
-        appt_type: r.try_get("appt_type").ok(),
-        status: r.get("status"),
-        notes: r.try_get("notes").ok(),
-        created_at: r.get("created_at"),
+      .map(|r| {
+        let is_overdue: i64 = r.try_get("is_overdue").unwrap_or(0);
+        WfAppointment {
+          id: r.get("id"),
+          hn: r.get("hn"),
+          appt_date: r.get("appt_date"),
+          appt_type: r.try_get("appt_type").ok(),
+          status: r.get("status"),
+          notes: r.try_get("notes").ok(),
+          created_at: r.get("created_at"),
+          is_overdue: Some(is_overdue != 0),
+        }
       })
       .collect(),
   )

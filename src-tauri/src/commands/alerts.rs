@@ -166,9 +166,14 @@ pub async fn get_patient_alerts(state: State<'_, AppState>) -> Result<Vec<Patien
     }
 
     // ── Missed appointment ─────────────────────────────────────────────
+    // Only emit a missed-appointment alert when the appointment is truly
+    // overdue: the clinic actually ran on that day AND the patient has no
+    // visit record for that day. Pure past dates on which the clinic was
+    // closed do not count (e.g. holidays, off-days). The
+    // `is_overdue` flag is pre-computed in `get_pending_appointments`.
     for appt in pending_appts
       .iter()
-      .filter(|a| a.hn == patient.hn && a.status == "scheduled")
+      .filter(|a| a.hn == patient.hn && a.is_overdue == Some(true))
     {
       if let Ok(appt_date) = NaiveDate::parse_from_str(&appt.appt_date, "%Y-%m-%d")
         && appt_date < today

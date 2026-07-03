@@ -15,8 +15,11 @@ const summaries = ref<ActivePatientSummary[]>([])
 
 const patientMap = computed(() => new Map(summaries.value.map((summary) => [summary.patient.hn, summary])))
 
+const today = () => new Date().toISOString().slice(0, 10)
+
 const dateBuckets = computed(() => {
   const buckets = new Map<string, { date: string; count: number; overdueCount: number; urgentCount: number }>()
+  const cutoff = today()
 
   for (const appointment of appointments.value) {
     const existing = buckets.get(appointment.apptDate) ?? {
@@ -27,12 +30,32 @@ const dateBuckets = computed(() => {
     }
 
     existing.count += 1
-    if ((daysUntil(appointment.apptDate) ?? 0) < 0) existing.overdueCount += 1
+    if (appointment.isOverdue === true) existing.overdueCount += 1
     if (appointment.apptType === 'urgent') existing.urgentCount += 1
     buckets.set(appointment.apptDate, existing)
   }
 
-  return [...buckets.values()].sort((a, b) => a.date.localeCompare(b.date))
+  // Keep only dates that are today/future, or past dates that have at least
+  // one truly-overdue appointment (clinic ran that day AND patient didn't
+  // attend). Past dates on which the clinic was closed have no overdue
+  // appointments and are dropped.
+  const filtered = [...buckets.values()].filter((bucket) => {
+    return bucket.date >= cutoff || bucket.overdueCount > 0
+  })
+
+  // Sort: today + future dates ascending first, then past-overdue dates
+  // descending (most recent missed first).
+  return filtered.sort((a, b) => {
+    const aIsFuture = a.date >= cutoff
+    const bIsFuture = b.date >= cutoff
+    if (aIsFuture !== bIsFuture) {
+      return aIsFuture ? -1 : 1
+    }
+    if (aIsFuture) {
+      return a.date.localeCompare(b.date)
+    }
+    return b.date.localeCompare(a.date)
+  })
 })
 
 const selectedBucket = computed(() => {
@@ -65,7 +88,9 @@ const stats = computed(() => ({
     const delta = daysUntil(appointment.apptDate)
     return delta !== null && delta >= 0 && delta <= 7
   }).length,
-  overdue: appointments.value.filter((appointment) => (daysUntil(appointment.apptDate) ?? 0) < 0).length,
+  // "Actually overdue" = past + clinic ran that day + patient didn't attend.
+  // The Rust backend pre-computes this in get_pending_appointments.
+  overdue: appointments.value.filter((appointment) => appointment.isOverdue === true).length,
 }))
 
 async function loadAppointments() {

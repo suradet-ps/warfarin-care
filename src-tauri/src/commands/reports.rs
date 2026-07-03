@@ -194,12 +194,27 @@ pub async fn get_report_data(
       }))
     }
     "missed_appointments" => {
-      // Patients with at least one scheduled appointment whose appt_date
-      // is in the past and whose status has not been updated.
+      // Truly missed appointments: past date, clinic ran that day, and
+      // the patient has no visit record for that day. Pure past dates on
+      // which the clinic was closed are excluded. Mirrors the
+      // `is_overdue` logic in `get_pending_appointments`.
       let rows = sqlx::query_as::<_, (String, String)>(
-        "SELECT hn, appt_date FROM wf_appointments \
-          WHERE status = 'scheduled' AND appt_date < date('now') \
-          ORDER BY appt_date DESC LIMIT 200",
+        "SELECT a.hn, a.appt_date \
+           FROM wf_appointments a \
+          WHERE a.status = 'scheduled' \
+            AND a.deleted_at IS NULL \
+            AND a.appt_date < date('now') \
+            AND EXISTS ( \
+              SELECT 1 FROM wf_visits v \
+               WHERE v.visit_date = a.appt_date AND v.deleted_at IS NULL \
+            ) \
+            AND NOT EXISTS ( \
+              SELECT 1 FROM wf_visits v \
+               WHERE v.hn = a.hn \
+                 AND v.visit_date = a.appt_date \
+                 AND v.deleted_at IS NULL \
+            ) \
+          ORDER BY a.appt_date DESC LIMIT 200",
       )
       .fetch_all(&state.pool)
       .await

@@ -10,6 +10,12 @@ pub struct WfAppointment {
   pub status: String,
   pub notes: Option<String>,
   pub created_at: String,
+  /// `true` only when the appointment is in the past, the clinic ran on that
+  /// day, AND the patient has no `wf_visits` row for that day. Populated by
+  /// `get_pending_appointments`; older callers leave it `None` so the field
+  /// stays backward-compatible over Tauri IPC.
+  #[serde(skip_serializing_if = "Option::is_none", default)]
+  pub is_overdue: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
