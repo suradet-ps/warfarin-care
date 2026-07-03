@@ -5,6 +5,7 @@
 
 pub mod alert;
 pub mod appointment;
+pub mod auth;
 pub mod dispensing;
 pub mod inr;
 pub mod interaction;
