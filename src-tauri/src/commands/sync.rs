@@ -585,10 +585,9 @@ pub async fn push_to_supabase(
 
   let appointment_rows: Vec<WfAppointmentSync> = sqlx::query_as(
     "SELECT a.sync_id, a.machine_id, a.hn, a.appt_date, a.appt_type, a.status, a.notes, \
-            a.source_visit_id, COALESCE(a.source_visit_sync_id, v.sync_id) AS source_visit_sync_id, \
+            a.source_visit_id, a.source_visit_sync_id, \
             a.generated_from_visit, a.created_at, a.updated_at, a.deleted_at \
        FROM wf_appointments a \
-       LEFT JOIN wf_visits v ON v.id = a.source_visit_id \
       WHERE a.sync_id IS NOT NULL AND (a.synced_at IS NULL OR a.updated_at > a.synced_at)",
   )
   .fetch_all(&state.pool)
