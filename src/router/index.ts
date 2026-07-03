@@ -35,6 +35,11 @@ router.beforeEach(async (to) => {
     if (auth.currentUser) {
       return { path: '/' }
     }
+    // First-run: no users yet. Always force the bootstrap onto the setup
+    // screen, even if the user typed `/login` or hit the app cold.
+    if (!auth.hasUsers && to.path !== '/setup') {
+      return { path: '/setup' }
+    }
     if (to.path === '/setup' && auth.hasUsers) {
       return { path: '/login' }
     }
