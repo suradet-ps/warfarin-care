@@ -29,3 +29,7 @@ hkdf = "0.13"
 rand = "0.10"
 sha2 = "0.11"
 base64 = "0.22"
+
+# Argon2id password hashing for the local-auth subsystem.
+argon2 = { version = "0.5", features = ["std"] }
+password-hash = "0.5"

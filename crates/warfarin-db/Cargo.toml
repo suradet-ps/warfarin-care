@@ -30,3 +30,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 # Serde for the sync row models (derive) and the DbConfig struct.
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
+
+[dev-dependencies]
+# `#[tokio::test]` macro for the auth service unit tests.
+tokio = { version = "1", features = ["rt", "macros"] }
