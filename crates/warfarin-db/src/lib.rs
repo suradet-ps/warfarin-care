@@ -19,6 +19,8 @@
 // Uniform sqlx/serde_json → anyhow error contract; see crate docs above.
 #![allow(clippy::missing_errors_doc)]
 
+pub mod auth_repository;
+pub mod auth_service;
 pub mod mysql;
 pub mod sqlite;
 pub mod sync_models;
