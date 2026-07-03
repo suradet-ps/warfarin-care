@@ -5,6 +5,9 @@ use std::{
   ffi::OsStr,
   path::{Path, PathBuf},
 };
+use tauri::State;
+
+use warfarin_db::sqlite::AppState;
 
 fn validate_output_path(path: &str) -> Result<PathBuf> {
   let requested = Path::new(path);
@@ -34,7 +37,12 @@ fn validate_output_path(path: &str) -> Result<PathBuf> {
 
 /// Saves generated slip PDF bytes to a user-selected filesystem path.
 #[tauri::command]
-pub async fn save_slip_pdf(path: String, bytes: Vec<u8>) -> Result<(), String> {
+pub async fn save_slip_pdf(
+  path: String,
+  bytes: Vec<u8>,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  state.require_auth().await?;
   if bytes.is_empty() {
     return Err("pdf content is empty".to_string());
   }

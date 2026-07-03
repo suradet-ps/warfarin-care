@@ -21,6 +21,7 @@ use warfarin_db::{
 
 #[tauri::command]
 pub async fn get_active_patients(state: State<'_, AppState>) -> Result<Vec<WfPatient>, String> {
+  state.require_auth().await?;
   db_get_active(&state.pool).await.map_err(|e| e.to_string())
 }
 
@@ -28,6 +29,7 @@ pub async fn get_active_patients(state: State<'_, AppState>) -> Result<Vec<WfPat
 pub async fn get_active_patient_summaries(
   state: State<'_, AppState>,
 ) -> Result<Vec<ActivePatientSummary>, String> {
+  state.require_auth().await?;
   let patients = db_get_active(&state.pool)
     .await
     .map_err(|e| e.to_string())?;
@@ -112,6 +114,7 @@ pub async fn enroll_patient(
   input: EnrollmentInput,
   state: State<'_, AppState>,
 ) -> Result<i64, String> {
+  state.require_auth().await?;
   db_enroll(&state.pool, &input, &state.machine_id)
     .await
     .map_err(|e| e.to_string())
@@ -122,6 +125,7 @@ pub async fn get_patient_detail(
   hn: String,
   state: State<'_, AppState>,
 ) -> Result<PatientDetail, String> {
+  state.require_auth().await?;
   let patient = get_patient_by_hn(&state.pool, &hn)
     .await
     .map_err(|e| e.to_string())?
@@ -184,6 +188,7 @@ pub async fn update_patient_status(
   effective_date: Option<String>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
+  state.require_auth().await?;
   db_update_status(
     &state.pool,
     &hn,

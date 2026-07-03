@@ -16,6 +16,7 @@ pub async fn search_warfarin_patients(
   filters: warfarin_core::models::patient::SearchFilters,
   state: State<'_, AppState>,
 ) -> Result<SearchResponse, String> {
+  state.require_auth().await?;
   // Clamp inputs to safe ranges before the SQL layer sees them. Returning
   // silently-clamped values keeps the FE working (e.g. if it asks for 500).
   let filters = normalize_search_filters(filters);

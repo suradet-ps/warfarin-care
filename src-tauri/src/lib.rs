@@ -31,6 +31,7 @@ use commands::{
   appointments::{
     get_appointment_day_load, get_appointments, get_pending_appointments, schedule_appointment,
   },
+  auth::{current_user, has_users, is_logged_in, login, logout, setup_admin},
   inr::{get_inr_history, get_latest_inr},
   interaction::{
     add_drug_interaction, delete_drug_interaction, get_all_drug_interactions,
@@ -195,6 +196,12 @@ pub fn run() -> tauri::Result<()> {
       pull_from_supabase,
       get_sync_status,
       get_sync_summary,
+      has_users,
+      setup_admin,
+      login,
+      logout,
+      is_logged_in,
+      current_user,
     ])
     .run(tauri::generate_context!())
 }

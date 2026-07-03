@@ -1175,6 +1175,12 @@ pub async fn approve_visit(
 
 // AppState
 
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+use crate::auth_service::AuthSessionSlot;
+use warfarin_core::models::auth::PublicUser;
+
 /// Application state managed by Tauri, wrapping the `SQLite` connection pool.
 ///
 /// Registered with `tauri::Builder::manage()` and injected into every command
@@ -1184,12 +1190,45 @@ pub struct AppState {
   pub pool: SqlitePool,
   /// Stable identifier for the current machine, used for sync metadata.
   pub machine_id: String,
+  /// In-memory authentication session slot. Always `None` after process start;
+  /// populated only by a successful `login` / `setup_admin` command, cleared
+  /// by `logout` or process exit.
+  pub auth_session: AuthSessionSlot,
 }
 
 impl AppState {
   /// Constructs `AppState` from an already-initialised pool.
   #[must_use]
   pub fn new(pool: SqlitePool, machine_id: String) -> Self {
-    Self { pool, machine_id }
+    Self {
+      pool,
+      machine_id,
+      auth_session: Arc::new(Mutex::new(None)),
+    }
+  }
+
+  /// Returns `true` if a session is currently in memory.
+  pub async fn is_authenticated(&self) -> bool {
+    self.auth_session.lock().await.is_some()
+  }
+
+  /// Returns the public view of the logged-in user, or `None` when no
+  /// session is active.
+  pub async fn current_user(&self) -> Option<PublicUser> {
+    self
+      .auth_session
+      .lock()
+      .await
+      .as_ref()
+      .map(warfarin_core::models::auth::AuthSession::public_user)
+  }
+
+  /// Returns the public user view or a generic `NOT_AUTHENTICATED` error
+  /// suitable for surfacing from a Tauri command.
+  pub async fn require_auth(&self) -> Result<PublicUser, String> {
+    self
+      .current_user()
+      .await
+      .ok_or_else(|| "NOT_AUTHENTICATED".to_string())
   }
 }

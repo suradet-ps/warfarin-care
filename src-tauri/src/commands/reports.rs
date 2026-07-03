@@ -16,6 +16,7 @@ pub async fn calculate_ttr(
   window_days: u32,
   state: State<'_, AppState>,
 ) -> Result<Option<f64>, String> {
+  state.require_auth().await?;
   let patient = warfarin_db::sqlite::get_patient_by_hn(&state.pool, &hn)
     .await
     .map_err(|e| e.to_string())?
@@ -48,6 +49,7 @@ pub async fn calculate_clinic_ttr(
   window_days: u32,
   state: State<'_, AppState>,
 ) -> Result<f64, String> {
+  state.require_auth().await?;
   let patients = get_active_patients(&state.pool)
     .await
     .map_err(|e| e.to_string())?;
@@ -101,6 +103,7 @@ pub async fn get_report_data(
   report_type: String,
   state: State<'_, AppState>,
 ) -> Result<Value, String> {
+  state.require_auth().await?;
   match report_type.as_str() {
     "census" => {
       let patients = warfarin_db::sqlite::get_all_patients(&state.pool)

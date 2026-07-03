@@ -38,6 +38,7 @@ pub struct PatientDrugInteractionSummary {
 pub async fn get_all_drug_interactions(
   state: State<'_, warfarin_db::sqlite::AppState>,
 ) -> Result<Vec<DrugInteraction>, String> {
+  state.require_auth().await?;
   warfarin_db::sqlite::get_all_drug_interactions(&state.pool)
     .await
     .map_err(|e| e.to_string())
@@ -48,6 +49,7 @@ pub async fn add_drug_interaction(
   state: State<'_, warfarin_db::sqlite::AppState>,
   input: DrugInteractionInput,
 ) -> Result<i64, String> {
+  state.require_auth().await?;
   warfarin_db::sqlite::add_drug_interaction(&state.pool, &input)
     .await
     .map_err(|e| e.to_string())
@@ -58,6 +60,7 @@ pub async fn delete_drug_interaction(
   state: State<'_, warfarin_db::sqlite::AppState>,
   id: i64,
 ) -> Result<(), String> {
+  state.require_auth().await?;
   warfarin_db::sqlite::delete_drug_interaction(&state.pool, id)
     .await
     .map_err(|e| e.to_string())
@@ -67,7 +70,9 @@ pub async fn delete_drug_interaction(
 pub async fn search_hosxp_drugs(
   mysql_config: mysql::DbConfig,
   keyword: String,
+  state: State<'_, warfarin_db::sqlite::AppState>,
 ) -> Result<Vec<HosxpDrugItem>, String> {
+  state.require_auth().await?;
   let pool = mysql::create_pool(&mysql_config)
     .await
     .map_err(|e| e.to_string())?;
@@ -118,6 +123,7 @@ pub async fn get_patient_drug_interactions(
   ),
   String,
 > {
+  state.require_auth().await?;
   let interaction_icodes = warfarin_db::sqlite::get_drug_interaction_icodes(&state.pool)
     .await
     .map_err(|e| e.to_string())?;

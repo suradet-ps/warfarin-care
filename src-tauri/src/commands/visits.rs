@@ -18,6 +18,7 @@ pub async fn get_visit_history(
   hn: String,
   state: State<'_, AppState>,
 ) -> Result<Vec<WfVisit>, String> {
+  state.require_auth().await?;
   db_history(&state.pool, &hn)
     .await
     .map_err(|e| e.to_string())
@@ -25,6 +26,7 @@ pub async fn get_visit_history(
 
 #[tauri::command]
 pub async fn get_visit_by_id(visit_id: i64, state: State<'_, AppState>) -> Result<WfVisit, String> {
+  state.require_auth().await?;
   db_get_visit_by_id(&state.pool, visit_id)
     .await
     .map_err(|e| e.to_string())?
@@ -33,6 +35,7 @@ pub async fn get_visit_by_id(visit_id: i64, state: State<'_, AppState>) -> Resul
 
 #[tauri::command]
 pub async fn save_visit(visit: VisitInput, state: State<'_, AppState>) -> Result<i64, String> {
+  state.require_auth().await?;
   db_save(&state.pool, &visit, &state.machine_id)
     .await
     .map_err(|e| e.to_string())
@@ -44,6 +47,7 @@ pub async fn update_visit(
   visit: VisitInput,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
+  state.require_auth().await?;
   db_update_visit(&state.pool, visit_id, &visit, &state.machine_id)
     .await
     .map_err(|e| e.to_string())
@@ -60,13 +64,16 @@ pub async fn suggest_dose(
   current_inr: f64,
   target_low: f64,
   target_high: f64,
+  state: State<'_, AppState>,
 ) -> Result<DoseSuggestion, String> {
+  state.require_auth().await?;
   suggest_dose_from_daily(current_dose_mgday, current_inr, target_low, target_high)
     .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn delete_visit(visit_id: i64, state: State<'_, AppState>) -> Result<(), String> {
+  state.require_auth().await?;
   db_delete_visit(&state.pool, visit_id, &state.machine_id)
     .await
     .map_err(|e| e.to_string())
@@ -74,11 +81,13 @@ pub async fn delete_visit(visit_id: i64, state: State<'_, AppState>) -> Result<(
 
 #[tauri::command]
 pub async fn get_pending_review_visits(state: State<'_, AppState>) -> Result<Vec<WfVisit>, String> {
+  state.require_auth().await?;
   db_pending(&state.pool).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn get_pending_review_count(state: State<'_, AppState>) -> Result<i64, String> {
+  state.require_auth().await?;
   db_pending_count(&state.pool)
     .await
     .map_err(|e| e.to_string())
@@ -90,6 +99,7 @@ pub async fn approve_visit(
   reviewer: String,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
+  state.require_auth().await?;
   db_approve_visit(&state.pool, visit_id, &reviewer, &state.machine_id)
     .await
     .map_err(|e| e.to_string())

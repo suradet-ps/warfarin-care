@@ -133,6 +133,7 @@ async fn load_or_mint_encryption_key(pool: &sqlx::SqlitePool) -> Result<[u8; 32]
 
 #[tauri::command]
 pub async fn get_settings(state: State<'_, AppState>) -> Result<HashMap<String, String>, String> {
+  state.require_auth().await?;
   let pairs = get_all_settings(&state.pool)
     .await
     .map_err(|e| e.to_string())?;
@@ -145,6 +146,7 @@ pub async fn save_setting(
   value: String,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
+  state.require_auth().await?;
   set_setting(&state.pool, &key, &value)
     .await
     .map_err(|e| e.to_string())
@@ -159,6 +161,7 @@ pub async fn test_mysql_connection(
   config: DbConfig,
   state: State<'_, AppState>,
 ) -> Result<bool, String> {
+  state.require_auth().await?;
   let merged = merge_with_stored_password(&state.pool, config).await?;
   let ok = db_test_connection(&merged).await;
   if ok {
@@ -173,6 +176,7 @@ pub async fn test_mysql_connection(
 /// password is empty, the existing stored password is preserved.
 #[tauri::command]
 pub async fn save_mysql_config(config: DbConfig, state: State<'_, AppState>) -> Result<(), String> {
+  state.require_auth().await?;
   let merged = merge_with_stored_password(&state.pool, config).await?;
   persist_mysql_config(&state.pool, &merged).await
 }
@@ -212,6 +216,7 @@ async fn persist_mysql_config(pool: &sqlx::SqlitePool, config: &DbConfig) -> Res
 pub async fn get_mysql_config_for_ui(
   state: State<'_, AppState>,
 ) -> Result<Option<DbConfig>, String> {
+  state.require_auth().await?;
   let Some(stored) = get_setting(&state.pool, MYSQL_CONFIG_KEY)
     .await
     .map_err(|e| e.to_string())?
@@ -249,6 +254,7 @@ pub struct MysqlConfigStatus {
 pub async fn get_mysql_config_status(
   state: State<'_, AppState>,
 ) -> Result<MysqlConfigStatus, String> {
+  state.require_auth().await?;
   let cfg = get_mysql_config_internal(&state.pool).await?;
   Ok(match cfg {
     Some(c) => MysqlConfigStatus {
@@ -274,6 +280,7 @@ pub async fn get_setting_value(
   key: String,
   state: State<'_, AppState>,
 ) -> Result<Option<String>, String> {
+  state.require_auth().await?;
   get_setting(&state.pool, &key)
     .await
     .map_err(|e| e.to_string())

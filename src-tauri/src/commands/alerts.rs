@@ -15,6 +15,7 @@ const NO_INR_DAYS: i64 = 90;
 
 #[tauri::command]
 pub async fn get_patient_alerts(state: State<'_, AppState>) -> Result<Vec<PatientAlert>, String> {
+  state.require_auth().await?;
   let patients = get_active_patients(&state.pool)
     .await
     .map_err(|e| e.to_string())?;

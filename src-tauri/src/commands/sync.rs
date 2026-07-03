@@ -359,7 +359,9 @@ pub async fn save_supabase_config(
   app: AppHandle,
   url: String,
   anon_key: String,
+  state: State<'_, AppState>,
 ) -> Result<(), String> {
+  state.require_auth().await?;
   let normalized_url = url.trim().trim_end_matches('/').to_string();
   if normalized_url.is_empty() {
     return Err("Supabase URL is required".to_string());
@@ -380,7 +382,9 @@ pub async fn test_supabase_connection(
   app: AppHandle,
   url: String,
   anon_key: String,
+  state: State<'_, AppState>,
 ) -> Result<ConnectionTestResult, String> {
+  state.require_auth().await?;
   let trimmed_url = url.trim().trim_end_matches('/').to_string();
   if trimmed_url.is_empty() {
     return Err("กรุณากรอก Supabase URL".to_string());
@@ -459,7 +463,11 @@ pub async fn test_supabase_connection(
 }
 
 #[tauri::command]
-pub async fn get_sync_summary(app: AppHandle) -> Result<SyncSummary, String> {
+pub async fn get_sync_summary(
+  app: AppHandle,
+  state: State<'_, AppState>,
+) -> Result<SyncSummary, String> {
+  state.require_auth().await?;
   let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
   Ok(SyncSummary {
     has_anon_key: store
@@ -477,6 +485,7 @@ pub async fn push_to_supabase(
   app: AppHandle,
   state: State<'_, AppState>,
 ) -> Result<SyncResult, String> {
+  state.require_auth().await?;
   let (url, anon_key) = get_supabase_config(&app)?;
   let machine_id = get_or_create_machine_id(&app)?;
   let client = supabase_client();
@@ -670,6 +679,7 @@ pub async fn pull_from_supabase(
   app: AppHandle,
   state: State<'_, AppState>,
 ) -> Result<SyncResult, String> {
+  state.require_auth().await?;
   let (url, anon_key) = get_supabase_config(&app)?;
   let machine_id = get_or_create_machine_id(&app)?;
   let client = supabase_client();
@@ -1261,6 +1271,7 @@ pub async fn get_sync_status(
   app: AppHandle,
   state: State<'_, AppState>,
 ) -> Result<SyncStatus, String> {
+  state.require_auth().await?;
   let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
   let machine_id = get_or_create_machine_id(&app)?;
 
