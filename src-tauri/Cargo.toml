@@ -4,6 +4,7 @@ version = "2.2.0"
 description = "Warfarin Care — Clinic Management System"
 authors = ["Suradet Pratomsak"]
 edition = "2024"
+license = "MIT"
 
 [lib]
 name = "warfarin_care_lib"
