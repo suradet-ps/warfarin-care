@@ -6,11 +6,6 @@
 //! unit-tested in isolation and reused outside the desktop app.
 
 #![warn(clippy::pedantic)]
-// `aes-gcm 0.11` exposes `Nonce::from_slice` as a deprecated alias for the
-// `TryFrom` impl on `GenericArray`. The upstream fix is on a 0.12+ release
-// line; until we upgrade, silence the deprecation so `clippy -D warnings`
-// stays green.
-#![allow(deprecated)]
 
 pub mod auth;
 pub mod dose;

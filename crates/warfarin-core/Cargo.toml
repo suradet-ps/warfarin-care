@@ -24,11 +24,7 @@ thiserror = "2"
 regex = "1"
 
 # AES-256-GCM encryption of MySQL/Supabase credentials at rest.
-aes-gcm = "0.11"
-hkdf = "0.13"
-rand = "0.10"
-sha2 = "0.11"
-base64 = "0.22"
+encryptman = "0.2"
 
 # Argon2id password hashing for the local-auth subsystem.
 argon2 = { version = "0.5", features = ["std"] }
