@@ -2,7 +2,7 @@
 #
 # Pure-Rust domain logic lives under `crates/` and must NEVER depend on Tauri.
 # The Tauri application under `src-tauri/` is a thin wrapper that delegates to
-# the workspace crates. See `AGENTS-RUST.md` for the full workspace rules.
+# the workspace crates. See `docs/AGENTS-RUST.md` for the full workspace rules.
 #
 # Per the workspace guidelines, each member crate declares its own dependency
 # versions explicitly — `[workspace.dependencies]` inheritance is intentionally
