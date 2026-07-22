@@ -5,6 +5,8 @@
 //! used by the data layer (during `INSERT` / `verify_password`) and by any
 //! future test harness.
 
+#[cfg(miri)]
+use argon2::{Algorithm, Params, Version};
 use argon2::{
   Argon2,
   password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
@@ -97,6 +99,21 @@ pub fn validate_password_strength(input: &str) -> Result<(), String> {
   Ok(())
 }
 
+fn argon2_hasher() -> Argon2<'static> {
+  #[cfg(miri)]
+  {
+    Argon2::new(
+      Algorithm::Argon2id,
+      Version::V0x13,
+      Params::new(8, 1, 1, None).expect("Miri Argon2 params should be valid"),
+    )
+  }
+  #[cfg(not(miri))]
+  {
+    Argon2::default()
+  }
+}
+
 /// Hashes a plaintext password with Argon2id using a fresh random salt.
 ///
 /// Returns a PHC-formatted string (`$argon2id$...`) that can be stored in
@@ -111,7 +128,7 @@ pub fn hash_password(plaintext: &str) -> Result<String, String> {
     return Err("password is empty".to_string());
   }
   let salt = SaltString::generate(&mut OsRng);
-  let hasher = Argon2::default();
+  let hasher = argon2_hasher();
   let hash = hasher
     .hash_password(plaintext.as_bytes(), &salt)
     .map_err(|e| format!("password hash failed: {e}"))?;
@@ -129,7 +146,7 @@ pub fn hash_password(plaintext: &str) -> Result<String, String> {
 /// Returns `Err` when the stored hash cannot be parsed.
 pub fn verify_password(plaintext: &str, phc_hash: &str) -> Result<bool, String> {
   let parsed = PasswordHash::new(phc_hash).map_err(|e| format!("invalid stored hash: {e}"))?;
-  match Argon2::default().verify_password(plaintext.as_bytes(), &parsed) {
+  match argon2_hasher().verify_password(plaintext.as_bytes(), &parsed) {
     Ok(()) => Ok(true),
     Err(argon2::password_hash::Error::Password) => Ok(false),
     Err(e) => Err(format!("password verify failed: {e}")),
