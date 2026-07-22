@@ -233,6 +233,7 @@ mod tests {
   }
 
   #[test]
+  #[cfg_attr(miri, ignore = "requires system clock access")]
   fn lockout_until_now_is_in_the_future() {
     let s = lockout_until_now();
     let parsed = chrono::DateTime::parse_from_rfc3339(&s).unwrap();
