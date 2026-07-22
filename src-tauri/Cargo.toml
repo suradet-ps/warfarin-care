@@ -22,7 +22,7 @@ warfarin-db = { path = "../crates/warfarin-db" }
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 tauri-plugin-store = "2"
-base64 = "0.22"
+encryptman-keyring = "0.1"
 sqlx = { version = "0.9", features = ["mysql", "sqlite", "runtime-tokio", "chrono", "macros"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -32,7 +32,6 @@ anyhow = "1"
 tauri-plugin-dialog = "2"
 reqwest = { version = "0.13", features = ["json"] }
 uuid = { version = "1", features = ["v4", "serde"] }
-keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native", "sync-secret-service"] }
 
 [features]
 default = ["custom-protocol"]
