@@ -686,7 +686,9 @@ pub async fn push_to_supabase(
       )
       .await
       {
-        result.errors.push(format!("wf_appointments: {retry_error}"));
+        result
+          .errors
+          .push(format!("wf_appointments: {retry_error}"));
       } else {
         let sync_ids = sync_ids_from_rows(&retry_rows, |row| row.sync_id.as_ref());
         mark_rows_synced(&state.pool, "wf_appointments", &sync_ids, &now).await?;
