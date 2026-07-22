@@ -234,6 +234,43 @@ async fn ensure_sync_ids(
   Ok(())
 }
 
+/// Clears duplicate `source_visit_sync_id` values among active appointments.
+///
+/// When multiple rows share the same non-NULL `source_visit_sync_id` the
+/// Supabase upsert (which resolves on `sync_id`) will fail with HTTP 409 /
+/// Postgres `23505` on `idx_wf_appointments_source_visit_sync_id`.  This
+/// repair keeps only the most-recently-updated row per link and NULLs the
+/// rest so they can be pushed safely.
+async fn deduplicate_appointment_source_visit_sync_ids(
+  pool: &sqlx::SqlitePool,
+  machine_id: &str,
+) -> Result<(), String> {
+  let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+  sqlx::query(
+    "WITH ranked AS ( \
+       SELECT id, \
+              ROW_NUMBER() OVER ( \
+                PARTITION BY source_visit_sync_id \
+                ORDER BY updated_at DESC \
+              ) AS rn \
+         FROM wf_appointments \
+        WHERE source_visit_sync_id IS NOT NULL \
+          AND deleted_at IS NULL \
+     ) \
+     UPDATE wf_appointments \
+        SET source_visit_sync_id = NULL, \
+            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), \
+            machine_id = COALESCE(machine_id, ?) \
+      WHERE id IN (SELECT id FROM ranked WHERE rn > 1)",
+  )
+  .bind(machine_id)
+  .execute(&mut *tx)
+  .await
+  .map_err(|e| e.to_string())?;
+  tx.commit().await.map_err(|e| e.to_string())?;
+  Ok(())
+}
+
 fn sync_ids_from_rows<T>(rows: &[T], get_sync_id: impl Fn(&T) -> Option<&String>) -> Vec<String> {
   rows.iter().filter_map(get_sync_id).cloned().collect()
 }
@@ -583,6 +620,8 @@ pub async fn push_to_supabase(
     result.pushed += dose_history_rows.len();
   }
 
+  deduplicate_appointment_source_visit_sync_ids(&state.pool, &machine_id).await?;
+
   let appointment_rows: Vec<WfAppointmentSync> = sqlx::query_as(
     "SELECT a.sync_id, a.machine_id, a.hn, a.appt_date, a.appt_type, a.status, a.notes, \
             a.source_visit_id, a.source_visit_sync_id, \
@@ -593,7 +632,7 @@ pub async fn push_to_supabase(
   .fetch_all(&state.pool)
   .await
   .map_err(|e| e.to_string())?;
-  if let Err(error) = push_rows(
+  match push_rows(
     &client,
     &url,
     &anon_key,
@@ -604,11 +643,59 @@ pub async fn push_to_supabase(
   )
   .await
   {
-    result.errors.push(format!("wf_appointments: {error}"));
-  } else {
-    let sync_ids = sync_ids_from_rows(&appointment_rows, |row| row.sync_id.as_ref());
-    mark_rows_synced(&state.pool, "wf_appointments", &sync_ids, &now).await?;
-    result.pushed += appointment_rows.len();
+    Ok(()) => {
+      let sync_ids = sync_ids_from_rows(&appointment_rows, |row| row.sync_id.as_ref());
+      mark_rows_synced(&state.pool, "wf_appointments", &sync_ids, &now).await?;
+      result.pushed += appointment_rows.len();
+    }
+    Err(error) if error.contains("409") => {
+      let retry_now = chrono::Utc::now().to_rfc3339();
+      sqlx::query(
+        "UPDATE wf_appointments \
+           SET source_visit_sync_id = NULL, \
+               updated_at = ?, \
+               machine_id = COALESCE(machine_id, ?) \
+         WHERE sync_id IS NOT NULL \
+           AND (synced_at IS NULL OR updated_at > synced_at) \
+           AND source_visit_sync_id IS NOT NULL",
+      )
+      .bind(&retry_now)
+      .bind(&machine_id)
+      .execute(&state.pool)
+      .await
+      .map_err(|e| e.to_string())?;
+
+      let retry_rows: Vec<WfAppointmentSync> = sqlx::query_as(
+        "SELECT a.sync_id, a.machine_id, a.hn, a.appt_date, a.appt_type, a.status, a.notes, \
+                a.source_visit_id, a.source_visit_sync_id, \
+                a.generated_from_visit, a.created_at, a.updated_at, a.deleted_at \
+           FROM wf_appointments a \
+          WHERE a.sync_id IS NOT NULL AND (a.synced_at IS NULL OR a.updated_at > a.synced_at)",
+      )
+      .fetch_all(&state.pool)
+      .await
+      .map_err(|e| e.to_string())?;
+      if let Err(retry_error) = push_rows(
+        &client,
+        &url,
+        &anon_key,
+        &machine_id,
+        "wf_appointments",
+        "sync_id",
+        &retry_rows,
+      )
+      .await
+      {
+        result.errors.push(format!("wf_appointments: {retry_error}"));
+      } else {
+        let sync_ids = sync_ids_from_rows(&retry_rows, |row| row.sync_id.as_ref());
+        mark_rows_synced(&state.pool, "wf_appointments", &sync_ids, &now).await?;
+        result.pushed += retry_rows.len();
+      }
+    }
+    Err(error) => {
+      result.errors.push(format!("wf_appointments: {error}"));
+    }
   }
 
   let outcome_rows: Vec<WfOutcomeSync> = sqlx::query_as(

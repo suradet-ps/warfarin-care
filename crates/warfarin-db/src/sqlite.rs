@@ -683,16 +683,20 @@ async fn sync_visit_appointment(
       WHERE deleted_at IS NULL AND (\
             (hn = ? AND appt_date = ? AND status = 'scheduled' \
               AND source_visit_id IS NULL AND source_visit_sync_id IS NULL)\
-         OR source_visit_sync_id = ?) \
+         OR source_visit_sync_id = ? \
+         OR (source_visit_sync_id IS NULL AND source_visit_id = ?)) \
       ORDER BY CASE \
           WHEN source_visit_sync_id = ? THEN 0 \
-          ELSE 1 \
+          WHEN source_visit_id = ? THEN 1 \
+          ELSE 2 \
         END, id DESC LIMIT 1",
   )
   .bind(&input.hn)
   .bind(next_appointment)
   .bind(visit_sync_id)
+  .bind(visit_id)
   .bind(visit_sync_id)
+  .bind(visit_id)
   .fetch_optional(&mut **tx)
   .await
   .context("failed to find reusable appointment for visit")?;
