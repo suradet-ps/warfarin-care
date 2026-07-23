@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { toPng } from 'html-to-image';
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
 import { Download, Printer } from 'lucide-vue-next';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -106,6 +106,44 @@ async function printSlip() {
   }
 }
 
+function captureSlipImage(): Promise<string> {
+  const el = slipCapture.value!;
+  const backgroundColor = getCssVar('--color-canvas') || 'white';
+  const rect = el.getBoundingClientRect();
+  return toPng(el, {
+    backgroundColor,
+    cacheBust: true,
+    pixelRatio: Math.max(window.devicePixelRatio, 2),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+  });
+}
+
+function buildPdf(imageData: string, rectHeight: number, rectWidth: number): jsPDF {
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+  });
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const imageAspectRatio = rectHeight / rectWidth;
+  let renderWidth = pageWidth;
+  let renderHeight = renderWidth * imageAspectRatio;
+
+  if (renderHeight > pageHeight) {
+    renderHeight = pageHeight;
+    renderWidth = renderHeight / imageAspectRatio;
+  }
+
+  const offsetX = (pageWidth - renderWidth) / 2;
+  const offsetY = (pageHeight - renderHeight) / 2;
+  pdf.addImage(imageData, 'PNG', offsetX, offsetY, renderWidth, renderHeight, undefined, 'FAST');
+  return pdf;
+}
+
 async function exportPdf() {
   if (!(canOutput.value && slipCapture.value && visit.value)) {
     return;
@@ -126,37 +164,9 @@ async function exportPdf() {
       return;
     }
 
-    const backgroundColor = getCssVar('--color-canvas') || 'white';
+    const imageData = await captureSlipImage();
     const rect = slipCapture.value.getBoundingClientRect();
-    const imageData = await toPng(slipCapture.value, {
-      backgroundColor,
-      cacheBust: true,
-      pixelRatio: Math.max(window.devicePixelRatio, 2),
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
-    });
-
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-      compress: true,
-    });
-
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imageAspectRatio = rect.height / rect.width;
-    let renderWidth = pageWidth;
-    let renderHeight = renderWidth * imageAspectRatio;
-
-    if (renderHeight > pageHeight) {
-      renderHeight = pageHeight;
-      renderWidth = renderHeight / imageAspectRatio;
-    }
-
-    const offsetX = (pageWidth - renderWidth) / 2;
-    const offsetY = (pageHeight - renderHeight) / 2;
-    pdf.addImage(imageData, 'PNG', offsetX, offsetY, renderWidth, renderHeight, undefined, 'FAST');
+    const pdf = buildPdf(imageData, rect.height, rect.width);
 
     const bytes = new Uint8Array(pdf.output('arraybuffer'));
     await invoke('save_slip_pdf', {

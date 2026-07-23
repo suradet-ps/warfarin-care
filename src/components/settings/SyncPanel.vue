@@ -19,7 +19,7 @@ const keyPlaceholder = computed(() =>
 );
 
 const machineIdShort = computed(() => {
-  const machineId = syncStore.info.machineId;
+  const { machineId } = syncStore.info;
   if (!machineId) {
     return '-';
   }

@@ -13,6 +13,10 @@ const confirmPassword = ref('');
 const submitting = ref(false);
 const localError = ref<string | null>(null);
 
+const USERNAME_REGEX = /^[A-Za-z0-9_.-]+$/;
+const LETTER_REGEX = /[A-Za-z]/;
+const DIGIT_REGEX = /[0-9]/;
+
 const usernameError = computed(() => {
   const v = username.value.trim();
   if (!v) {
@@ -24,7 +28,7 @@ const usernameError = computed(() => {
   if (v.length > 32) {
     return 'ชื่อผู้ใช้ต้องไม่เกิน 32 ตัวอักษร';
   }
-  if (!/^[A-Za-z0-9_.-]+$/.test(v)) {
+  if (!USERNAME_REGEX.test(v)) {
     return 'ใช้ได้เฉพาะตัวอักษร ตัวเลข _ - .';
   }
   return null;
@@ -41,10 +45,10 @@ const passwordError = computed(() => {
   if (v.length > 128) {
     return 'รหัสผ่านต้องไม่เกิน 128 ตัวอักษร';
   }
-  if (!/[A-Za-z]/.test(v)) {
+  if (!LETTER_REGEX.test(v)) {
     return 'รหัสผ่านต้องมีตัวอักษรอย่างน้อย 1 ตัว';
   }
-  if (!/[0-9]/.test(v)) {
+  if (!DIGIT_REGEX.test(v)) {
     return 'รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว';
   }
   return null;

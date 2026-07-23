@@ -2,6 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { X } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import InteractionChecker from '#/components/patient/InteractionChecker.vue';
 import ConfirmDialog from '#/components/shared/ConfirmDialog.vue';
 import DayDoseTable from '#/components/visit/DayDoseTable.vue';
 import DoseOptionsPanel from '#/components/visit/DoseOptionsPanel.vue';
@@ -34,7 +35,10 @@ import type { AvailablePills, RegimenOption } from '@/types/dose.ts';
 const visitStore = useVisitStore();
 const { generateDoseOptions, DEFAULT_AVAILABLE_PILLS } = useDoseCalculator();
 
-const props = defineProps<{ hn: string; editVisit?: WfVisit | null }>();
+const props = defineProps<{
+  hn: string;
+  editVisit?: WfVisit | null;
+}>();
 const modelValue = defineModel<boolean>({ default: false });
 const emit = defineEmits<{ (e: 'saved', visitId: number): void; (e: 'updated'): void }>();
 
@@ -75,6 +79,7 @@ const appointmentDayLoad = ref<AppointmentDayLoad | null>(null);
 const panelRef = ref<HTMLDivElement | null>(null);
 const showDoseConfirm = ref(false);
 const pendingSave = ref(false);
+const interactionBlocked = ref(false);
 
 const sideEffectOptionsHigh = [
   { key: 'body_bleeding', label: 'เลือดออกตามร่างกาย' },
@@ -415,6 +420,10 @@ function cancelDoseChange() {
   showDoseConfirm.value = false;
 }
 
+function handleInteractionBlocked(blocked: boolean) {
+  interactionBlocked.value = blocked;
+}
+
 const lastLoaded = ref<{ hn: string; date: string; editId: number | null } | null>(null);
 
 function handlePanelKeydown(e: KeyboardEvent) {
@@ -475,6 +484,11 @@ onUnmounted(() => {
               <span class="caption label">ค่า INR</span>
               <input class="input" type="number" step="0.1" v-model.number="inrValue" aria-label="ค่า INR วัดได้" />
             </label>
+          </div>
+
+          <div class="form-section">
+            <p class="caption label">Drug Interaction Check</p>
+            <InteractionChecker :hn="props.hn" @blocked="handleInteractionBlocked" />
           </div>
 
           <div class="form-section">
@@ -578,8 +592,8 @@ onUnmounted(() => {
 
         <div class="panel-footer">
           <button class="btn btn-ghost" @click="modelValue = false">ยกเลิก</button>
-          <button class="btn btn-primary" @click="handleSubmit" :disabled="saving">
-            {{ saving ? 'กำลังบันทึก...' : (isEditMode ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึก & เปิดใบพิมพ์') }}
+          <button class="btn btn-primary" @click="handleSubmit" :disabled="saving || interactionBlocked">
+            {{ saving ? 'กำลังบันทึก...' : (interactionBlocked ? 'มียาห้ามใช้ร่วม' : (isEditMode ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึก & เปิดใบพิมพ์')) }}
           </button>
         </div>
       </div>

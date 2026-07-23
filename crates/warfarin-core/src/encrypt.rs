@@ -66,8 +66,7 @@ pub fn decrypt(encoded: &str, key: &[u8; KEY_SIZE]) -> Result<String, String> {
 /// Returns an error string if the AEAD encryption fails.
 pub fn encrypt_value(plaintext: &str, machine_id: &str) -> Result<String, String> {
   let master = bytes_to_master_key(&APP_MASTER_KEY);
-  encryptman::encrypt_with_context(&master, machine_id, plaintext)
-    .map_err(|e| e.to_string())
+  encryptman::encrypt_with_context(&master, machine_id, plaintext).map_err(|e| e.to_string())
 }
 
 /// Decrypts a ciphertext produced by [`encrypt_value`].
@@ -78,8 +77,7 @@ pub fn encrypt_value(plaintext: &str, machine_id: &str) -> Result<String, String
 /// tampered ciphertext), or the plaintext is not valid UTF-8.
 pub fn decrypt_value(encoded: &str, machine_id: &str) -> Result<String, String> {
   let master = bytes_to_master_key(&APP_MASTER_KEY);
-  encryptman::decrypt_with_context(&master, machine_id, encoded)
-    .map_err(|e| e.to_string())
+  encryptman::decrypt_with_context(&master, machine_id, encoded).map_err(|e| e.to_string())
 }
 
 /// Encrypts a serializable value as JSON, then encrypts the JSON string.

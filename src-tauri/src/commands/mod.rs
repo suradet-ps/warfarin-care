@@ -1,5 +1,6 @@
 pub mod alerts;
 pub mod appointments;
+pub mod audit;
 pub mod auth;
 pub mod inr;
 pub mod interaction;

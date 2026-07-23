@@ -507,7 +507,7 @@ function daysFromNow(dateStr: string | null): string {
   display: block;
   font-size: var(--typography-body-md-size);
   color: var(--color-slate);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   margin-bottom: 2px;
 }
 
@@ -531,11 +531,11 @@ function daysFromNow(dateStr: string | null): string {
 .inr-today .label {
   font-size: var(--typography-body-md-size);
   color: var(--color-slate);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
 }
 
 .inr-value {
-  font-size: 2.2rem;
+  font-size: var(--typography-heading-3-size);
   font-weight: 700;
   color: var(--color-primary);
   line-height: 1;
@@ -579,18 +579,18 @@ function daysFromNow(dateStr: string | null): string {
 
 .dose-table th {
   background: var(--color-surface);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
 }
 
 .dose-label {
   text-align: left !important;
-  font-weight: 500;
+  font-weight: var(--typography-body-sm-medium-weight);
   background: var(--color-surface);
 }
 
 .new-dose-row td {
   background: var(--color-pink-100);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
 }
 
 .dose-instructions {
@@ -603,7 +603,7 @@ function daysFromNow(dateStr: string | null): string {
   display: block;
   font-size: var(--typography-body-md-size);
   color: var(--color-slate);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
 }
 
 .dose-instructions :deep(.option-card) {
@@ -648,7 +648,7 @@ function daysFromNow(dateStr: string | null): string {
 .adr-section .label {
   font-size: var(--typography-body-md-size);
   color: var(--color-slate);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
 }
 
 .adr-group {
@@ -659,13 +659,13 @@ function daysFromNow(dateStr: string | null): string {
 .adr-category {
   font-size: var(--typography-body-md-size);
   color: var(--color-slate);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
 }
 
 .adr-items {
   font-size: var(--typography-body-md-size);
 color: var(--color-coral-500);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
 }
 
 .adr-none {
@@ -693,7 +693,7 @@ color: var(--color-coral-500);
 .appointment-info .label {
   font-size: var(--typography-body-md-size);
   color: var(--color-slate);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
 }
 
 .appointment-info strong {

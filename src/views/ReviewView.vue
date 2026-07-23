@@ -250,7 +250,7 @@ onMounted(() => {
 }
 
 .table th {
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   color: var(--color-slate);
   font-size: var(--typography-caption-size);
   text-transform: uppercase;
@@ -300,7 +300,7 @@ onMounted(() => {
   border-radius: var(--rounded-full);
   background: var(--color-pink-600);
   color: var(--color-on-dark);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   cursor: pointer;
   transition: all 0.2s;
 }

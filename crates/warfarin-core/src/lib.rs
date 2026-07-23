@@ -10,6 +10,7 @@
 pub mod auth;
 pub mod dose;
 pub mod encrypt;
+pub mod interaction;
 pub mod models;
 pub mod pills;
 pub mod screening;

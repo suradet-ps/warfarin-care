@@ -33,7 +33,7 @@ async function loadDefaults() {
     ]);
     currentInr.value = latestInr?.value ?? null;
     latestInrDate.value = latestInr?.date ?? null;
-    const lastVisit = visits[0];
+    const [lastVisit] = visits;
     currentDose.value = lastVisit?.newDoseMgday ?? lastVisit?.currentDoseMgday ?? null;
   } catch (e) {
     error.value = String(e);

@@ -68,12 +68,14 @@ pub async fn delete_drug_interaction(
 
 #[tauri::command]
 pub async fn search_hosxp_drugs(
-  mysql_config: mysql::DbConfig,
   keyword: String,
   state: State<'_, warfarin_db::sqlite::AppState>,
 ) -> Result<Vec<HosxpDrugItem>, String> {
   state.require_auth().await?;
-  let pool = mysql::create_pool(&mysql_config)
+  let config = crate::commands::settings::get_mysql_config_internal(&state.pool)
+    .await?
+    .ok_or_else(|| "MySQL not configured".to_string())?;
+  let pool = mysql::create_pool(&config)
     .await
     .map_err(|e| e.to_string())?;
 
@@ -114,7 +116,6 @@ pub async fn search_hosxp_drugs(
 #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub async fn get_patient_drug_interactions(
   state: State<'_, warfarin_db::sqlite::AppState>,
-  mysql_config: mysql::DbConfig,
   hn: String,
 ) -> Result<
   (
@@ -124,6 +125,9 @@ pub async fn get_patient_drug_interactions(
   String,
 > {
   state.require_auth().await?;
+  let config = crate::commands::settings::get_mysql_config_internal(&state.pool)
+    .await?
+    .ok_or_else(|| "MySQL not configured".to_string())?;
   let interaction_icodes = warfarin_db::sqlite::get_drug_interaction_icodes(&state.pool)
     .await
     .map_err(|e| e.to_string())?;
@@ -149,7 +153,7 @@ pub async fn get_patient_drug_interactions(
     .map(|i| (i.icode, i.interaction_type))
     .collect();
 
-  let pool = mysql::create_pool(&mysql_config)
+  let pool = mysql::create_pool(&config)
     .await
     .map_err(|e| e.to_string())?;
 
@@ -248,5 +252,94 @@ pub async fn get_patient_drug_interactions(
       decrease_count,
       trend,
     },
+  ))
+}
+
+/// Checks a patient's concurrent medications against known warfarin
+/// interaction rules and returns matching interactions sorted by severity.
+///
+/// Uses the pure `check()` function from `warfarin-core`. The core never
+/// touches the database — this command loads the rules from `SQLite` and
+/// the patient's medications from `MySQL`, then passes both to the checker.
+#[tauri::command]
+pub async fn check_patient_interactions(
+  state: State<'_, warfarin_db::sqlite::AppState>,
+  hn: String,
+) -> Result<Vec<warfarin_core::models::interaction::Interaction>, String> {
+  state.require_auth().await?;
+
+  // Load interaction rules from SQLite.
+  let rules = warfarin_db::sqlite::get_all_drug_interactions(&state.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+  if rules.is_empty() {
+    return Ok(Vec::new());
+  }
+
+  // Load interaction rule icodes for filtering.
+  let rule_icodes: std::collections::HashSet<String> =
+    rules.iter().map(|r| r.icode.clone()).collect();
+
+  // Fetch patient's concurrent medications from MySQL (last 365 days).
+  let config = crate::commands::settings::get_mysql_config_internal(&state.pool)
+    .await?
+    .ok_or_else(|| "MySQL not configured".to_string())?;
+  let pool = mysql::create_pool(&config)
+    .await
+    .map_err(|e| e.to_string())?;
+
+  let one_year_ago = Utc::now()
+    .checked_sub_signed(chrono::Duration::days(365))
+    .map_or_else(
+      || "2024-01-01".to_string(),
+      |d| d.format("%Y-%m-%d").to_string(),
+    );
+
+  let mut query_builder = QueryBuilder::<MySql>::new(
+    r"
+            SELECT DISTINCT o.icode,
+                   COALESCE(d.name, 'Unknown') AS drug_name,
+                   COALESCE(d.strength, '') AS strength
+            FROM opitemrece o
+            LEFT JOIN drugitems d ON d.icode = o.icode
+            WHERE o.hn = ",
+  );
+  query_builder.push_bind(&hn);
+  query_builder.push(" AND o.icode IN (");
+  {
+    let mut separated = query_builder.separated(", ");
+    for icode in &rule_icodes {
+      separated.push_bind(icode);
+    }
+  }
+  query_builder.push(") AND o.vstdate >= ");
+  query_builder.push_bind(&one_year_ago);
+
+  let rows = query_builder
+    .build()
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+  let patient_medications: Vec<warfarin_core::models::interaction::PatientMedication> = rows
+    .iter()
+    .map(|r| {
+      let icode: String = r.get("icode");
+      warfarin_core::models::interaction::PatientMedication {
+        drug_name: r.try_get("drug_name").unwrap_or_default(),
+        strength: {
+          let s: String = r.try_get("strength").unwrap_or_default();
+          if s.is_empty() { None } else { Some(s) }
+        },
+        icode,
+      }
+    })
+    .collect();
+
+  // Run the pure interaction checker.
+  Ok(warfarin_core::interaction::check(
+    &patient_medications,
+    &rules,
   ))
 }

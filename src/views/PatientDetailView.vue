@@ -6,6 +6,7 @@ import {
   CalendarDays,
   FileClock,
   FilePenLine,
+  FileText,
   Pill,
   ShieldAlert,
 } from 'lucide-vue-next';
@@ -17,6 +18,7 @@ import AppointmentTimeline from '#/components/patient/AppointmentTimeline.vue';
 import DispensingTable from '#/components/patient/DispensingTable.vue';
 import DrugInteractionTable from '#/components/patient/DrugInteractionTable.vue';
 import InrTrendChart from '#/components/patient/InrTrendChart.vue';
+import PatientAuditLog from '#/components/patient/PatientAuditLog.vue';
 import StatusChangeModal from '#/components/patient/StatusChangeModal.vue';
 import VisitList from '#/components/patient/VisitList.vue';
 import ErrorState from '#/components/shared/ErrorState.vue';
@@ -37,7 +39,14 @@ const settingsStore = useSettingsStore();
 const alertStore = useAlertStore();
 const reviewStore = useReviewStore();
 
-type TabKey = 'inr' | 'visits' | 'dispensing' | 'interactions' | 'appointments' | 'adverse';
+type TabKey =
+  | 'inr'
+  | 'visits'
+  | 'dispensing'
+  | 'interactions'
+  | 'appointments'
+  | 'adverse'
+  | 'audit';
 const activeTab = ref<TabKey>('inr');
 const tabs: { key: TabKey; label: string; icon: unknown }[] = [
   { key: 'inr', label: 'INR', icon: Activity },
@@ -46,6 +55,7 @@ const tabs: { key: TabKey; label: string; icon: unknown }[] = [
   { key: 'interactions', label: 'Drug interaction', icon: ActivitySquare },
   { key: 'appointments', label: 'นัดหมาย', icon: CalendarDays },
   { key: 'adverse', label: 'เหตุการณ์', icon: ShieldAlert },
+  { key: 'audit', label: 'Audit Trail', icon: FileText },
 ];
 
 const patientDetail = ref<PatientDetail | null>(null);
@@ -210,7 +220,6 @@ onMounted(() => {
         <div v-else-if="activeTab === 'interactions'" id="tab-panel-interactions" role="tabpanel" aria-label="Drug interaction">
           <DrugInteractionTable
             :hn="hn"
-            :mysql-config="settingsStore.mysqlConfig"
           />
         </div>
 
@@ -220,6 +229,10 @@ onMounted(() => {
 
         <div v-else-if="activeTab === 'adverse'" id="tab-panel-adverse" role="tabpanel" aria-label="เหตุการณ์ไม่พึงประสงค์">
           <AdverseEventList :hn="hn" />
+        </div>
+
+        <div v-else-if="activeTab === 'audit'" id="tab-panel-audit" role="tabpanel" aria-label="Audit Trail">
+          <PatientAuditLog :hn="hn" />
         </div>
       </div>
     </template>

@@ -185,25 +185,25 @@ crates/warfarin-core/src/interaction/
 
 ### Implementation
 
-- [ ] **Surface drug interactions in the visit flow.** When a clinician opens
+- [x] **Surface drug interactions in the visit flow.** When a clinician opens
   the visit form or dose calculator, automatically check the patient's
   concurrent medications against `wf_drug_interactions` and display matching
   interactions inline with severity badges (contraindicated / major /
   moderate / minor). The interaction check must be impossible to skip -- it
   appears as part of the form, not behind a button.
-- [ ] **Drug interaction severity model.** Define severity levels with
+- [x] **Drug interaction severity model.** Define severity levels with
   clinical meaning:
   - **Contraindicated**: do not co-administer (red banner, blocks save)
   - **Major**: avoid if possible, requires dose adjustment (red badge)
   - **Moderate**: monitor closely, consider dose change (amber badge)
   - **Minor**: low risk, note for awareness (gray badge)
-- [ ] **Interaction data enrichment.** The current `wf_drug_interactions`
+- [x] **Interaction data enrichment.** The current `wf_drug_interactions`
   table has `icode`, `drug_name`, `strength`, `interaction_type`. Add
   columns for `severity` (contraindicated/major/moderate/minor),
   `clinical_effect` (what happens), `management` (what to do), and
   `evidence_level` (A/B/C). Seed from a curated source (e.g., a translated
   Lexicomp subset or the Thai FDA interaction database).
-- [ ] **Unified audit trail view.** A single `/audit` page (and a per-patient
+- [x] **Unified audit trail view.** A single `/audit` page (and a per-patient
   audit section in `/patient/:hn`) that merges:
   - `wf_dose_history` (dose changes)
   - `wf_patient_status_history` (status changes)
@@ -212,11 +212,11 @@ crates/warfarin-core/src/interaction/
   - Future: visit creation/modification events
   Each entry shows: timestamp, actor (user), action, old value -> new value.
   Filterable by patient, date range, and action type.
-- [ ] **Visit event logging.** When a visit is saved, create an entry in a
+- [x] **Visit event logging.** When a visit is saved, create an entry in a
   new `wf_audit_log` table: `{ hn, action: "visit_saved", actor, timestamp,
   detail: { visit_id, inr, dose_change: bool } }`. When a dose is changed,
   the `wf_dose_history` row is sufficient but the unified log indexes it.
-- [ ] **Drug interaction auto-populate.** On enrollment, seed the patient's
+- [x] **Drug interaction auto-populate.** On enrollment, seed the patient's
   interaction list from a global default set (warfarin + common
   co-medications in the HosXP formulary). Clinicians can add/remove
   per-patient interactions.
@@ -225,6 +225,8 @@ crates/warfarin-core/src/interaction/
 cannot be bypassed; the audit trail shows every dose change with actor and
 timestamp; the CI gate (`cargo test`) passes with new interaction-matching
 tests in `warfarin-core`.
+
+**Status:** COMPLETE
 
 ---
 

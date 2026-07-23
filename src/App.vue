@@ -40,12 +40,17 @@ onMounted(async () => {
   setTimeout(hideSplash, 1200);
   try {
     await authStore.bootstrap();
-  } catch {}
+  } catch {
+    /* bootstrap errors handled internally */
+  }
 
   if (authStore.currentUser) {
     try {
       await syncStore.refreshAll();
-    } catch {}
+    } catch {
+      /* bootstrap errors handled internally */
+    }
+
     syncStore.startAutoSync();
   }
 

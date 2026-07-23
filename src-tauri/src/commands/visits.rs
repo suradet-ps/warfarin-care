@@ -4,13 +4,16 @@ use tauri::State;
 
 use warfarin_core::{
   dose::calculator::suggest_dose_from_daily,
-  models::visit::{DoseSuggestion, VisitInput, WfVisit},
+  models::{
+    audit::{ACTION_VISIT_SAVED, ACTION_VISIT_UPDATED, AuditLogInput},
+    visit::{DoseSuggestion, VisitInput, WfVisit},
+  },
 };
 use warfarin_db::sqlite::{
   AppState, approve_visit as db_approve_visit, delete_visit as db_delete_visit,
   get_pending_review_count as db_pending_count, get_pending_review_visits as db_pending,
-  get_visit_by_id as db_get_visit_by_id, get_visit_history as db_history, save_visit as db_save,
-  update_visit as db_update_visit,
+  get_visit_by_id as db_get_visit_by_id, get_visit_history as db_history,
+  insert_audit_log as db_insert_audit, save_visit as db_save, update_visit as db_update_visit,
 };
 
 #[tauri::command]
@@ -35,10 +38,30 @@ pub async fn get_visit_by_id(visit_id: i64, state: State<'_, AppState>) -> Resul
 
 #[tauri::command]
 pub async fn save_visit(visit: VisitInput, state: State<'_, AppState>) -> Result<i64, String> {
-  state.require_auth().await?;
-  db_save(&state.pool, &visit, &state.machine_id)
+  let user = state.require_auth().await?;
+  let visit_id = db_save(&state.pool, &visit, &state.machine_id)
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+
+  let detail = serde_json::json!({
+    "visit_id": visit_id,
+    "inr": visit.inr_value,
+    "dose_change": visit.dose_changed,
+  });
+  let _ = db_insert_audit(
+    &state.pool,
+    &AuditLogInput {
+      hn: Some(visit.hn.clone()),
+      action: ACTION_VISIT_SAVED.to_string(),
+      actor: user.username.clone(),
+      old_value: None,
+      new_value: visit.new_dose_mgday.map(|d| format!("{d} mg/day")),
+      detail: Some(detail.to_string()),
+    },
+  )
+  .await;
+
+  Ok(visit_id)
 }
 
 #[tauri::command]
@@ -47,15 +70,35 @@ pub async fn update_visit(
   visit: VisitInput,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
-  state.require_auth().await?;
+  let user = state.require_auth().await?;
   db_update_visit(&state.pool, visit_id, &visit, &state.machine_id)
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+
+  let detail = serde_json::json!({
+    "visit_id": visit_id,
+    "inr": visit.inr_value,
+    "dose_change": visit.dose_changed,
+  });
+  let _ = db_insert_audit(
+    &state.pool,
+    &AuditLogInput {
+      hn: Some(visit.hn.clone()),
+      action: ACTION_VISIT_UPDATED.to_string(),
+      actor: user.username.clone(),
+      old_value: None,
+      new_value: visit.new_dose_mgday.map(|d| format!("{d} mg/day")),
+      detail: Some(detail.to_string()),
+    },
+  )
+  .await;
+
+  Ok(())
 }
 
 /// Computes a warfarin dose adjustment suggestion from daily-dose inputs.
 ///
-/// Validation, mg/day→mg/week conversion, and the calculator call live in
+/// Validation, mg/day->mg/week conversion, and the calculator call live in
 /// `warfarin_core::dose::calculator::suggest_dose_from_daily`; this command
 /// is a thin IPC wrapper that surfaces errors as strings for the frontend.
 #[tauri::command]
