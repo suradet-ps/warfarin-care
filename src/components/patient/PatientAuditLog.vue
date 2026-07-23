@@ -138,7 +138,7 @@ onMounted(() => {
 .comparison-row th {
   padding: var(--spacing-sm) var(--spacing-md);
   text-align: left;
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   font-size: var(--typography-micro-uppercase-size);
   color: var(--color-slate);
   background: var(--color-surface);
@@ -168,13 +168,13 @@ onMounted(() => {
 }
 
 .new-value {
-  font-weight: 500;
+  font-weight: var(--typography-body-sm-medium-weight);
 }
 
 .action-badge {
   display: inline-block;
   font-size: var(--typography-micro-size);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   padding: 1px var(--spacing-xs);
   border-radius: var(--rounded-full);
   white-space: nowrap;

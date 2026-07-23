@@ -546,7 +546,7 @@ function severityConfig(severity: string) {
 
 .drug-name {
   font-size: var(--typography-body-md-size);
-  font-weight: 500;
+  font-weight: var(--typography-body-sm-medium-weight);
   color: var(--color-ink);
 }
 
@@ -579,7 +579,7 @@ function severityConfig(severity: string) {
 }
 
 .interaction-card-management {
-  font-weight: 500;
+  font-weight: var(--typography-body-sm-medium-weight);
   color: var(--color-charcoal);
 }
 
@@ -636,7 +636,7 @@ function severityConfig(severity: string) {
 
 .form-label {
   font-size: var(--typography-caption-bold-size);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   color: var(--color-charcoal);
 }
 
@@ -699,7 +699,7 @@ function severityConfig(severity: string) {
 .search-result-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
 .search-result-name {
   font-size: var(--typography-body-sm-size);
-  font-weight: 500;
+  font-weight: var(--typography-body-sm-medium-weight);
   color: var(--color-ink);
 }
 .search-result-meta {
@@ -735,7 +735,7 @@ function severityConfig(severity: string) {
 .selected-drug-info { display: flex; flex-direction: column; gap: 2px; }
 .selected-drug-name {
   font-size: var(--typography-body-md-size);
-  font-weight: 500;
+  font-weight: var(--typography-body-sm-medium-weight);
   color: var(--color-ink);
 }
 .selected-drug-meta {

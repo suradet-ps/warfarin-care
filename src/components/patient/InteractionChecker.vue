@@ -207,7 +207,7 @@ onMounted(() => {
 
 .severity-badge {
   font-size: var(--typography-micro-size);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   padding: 1px var(--spacing-xs);
   border-radius: var(--rounded-full);
 }
@@ -246,7 +246,7 @@ onMounted(() => {
 }
 
 .interaction-management {
-  font-weight: 500;
+  font-weight: var(--typography-body-sm-medium-weight);
   color: var(--color-ink);
 }
 

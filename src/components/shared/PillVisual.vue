@@ -34,7 +34,7 @@ defineProps<{
 
 .pill-text {
   font-size: var(--typography-micro-uppercase-size);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   color: var(--color-on-primary);
 }
 

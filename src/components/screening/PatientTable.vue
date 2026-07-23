@@ -82,7 +82,7 @@ function goToPage(page: number) {
           <td colspan="8" style="text-align:center; color: var(--color-stone); padding: var(--spacing-xxl)">ไม่พบข้อมูลใน opitemrece ตามเงื่อนไขที่ค้นหา</td>
         </tr>
         <tr v-for="r in props.records" :key="r.hn">
-          <td><span style="font-weight:500; font-family: monospace">{{ r.hn }}</span></td>
+          <td><span class="hn-cell">{{ r.hn }}</span></td>
           <td>{{ r.pname }}{{ r.fname }} {{ r.lname }}</td>
           <td>{{ ageLabel(r.birthday) }}</td>
           <td>{{ formatThaiDate(r.lastDispenseDate) }}</td>
@@ -139,5 +139,10 @@ function goToPage(page: number) {
 
 .pagination-label {
   color: var(--color-slate);
+}
+
+.hn-cell {
+  font-family: var(--font-family-mono);
+  font-weight: var(--typography-body-sm-medium-weight);
 }
 </style>

@@ -122,7 +122,7 @@ watch(
 .search-input { border: none; outline: none; background: transparent; font-size: var(--typography-body-sm-size); color: var(--color-ink); width: 200px; }
 .search-input::placeholder { color: var(--color-stone); }
 .date-field { display: flex; flex-direction: column; gap: 4px; }
-.date-label { font-size: var(--typography-micro-size); color: var(--color-slate); font-weight: 500; }
+.date-label { font-size: var(--typography-micro-size); color: var(--color-slate); font-weight: var(--typography-body-sm-medium-weight); }
 .date-input-wrap { position: relative; display: flex; align-items: center; }
 .toolbar-date-input { width: 160px; padding-right: 32px; height: 44px; box-sizing: border-box; }
 .date-icon { position: absolute; right: 10px; color: var(--color-slate); cursor: pointer; pointer-events: auto; }

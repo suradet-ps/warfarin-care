@@ -149,12 +149,6 @@ function getDayHeaderColor(dayIndex: number): string {
   box-shadow: 0 0 0 2px var(--color-pink-600);
 }
 
-.option-label {
-  font-size: var(--typography-caption-bold-size);
-  font-weight: 600;
-  color: var(--color-pink-900);
-}
-
 .option-header {
   display: flex;
   align-items: center;
@@ -175,7 +169,7 @@ function getDayHeaderColor(dayIndex: number): string {
 
 .option-label {
   font-size: var(--typography-caption-bold-size);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   color: var(--color-pink-600);
 }
 
@@ -187,7 +181,7 @@ function getDayHeaderColor(dayIndex: number): string {
 
 .option-weekly-dose {
   font-size: var(--typography-body-md-size);
-  font-weight: 500;
+  font-weight: var(--typography-body-sm-medium-weight);
   color: var(--color-ink);
 }
 
@@ -218,7 +212,7 @@ function getDayHeaderColor(dayIndex: number): string {
   padding: var(--spacing-xs);
   text-align: center;
   font-size: var(--typography-caption-size);
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   color: var(--color-slate);
 }
 
@@ -259,7 +253,7 @@ function getDayHeaderColor(dayIndex: number): string {
   display: block;
   margin-bottom: var(--spacing-xs);
   font-size: var(--typography-body-sm-size);
-  font-weight: 500;
+  font-weight: var(--typography-body-sm-medium-weight);
   color: var(--color-ink);
 }
 

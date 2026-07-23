@@ -149,7 +149,7 @@ onMounted(() => {
 .comparison-row th { 
   padding: var(--spacing-sm) var(--spacing-md);
   text-align: left;
-  font-weight: 600;
+  font-weight: var(--typography-caption-bold-weight);
   font-size: var(--typography-micro-uppercase-size);
   color: var(--color-slate);
   background: var(--color-surface);
@@ -157,7 +157,7 @@ onMounted(() => {
 .comparison-row td { padding: var(--spacing-sm) var(--spacing-md); }
 .text-right { text-align: right; }
 .drug-info { display: flex; flex-direction: column; gap: 2px; }
-.drug-name { font-weight: 500; }
+.drug-name { font-weight: var(--typography-body-sm-medium-weight); }
 .drug-strength { font-size: var(--typography-micro-size); color: var(--color-slate); }
 .summary-card { padding: var(--spacing-lg); display: flex; flex-direction: column; gap: var(--spacing-md); }
 .summary-header { display: flex; align-items: center; gap: var(--spacing-sm); }

@@ -39,7 +39,14 @@ const settingsStore = useSettingsStore();
 const alertStore = useAlertStore();
 const reviewStore = useReviewStore();
 
-type TabKey = 'inr' | 'visits' | 'dispensing' | 'interactions' | 'appointments' | 'adverse' | 'audit';
+type TabKey =
+  | 'inr'
+  | 'visits'
+  | 'dispensing'
+  | 'interactions'
+  | 'appointments'
+  | 'adverse'
+  | 'audit';
 const activeTab = ref<TabKey>('inr');
 const tabs: { key: TabKey; label: string; icon: unknown }[] = [
   { key: 'inr', label: 'INR', icon: Activity },
