@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 use warfarin_core::models::{
   appointment::{AppointmentDayLoad, AppointmentInput, WfAppointment},
+  audit::{AuditLogEntry, AuditLogFilter, AuditLogInput},
   inr::InrRecord,
   interaction::{DrugInteraction, DrugInteractionInput},
   outcome::{OutcomeInput, WfOutcome},
@@ -1081,7 +1082,9 @@ pub async fn get_setting(pool: &SqlitePool, key: &str) -> Result<Option<String>>
 /// Fetches all drug interactions configured in the system.
 pub async fn get_all_drug_interactions(pool: &SqlitePool) -> Result<Vec<DrugInteraction>> {
   let rows = sqlx::query(
-    "SELECT id, icode, drug_name, strength, interaction_type, created_at, updated_at \
+    "SELECT id, icode, drug_name, strength, interaction_type, \
+         severity, clinical_effect, management, evidence_level, \
+         created_at, updated_at \
          FROM wf_drug_interactions ORDER BY drug_name, icode",
   )
   .fetch_all(pool)
@@ -1097,6 +1100,10 @@ pub async fn get_all_drug_interactions(pool: &SqlitePool) -> Result<Vec<DrugInte
         drug_name: r.get("drug_name"),
         strength: r.try_get("strength").ok(),
         interaction_type: r.get("interaction_type"),
+        severity: r.get("severity"),
+        clinical_effect: r.try_get("clinical_effect").ok(),
+        management: r.try_get("management").ok(),
+        evidence_level: r.try_get("evidence_level").ok(),
         created_at: r.get("created_at"),
         updated_at: r.get("updated_at"),
       })
@@ -1118,13 +1125,18 @@ pub async fn add_drug_interaction(pool: &SqlitePool, input: &DrugInteractionInpu
   let now = Utc::now().to_rfc3339();
   let id = sqlx::query(
     "INSERT INTO wf_drug_interactions \
-         (icode, drug_name, strength, interaction_type, created_at, updated_at) \
-         VALUES (?, ?, ?, ?, ?, ?)",
+         (icode, drug_name, strength, interaction_type, severity, \
+          clinical_effect, management, evidence_level, created_at, updated_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   )
   .bind(&input.icode)
   .bind(&input.drug_name)
   .bind(&input.strength)
   .bind(&input.interaction_type)
+  .bind(&input.severity)
+  .bind(&input.clinical_effect)
+  .bind(&input.management)
+  .bind(&input.evidence_level)
   .bind(&now)
   .bind(&now)
   .execute(pool)
@@ -1148,6 +1160,124 @@ pub async fn delete_drug_interaction(pool: &SqlitePool, id: i64) -> Result<()> {
   }
 
   Ok(())
+}
+
+/// Inserts a new audit log entry and returns the new row ID.
+pub async fn insert_audit_log(pool: &SqlitePool, input: &AuditLogInput) -> Result<i64> {
+  let now = Utc::now().to_rfc3339();
+  let id = sqlx::query(
+    "INSERT INTO wf_audit_log \
+         (hn, action, actor, timestamp, old_value, new_value, detail, created_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+  .bind(&input.hn)
+  .bind(&input.action)
+  .bind(&input.actor)
+  .bind(&now)
+  .bind(&input.old_value)
+  .bind(&input.new_value)
+  .bind(&input.detail)
+  .bind(&now)
+  .execute(pool)
+  .await
+  .context("failed to insert audit log entry")?
+  .last_insert_rowid();
+
+  Ok(id)
+}
+
+/// Queries audit log entries with optional filters. Returns newest first.
+pub async fn get_audit_log(
+  pool: &SqlitePool,
+  filter: &AuditLogFilter,
+) -> Result<Vec<AuditLogEntry>> {
+  let page = filter.page.unwrap_or(1).max(1);
+  let page_size = filter.page_size.unwrap_or(50).min(200);
+  let offset = (page - 1) * page_size;
+
+  let mut qb = QueryBuilder::<Sqlite>::new(
+    "SELECT id, hn, action, actor, timestamp, old_value, new_value, detail, created_at \
+         FROM wf_audit_log WHERE 1=1",
+  );
+
+  if let Some(ref hn) = filter.hn {
+    qb.push(" AND hn = ");
+    qb.push_bind(hn);
+  }
+  if let Some(ref action) = filter.action {
+    qb.push(" AND action = ");
+    qb.push_bind(action);
+  }
+  if let Some(ref df) = filter.date_from {
+    qb.push(" AND timestamp >= ");
+    qb.push_bind(df);
+  }
+  if let Some(ref dt) = filter.date_to {
+    qb.push(" AND timestamp <= ");
+    qb.push_bind(dt);
+  }
+
+  qb.push(" ORDER BY timestamp DESC LIMIT ");
+  qb.push_bind(page_size);
+  qb.push(" OFFSET ");
+  qb.push_bind(offset);
+
+  let rows = qb
+    .build()
+    .fetch_all(pool)
+    .await
+    .context("failed to query audit log")?;
+
+  Ok(
+    rows
+      .iter()
+      .map(|r| AuditLogEntry {
+        id: r.get("id"),
+        hn: r.try_get("hn").ok(),
+        action: r.get("action"),
+        actor: r.get("actor"),
+        timestamp: r.get("timestamp"),
+        old_value: r.try_get("old_value").ok(),
+        new_value: r.try_get("new_value").ok(),
+        detail: r.try_get("detail").ok(),
+        created_at: r.get("created_at"),
+      })
+      .collect(),
+  )
+}
+
+/// Returns audit log entries for a specific patient, newest first.
+pub async fn get_patient_audit_log(
+  pool: &SqlitePool,
+  hn: &str,
+  limit: u32,
+) -> Result<Vec<AuditLogEntry>> {
+  let rows = sqlx::query(
+    "SELECT id, hn, action, actor, timestamp, old_value, new_value, detail, created_at \
+         FROM wf_audit_log WHERE hn = ? ORDER BY timestamp DESC LIMIT ?",
+  )
+  .bind(hn)
+  .bind(limit)
+  .fetch_all(pool)
+  .await
+  .context("failed to query patient audit log")?;
+
+  Ok(
+    rows
+      .iter()
+      .map(|r| AuditLogEntry {
+        id: r.get("id"),
+        hn: r.try_get("hn").ok(),
+        action: r.get("action"),
+        actor: r.get("actor"),
+        timestamp: r.get("timestamp"),
+        old_value: r.try_get("old_value").ok(),
+        new_value: r.try_get("new_value").ok(),
+        detail: r.try_get("detail").ok(),
+        created_at: r.get("created_at"),
+      })
+      .collect(),
+  )
 }
 
 /// Returns visits pending review (no `reviewed_at`), newest first.
