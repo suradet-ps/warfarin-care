@@ -44,12 +44,74 @@ pub async fn init_pool(db_path: PathBuf) -> Result<SqlitePool> {
     .await
     .with_context(|| format!("failed to open SQLite database at {}", db_path.display()))?;
 
+  // Idempotent pre-migration: add columns to wf_drug_interactions if missing.
+  // SQLite has no ADD COLUMN IF NOT EXISTS, so we check via pragma_table_info
+  // before running the sqlx migration. This prevents panics on existing DBs
+  // where columns were added manually or via a partial previous run.
+  ensure_interaction_columns(&pool).await?;
+
   sqlx::migrate!("./migrations")
     .run(&pool)
     .await
     .context("failed to run SQLite migrations")?;
 
   Ok(pool)
+}
+
+/// Ensures the enriched columns exist on `wf_drug_interactions` and the
+/// audit trail table exists. Safe to call on every startup — no-ops if
+/// already present. This prevents panics on existing DBs where sqlx
+/// migration 0013 was recorded as complete but only partially applied.
+async fn ensure_interaction_columns(pool: &SqlitePool) -> Result<()> {
+  let columns_to_add = [
+    ("severity", "ALTER TABLE wf_drug_interactions ADD COLUMN severity TEXT NOT NULL DEFAULT 'moderate'"),
+    ("clinical_effect", "ALTER TABLE wf_drug_interactions ADD COLUMN clinical_effect TEXT"),
+    ("management", "ALTER TABLE wf_drug_interactions ADD COLUMN management TEXT"),
+    ("evidence_level", "ALTER TABLE wf_drug_interactions ADD COLUMN evidence_level TEXT"),
+  ];
+
+  for (col_name, ddl) in &columns_to_add {
+    let row: Option<(i64,)> = sqlx::query_as(
+      "SELECT COUNT(*) FROM pragma_table_info('wf_drug_interactions') WHERE name = ?",
+    )
+    .bind(col_name)
+    .fetch_optional(pool)
+    .await?;
+
+    let exists = row.is_some_and(|(count,)| count > 0);
+    if !exists {
+      sqlx::query(*ddl).execute(pool).await?;
+    }
+  }
+
+  // Ensure the audit trail table exists (may have been missed by migration 0013).
+  sqlx::query(
+    "CREATE TABLE IF NOT EXISTS wf_audit_log (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        hn              TEXT,
+        action          TEXT NOT NULL,
+        actor           TEXT NOT NULL,
+        timestamp       TEXT NOT NULL,
+        old_value       TEXT,
+        new_value       TEXT,
+        detail          TEXT,
+        created_at      TEXT NOT NULL
+     )",
+  )
+  .execute(pool)
+  .await?;
+
+  sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_log_hn ON wf_audit_log(hn)")
+    .execute(pool)
+    .await?;
+  sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON wf_audit_log(timestamp)")
+    .execute(pool)
+    .await?;
+  sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_log_action ON wf_audit_log(action)")
+    .execute(pool)
+    .await?;
+
+  Ok(())
 }
 
 // wf_patients

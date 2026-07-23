@@ -1,10 +1,8 @@
 -- Enrich wf_drug_interactions with severity, clinical_effect, management,
 -- evidence_level columns for the Phase 1 interaction engine.
-
-ALTER TABLE wf_drug_interactions ADD COLUMN severity TEXT NOT NULL DEFAULT 'moderate';
-ALTER TABLE wf_drug_interactions ADD COLUMN clinical_effect TEXT;
-ALTER TABLE wf_drug_interactions ADD COLUMN management TEXT;
-ALTER TABLE wf_drug_interactions ADD COLUMN evidence_level TEXT;
+-- Column additions are handled idempotently by ensure_interaction_columns()
+-- in sqlite.rs before this migration runs. This file only creates the
+-- audit trail table and indexes.
 
 -- Unified audit trail table. Every clinical action is logged here.
 CREATE TABLE IF NOT EXISTS wf_audit_log (
