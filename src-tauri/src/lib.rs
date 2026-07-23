@@ -31,11 +31,12 @@ use commands::{
   appointments::{
     get_appointment_day_load, get_appointments, get_pending_appointments, schedule_appointment,
   },
+  audit::{get_audit_log, get_patient_audit_log, insert_audit_log},
   auth::{current_user, has_users, is_logged_in, login, logout, setup_admin},
   inr::{get_inr_history, get_latest_inr},
   interaction::{
-    add_drug_interaction, delete_drug_interaction, get_all_drug_interactions,
-    get_patient_drug_interactions, search_hosxp_drugs,
+    add_drug_interaction, check_patient_interactions, delete_drug_interaction,
+    get_all_drug_interactions, get_patient_drug_interactions, search_hosxp_drugs,
   },
   outcomes::{get_outcomes, record_adverse_event},
   patients::{
@@ -186,6 +187,10 @@ pub fn run() -> tauri::Result<()> {
       delete_drug_interaction,
       search_hosxp_drugs,
       get_patient_drug_interactions,
+      check_patient_interactions,
+      insert_audit_log,
+      get_audit_log,
+      get_patient_audit_log,
       save_slip_pdf,
       get_pending_review_visits,
       get_pending_review_count,
