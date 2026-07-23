@@ -148,7 +148,7 @@ onUnmounted(() => {
       </table>
     </div>
 
-    <VisitFormPanel v-if="selectedHn" v-model="visitPanelOpen" :hn="selectedHn" :mysql-config="settingsStore.mysqlConfig" @saved="handleSaved" />
+    <VisitFormPanel v-if="selectedHn" v-model="visitPanelOpen" :hn="selectedHn" @saved="handleSaved" />
   </div>
 </template>
 

@@ -38,13 +38,6 @@ const { generateDoseOptions, DEFAULT_AVAILABLE_PILLS } = useDoseCalculator();
 const props = defineProps<{
   hn: string;
   editVisit?: WfVisit | null;
-  mysqlConfig?: {
-    host: string;
-    port: number;
-    database: string;
-    username: string;
-    password: string;
-  };
 }>();
 const modelValue = defineModel<boolean>({ default: false });
 const emit = defineEmits<{ (e: 'saved', visitId: number): void; (e: 'updated'): void }>();
@@ -493,9 +486,9 @@ onUnmounted(() => {
             </label>
           </div>
 
-          <div v-if="props.mysqlConfig" class="form-section">
+          <div class="form-section">
             <p class="caption label">Drug Interaction Check</p>
-            <InteractionChecker :hn="props.hn" :mysql-config="props.mysqlConfig" @blocked="handleInteractionBlocked" />
+            <InteractionChecker :hn="props.hn" @blocked="handleInteractionBlocked" />
           </div>
 
           <div class="form-section">

@@ -7,13 +7,6 @@ import { useSettingsStore } from '#/stores/settings.ts';
 
 const props = defineProps<{
   hn: string;
-  mysqlConfig: {
-    host: string;
-    port: number;
-    database: string;
-    username: string;
-    password: string;
-  };
 }>();
 
 const emit = defineEmits<{ (e: 'blocked', blocked: boolean): void }>();
@@ -29,7 +22,6 @@ async function checkInteractions() {
   try {
     interactions.value = await invoke<Interaction[]>('check_patient_interactions', {
       hn: props.hn,
-      mysqlConfig: props.mysqlConfig,
     });
     emit('blocked', hasContraindicated());
   } catch (e) {

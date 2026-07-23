@@ -68,12 +68,14 @@ pub async fn delete_drug_interaction(
 
 #[tauri::command]
 pub async fn search_hosxp_drugs(
-  mysql_config: mysql::DbConfig,
   keyword: String,
   state: State<'_, warfarin_db::sqlite::AppState>,
 ) -> Result<Vec<HosxpDrugItem>, String> {
   state.require_auth().await?;
-  let pool = mysql::create_pool(&mysql_config)
+  let config = crate::commands::settings::get_mysql_config_internal(&state.pool)
+    .await?
+    .ok_or_else(|| "MySQL not configured".to_string())?;
+  let pool = mysql::create_pool(&config)
     .await
     .map_err(|e| e.to_string())?;
 
@@ -114,7 +116,6 @@ pub async fn search_hosxp_drugs(
 #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub async fn get_patient_drug_interactions(
   state: State<'_, warfarin_db::sqlite::AppState>,
-  mysql_config: mysql::DbConfig,
   hn: String,
 ) -> Result<
   (
@@ -124,6 +125,9 @@ pub async fn get_patient_drug_interactions(
   String,
 > {
   state.require_auth().await?;
+  let config = crate::commands::settings::get_mysql_config_internal(&state.pool)
+    .await?
+    .ok_or_else(|| "MySQL not configured".to_string())?;
   let interaction_icodes = warfarin_db::sqlite::get_drug_interaction_icodes(&state.pool)
     .await
     .map_err(|e| e.to_string())?;
@@ -149,7 +153,7 @@ pub async fn get_patient_drug_interactions(
     .map(|i| (i.icode, i.interaction_type))
     .collect();
 
-  let pool = mysql::create_pool(&mysql_config)
+  let pool = mysql::create_pool(&config)
     .await
     .map_err(|e| e.to_string())?;
 
@@ -260,7 +264,6 @@ pub async fn get_patient_drug_interactions(
 #[tauri::command]
 pub async fn check_patient_interactions(
   state: State<'_, warfarin_db::sqlite::AppState>,
-  mysql_config: mysql::DbConfig,
   hn: String,
 ) -> Result<Vec<warfarin_core::models::interaction::Interaction>, String> {
   state.require_auth().await?;
@@ -279,7 +282,10 @@ pub async fn check_patient_interactions(
     rules.iter().map(|r| r.icode.clone()).collect();
 
   // Fetch patient's concurrent medications from MySQL (last 365 days).
-  let pool = mysql::create_pool(&mysql_config)
+  let config = crate::commands::settings::get_mysql_config_internal(&state.pool)
+    .await?
+    .ok_or_else(|| "MySQL not configured".to_string())?;
+  let pool = mysql::create_pool(&config)
     .await
     .map_err(|e| e.to_string())?;
 

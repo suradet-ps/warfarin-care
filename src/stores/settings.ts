@@ -139,7 +139,6 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function searchHosxpDrugs(keyword: string): Promise<HosxpDrugItem[]> {
     return invoke<HosxpDrugItem[]>('search_hosxp_drugs', {
-      mysqlConfig: mysqlConfig.value,
       keyword,
     });
   }

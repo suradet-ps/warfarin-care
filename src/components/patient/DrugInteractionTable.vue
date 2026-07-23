@@ -21,13 +21,6 @@ interface PatientDrugInteractionSummary {
 
 const props = defineProps<{
   hn: string;
-  mysqlConfig: {
-    host: string;
-    port: number;
-    database: string;
-    username: string;
-    password: string;
-  };
 }>();
 
 const store = useSettingsStore();
@@ -44,7 +37,6 @@ async function loadInteractions() {
       [PatientDrugInteractionRecord[], PatientDrugInteractionSummary]
     >('get_patient_drug_interactions', {
       hn: props.hn,
-      mysqlConfig: props.mysqlConfig,
     });
     records.value = recs;
     summary.value = sum;
