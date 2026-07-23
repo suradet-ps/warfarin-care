@@ -81,12 +81,10 @@ fn initialise_app_state(app: &mut App) -> Result<()> {
   })?;
 
   let db_path = app_dir.join("warfarin.db");
-  let pool = tauri::async_runtime::block_on(init_pool(db_path.clone())).with_context(|| {
-    format!(
-      "failed to initialise SQLite database at {}",
-      db_path.display()
-    )
-  })?;
+  let pool = tauri::async_runtime::block_on(init_pool(db_path.clone())).unwrap_or_else(|e| {
+    eprintln!("[warfarin] FATAL: SQLite init failed: {e:#}");
+    panic!("failed to initialise SQLite database at {}: {e}", db_path.display());
+  });
 
   app_handle.manage(AppState::new(pool.clone(), machine_id));
 

@@ -48,7 +48,9 @@ pub async fn init_pool(db_path: PathBuf) -> Result<SqlitePool> {
   // SQLite has no ADD COLUMN IF NOT EXISTS, so we check via pragma_table_info
   // before running the sqlx migration. This prevents panics on existing DBs
   // where columns were added manually or via a partial previous run.
-  ensure_interaction_columns(&pool).await?;
+  if let Err(e) = ensure_interaction_columns(&pool).await {
+    eprintln!("[warfarin] ensure_interaction_columns warning: {e}");
+  }
 
   sqlx::migrate!("./migrations")
     .run(&pool)
