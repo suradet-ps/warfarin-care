@@ -107,7 +107,7 @@ async function printSlip() {
 }
 
 function captureSlipImage(): Promise<string> {
-  const el = slipCapture.value;
+  const el = slipCapture.value!;
   const backgroundColor = getCssVar('--color-canvas') || 'white';
   const rect = el.getBoundingClientRect();
   return toPng(el, {
