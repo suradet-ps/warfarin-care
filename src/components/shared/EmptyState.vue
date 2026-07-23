@@ -4,7 +4,7 @@ defineProps<{
   actionLabel?: string;
 }>();
 
-const _emit = defineEmits<{
+const emit = defineEmits<{
   action: [];
 }>();
 </script>

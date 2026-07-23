@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { DoseSchedule } from '#/types/visit.ts';
-import { emptyDoseSchedule, scheduleAverageDose } from '#/utils/clinic.ts';
+import {
+  doseDayKeys,
+  doseDayLabels,
+  emptyDoseSchedule,
+  scheduleAverageDose,
+} from '#/utils/clinic.ts';
 
 const model = defineModel<DoseSchedule>({ default: emptyDoseSchedule() });
-const _props = defineProps<{ readonly?: boolean }>();
+const props = defineProps<{ readonly?: boolean }>();
 
-const _totalMgDay = computed(() => scheduleAverageDose(model.value));
+const totalMgDay = computed(() => scheduleAverageDose(model.value));
 </script>
 
 <template>

@@ -25,17 +25,17 @@ const statusOptions: { value: string; label: string }[] = [
 const selectedStatusLabel = computed(
   () => statusOptions.find((option) => option.value === newStatus.value)?.label ?? newStatus.value,
 );
-const _confirmMessage = computed(
+const confirmMessage = computed(
   () =>
     `เปลี่ยนสถานะผู้ป่วย HN ${props.hn} เป็น "${selectedStatusLabel.value}" ตั้งแต่วันที่ ${effectiveDate.value}`,
 );
 
-function _handleSave() {
+function handleSave() {
   error.value = null;
   confirmOpen.value = true;
 }
 
-async function _confirmSave() {
+async function confirmSave() {
   saving.value = true;
   confirmOpen.value = false;
   error.value = null;

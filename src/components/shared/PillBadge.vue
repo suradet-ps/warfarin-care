@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const _props = defineProps<{
+const props = defineProps<{
   label: string;
   color?: 'coral' | 'pink' | 'success' | 'danger' | 'muted' | 'yellow';
 }>();

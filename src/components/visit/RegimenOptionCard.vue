@@ -16,7 +16,7 @@ const props = withDefaults(
   },
 );
 
-const _emit = defineEmits<(e: 'select') => void>();
+const emit = defineEmits<(e: 'select') => void>();
 
 const dayNames = ['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.'];
 
@@ -30,9 +30,9 @@ const dayHeaderColors = [
   'bg-day-sun',
 ];
 
-const _headerLabel = computed(() => props.label || 'วิธีกินยา');
+const headerLabel = computed(() => props.label || 'วิธีกินยา');
 
-function _expandPills(pills: { mg: number; count: number; is_half: boolean }[]) {
+function expandPills(pills: { mg: number; count: number; is_half: boolean }[]) {
   const expanded: { mg: number; isHalf: boolean; key: string }[] = [];
   for (const pill of pills) {
     for (let i = 0; i < pill.count; i += 1) {
@@ -46,11 +46,11 @@ function _expandPills(pills: { mg: number; count: number; is_half: boolean }[]) 
   return expanded;
 }
 
-function _getDayName(dayIndex: number): string {
+function getDayName(dayIndex: number): string {
   return dayNames[dayIndex] ?? '';
 }
 
-function _getDayHeaderColor(dayIndex: number): string {
+function getDayHeaderColor(dayIndex: number): string {
   return dayHeaderColors[dayIndex] ?? '';
 }
 </script>

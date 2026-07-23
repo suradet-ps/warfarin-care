@@ -15,18 +15,18 @@ import { useReviewStore } from '#/stores/review.ts';
 import { useSettingsStore } from '#/stores/settings.ts';
 import type { PatientDetail } from '#/types/patient.ts';
 import type { WfVisit } from '#/types/visit.ts';
-import { calculateAge, patientFullName } from '#/utils/clinic.ts';
+import { calculateAge, formatThaiDate, patientFullName, sexLabel } from '#/utils/clinic.ts';
 
 const route = useRoute();
 const router = useRouter();
 const hn = route.params.hn as string;
-const _settingsStore = useSettingsStore();
+const settingsStore = useSettingsStore();
 const alertStore = useAlertStore();
 const reviewStore = useReviewStore();
 
 type TabKey = 'inr' | 'visits' | 'dispensing' | 'interactions' | 'appointments' | 'adverse';
-const _activeTab = ref<TabKey>('inr');
-const _tabs: { key: TabKey; label: string; icon: unknown }[] = [
+const activeTab = ref<TabKey>('inr');
+const tabs: { key: TabKey; label: string; icon: unknown }[] = [
   { key: 'inr', label: 'INR', icon: Activity },
   { key: 'visits', label: 'ประวัติการทำคลินิก', icon: FileClock },
   { key: 'dispensing', label: 'ประวัติยา', icon: Pill },
@@ -42,7 +42,7 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const visitPanelOpen = ref(false);
 const editingVisit = ref<WfVisit | null>(null);
-const _statusModalOpen = ref(false);
+const statusModalOpen = ref(false);
 const appointmentTimelineKey = ref(0);
 
 async function loadPatient() {
@@ -64,10 +64,10 @@ async function loadPatient() {
   }
 }
 
-const _age = computed(() => calculateAge(patientDetail.value?.hosxpInfo?.birthday));
-const _fullName = computed(() => patientFullName(patientDetail.value?.hosxpInfo));
+const age = computed(() => calculateAge(patientDetail.value?.hosxpInfo?.birthday));
+const fullName = computed(() => patientFullName(patientDetail.value?.hosxpInfo));
 
-async function _onVisitSaved(visitId: number) {
+async function onVisitSaved(visitId: number) {
   visitPanelOpen.value = false;
   editingVisit.value = null;
   void alertStore.fetchAlerts();
@@ -75,12 +75,12 @@ async function _onVisitSaved(visitId: number) {
   await router.push(`/slip/${visitId}`);
 }
 
-function _handleEditVisit(visit: WfVisit) {
+function handleEditVisit(visit: WfVisit) {
   editingVisit.value = visit;
   visitPanelOpen.value = true;
 }
 
-function _handleVisitUpdated() {
+function handleVisitUpdated() {
   visitPanelOpen.value = false;
   editingVisit.value = null;
   void alertStore.fetchAlerts();
@@ -95,7 +95,7 @@ async function refreshVisits() {
   appointmentTimelineKey.value += 1;
 }
 
-function _handleVisitDeleted() {
+function handleVisitDeleted() {
   void alertStore.fetchAlerts();
   void reviewStore.fetchPendingCount();
   void refreshVisits();

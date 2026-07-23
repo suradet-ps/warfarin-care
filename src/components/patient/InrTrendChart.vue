@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { InrRecord } from '#/types/inr.ts';
+import { formatThaiDate } from '#/utils/clinic.ts';
 
 const props = defineProps<{
   inrRecords: InrRecord[];
@@ -31,7 +32,7 @@ function classifyInr(value: number, low: number, high: number): InrPointStatus {
   return 'in_range';
 }
 
-const _inrPointColors: Record<InrPointStatus, string> = {
+const inrPointColors: Record<InrPointStatus, string> = {
   in_range: 'var(--color-inr-safe)',
   above: 'var(--color-inr-high)',
   below: 'var(--color-inr-low)',
@@ -135,9 +136,9 @@ function buildSmoothPath(series: ChartPoint[]): string {
   return path;
 }
 
-const _linePath = computed(() => buildSmoothPath(points.value));
+const linePath = computed(() => buildSmoothPath(points.value));
 
-const _lineSegments = computed(() => {
+const lineSegments = computed(() => {
   if (points.value.length < 2) {
     return [];
   }
@@ -160,7 +161,7 @@ const _lineSegments = computed(() => {
   return segments;
 });
 
-const _targetBand = computed(() => {
+const targetBand = computed(() => {
   if (!valueRange.value) {
     return null;
   }
@@ -174,7 +175,7 @@ const _targetBand = computed(() => {
   };
 });
 
-const _yTicks = computed(() => {
+const yTicks = computed(() => {
   const range = valueRange.value;
   if (!range) {
     return [];
@@ -188,7 +189,7 @@ const _yTicks = computed(() => {
   return ticks;
 });
 
-const _xTicks = computed(() => {
+const xTicks = computed(() => {
   const records = displayRecords.value;
   if (records.length === 0) {
     return [];

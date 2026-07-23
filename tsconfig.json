@@ -4,7 +4,7 @@
     "useDefineForClassFields": true,
     "module": "ESNext",
     "lib": [
-      "ES2021",
+      "ES2022",
       "DOM",
       "DOM.Iterable"
     ],
@@ -15,6 +15,7 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": [
       "vite/client"
     ],

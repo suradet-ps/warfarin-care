@@ -9,7 +9,7 @@ const router = useRouter();
 const alertStore = useAlertStore();
 const authStore = useAuthStore();
 
-const _pageTitle = computed(() => {
+const pageTitle = computed(() => {
   const map: Record<string, string> = {
     '/screening': 'คัดกรองผู้ป่วย',
     '/active': 'ผู้ป่วยคลินิกวาร์ฟาริน',
@@ -27,9 +27,9 @@ const _pageTitle = computed(() => {
   return map[route.path] ?? 'คลินิกวาร์ฟาริน';
 });
 
-const _totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount);
+const totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount);
 
-async function _handleLogout() {
+async function handleLogout() {
   await authStore.logout();
   await router.replace('/login');
 }

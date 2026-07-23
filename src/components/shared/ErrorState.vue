@@ -3,7 +3,7 @@ defineProps<{
   message: string;
 }>();
 
-const _emit = defineEmits<{
+const emit = defineEmits<{
   retry: [];
 }>();
 </script>

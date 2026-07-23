@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { computed, onMounted, ref } from 'vue';
 import type { WfAppointment } from '#/types/appointment.ts';
 import type { ActivePatientSummary } from '#/types/patient.ts';
-import { daysUntil, patientFullName } from '#/utils/clinic.ts';
+import { daysUntil, formatThaiDate, patientFullName } from '#/utils/clinic.ts';
 
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -74,7 +74,7 @@ const selectedBucket = computed(() => {
   return dateBuckets.value[0] ?? null;
 });
 
-const _filteredAppointments = computed(() => {
+const filteredAppointments = computed(() => {
   const activeDate = selectedBucket.value?.date ?? '';
   const query = searchQuery.value.trim().toLowerCase();
 
@@ -91,7 +91,7 @@ const _filteredAppointments = computed(() => {
     .sort((a, b) => `${a.apptDate}-${a.hn}`.localeCompare(`${b.apptDate}-${b.hn}`));
 });
 
-const _stats = computed(() => ({
+const stats = computed(() => ({
   total: appointments.value.length,
   today: appointments.value.filter(
     (appointment) => (daysUntil(appointment.apptDate) ?? Number.MAX_SAFE_INTEGER) === 0,
@@ -126,7 +126,7 @@ async function loadAppointments() {
   }
 }
 
-function _appointmentTypeLabel(apptType?: string) {
+function appointmentTypeLabel(apptType?: string) {
   if (apptType === 'urgent') {
     return 'เร่งด่วน';
   }
@@ -136,7 +136,7 @@ function _appointmentTypeLabel(apptType?: string) {
   return 'ตรวจคลินิก';
 }
 
-function _appointmentTypeClass(apptType?: string) {
+function appointmentTypeClass(apptType?: string) {
   if (apptType === 'urgent') {
     return 'badge-danger';
   }
@@ -146,7 +146,7 @@ function _appointmentTypeClass(apptType?: string) {
   return 'badge-info';
 }
 
-function _appointmentTimingText(apptDate: string) {
+function appointmentTimingText(apptDate: string) {
   const delta = daysUntil(apptDate);
   if (delta === null) {
     return '-';

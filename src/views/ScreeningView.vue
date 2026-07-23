@@ -3,8 +3,8 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useScreeningStore } from '#/stores/screening.ts';
 
 const store = useScreeningStore();
-const _showEnrollModal = ref(false);
-const _selectedHn = ref<string | null>(null);
+const showEnrollModal = ref(false);
+const selectedHn = ref<string | null>(null);
 // Template refs for date inputs
 const dateFromRef = ref<HTMLInputElement | null>(null);
 const dateToRef = ref<HTMLInputElement | null>(null);
@@ -26,17 +26,17 @@ function scheduleAutoSearch() {
   }, 250);
 }
 
-function _handlePageChange(page: number) {
+function handlePageChange(page: number) {
   store.setPage(page);
   void store.search();
 }
 
-function _openDateFromPicker() {
+function openDateFromPicker() {
   if (dateFromRef.value) {
     (dateFromRef.value as any).showPicker?.();
   }
 }
-function _openDateToPicker() {
+function openDateToPicker() {
   if (dateToRef.value) {
     (dateToRef.value as any).showPicker?.();
   }
@@ -102,7 +102,7 @@ watch(
       :total="store.total"
       :page="store.filters.page"
       :page-size="store.filters.pageSize"
-      @enroll="(hn) => { selectedHn = hn; showEnrollModal = true }"
+      @enroll="(hn: string) => { selectedHn = hn; showEnrollModal = true }"
       @page-change="handlePageChange"
     />
 

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { computed, onMounted, ref } from 'vue';
 import type { InrRecord } from '#/types/inr.ts';
 import type { DoseSuggestion, WfVisit } from '#/types/visit.ts';
+import { formatThaiDate } from '#/utils/clinic.ts';
 
 const props = defineProps<{ hn: string; targetLow: number; targetHigh: number }>();
 
@@ -13,7 +14,7 @@ const currentInr = ref<number | null>(null);
 const latestInrDate = ref<string | null>(null);
 const suggestion = ref<DoseSuggestion | null>(null);
 
-const _urgencyInfo = computed(() => {
+const urgencyInfo = computed(() => {
   const map: Record<string, { text: string; className: string }> = {
     normal: { text: 'ปกติ', className: 'badge-success' },
     caution: { text: 'ระวัง', className: 'badge-warning' },
@@ -38,7 +39,7 @@ async function loadDefaults() {
   }
 }
 
-async function _calculateSuggestion() {
+async function calculateSuggestion() {
   if (currentDose.value === null || currentInr.value === null) {
     return;
   }

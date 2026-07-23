@@ -86,7 +86,7 @@ async function loadSlip() {
   }
 }
 
-async function _printSlip() {
+async function printSlip() {
   if (!canOutput.value) {
     return;
   }
@@ -104,7 +104,7 @@ async function _printSlip() {
   }
 }
 
-async function _exportPdf() {
+async function exportPdf() {
   if (!(canOutput.value && slipCapture.value && visit.value)) {
     return;
   }

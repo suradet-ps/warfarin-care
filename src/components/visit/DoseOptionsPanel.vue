@@ -7,7 +7,7 @@ defineProps<{
   loading?: boolean;
 }>();
 
-const _emit = defineEmits<(e: 'select', index: number) => void>();
+const emit = defineEmits<(e: 'select', index: number) => void>();
 </script>
 
 <template>

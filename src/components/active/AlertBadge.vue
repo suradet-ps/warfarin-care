@@ -4,7 +4,7 @@ import type { PatientAlert } from '#/types/alert.ts';
 
 const props = defineProps<{ alerts: PatientAlert[] }>();
 
-const _summary = computed(() => {
+const summary = computed(() => {
   const critical = props.alerts.filter((alert) => alert.severity === 'critical').length;
   const warning = props.alerts.filter((alert) => alert.severity === 'warning').length;
   return { critical, warning };

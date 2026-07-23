@@ -20,7 +20,7 @@ onMounted(() => {
   }
 });
 
-async function _handleSubmit() {
+async function handleSubmit() {
   localError.value = null;
   store.reset();
   if (!(username.value.trim() && password.value)) {

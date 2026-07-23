@@ -6,18 +6,18 @@ const syncStore = useSyncStore();
 
 const formUrl = ref('');
 const formKey = ref('');
-const _showKey = ref(false);
+const showKey = ref(false);
 const testing = ref(false);
 const saving = ref(false);
 const actionError = ref<string | null>(null);
 const testResult = ref<boolean | null>(null);
 const testMessage = ref<string | null>(null);
 
-const _keyPlaceholder = computed(() =>
+const keyPlaceholder = computed(() =>
   syncStore.summary.hasAnonKey ? '••••••••••••••••••••••' : 'eyJhbGciOi...',
 );
 
-const _machineIdShort = computed(() => {
+const machineIdShort = computed(() => {
   const machineId = syncStore.info.machineId;
   if (!machineId) {
     return '-';
@@ -28,7 +28,7 @@ const _machineIdShort = computed(() => {
   return `${machineId.slice(0, 8)}...${machineId.slice(-4)}`;
 });
 
-const _lastSyncLabel = computed(() => {
+const lastSyncLabel = computed(() => {
   if (!syncStore.info.lastSyncAt) {
     return 'ยังไม่เคย sync';
   }
@@ -40,7 +40,7 @@ const _lastSyncLabel = computed(() => {
   }).format(date);
 });
 
-const _statusBadgeLabel = computed(() => {
+const statusBadgeLabel = computed(() => {
   switch (syncStore.status) {
     case 'pushing':
       return 'กำลัง push';
@@ -57,7 +57,7 @@ const _statusBadgeLabel = computed(() => {
   }
 });
 
-const _statusBadgeClass = computed(() => {
+const statusBadgeClass = computed(() => {
   switch (syncStore.status) {
     case 'success':
       return 'badge-success';
@@ -77,7 +77,7 @@ onMounted(async () => {
   formUrl.value = syncStore.summary.supabaseUrl ?? '';
 });
 
-async function _handleTestConnection() {
+async function handleTestConnection() {
   actionError.value = null;
   testResult.value = null;
   testMessage.value = null;
@@ -105,7 +105,7 @@ async function _handleTestConnection() {
   }
 }
 
-async function _handleSaveConfig() {
+async function handleSaveConfig() {
   actionError.value = null;
   testMessage.value = null;
 
@@ -128,7 +128,7 @@ async function _handleSaveConfig() {
   }
 }
 
-async function _handlePush() {
+async function handlePush() {
   actionError.value = null;
   try {
     await syncStore.push();
@@ -138,7 +138,7 @@ async function _handlePush() {
   }
 }
 
-async function _handlePull() {
+async function handlePull() {
   actionError.value = null;
   try {
     await syncStore.pull();

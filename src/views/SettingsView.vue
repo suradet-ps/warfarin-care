@@ -9,9 +9,9 @@ const saving = ref(false);
 const saveResult = ref<'success' | 'error' | null>(null);
 const saveError = ref<string | null>(null);
 
-const _activeSection = ref<'connection' | 'hospital' | 'interactions' | 'sync'>('connection');
+const activeSection = ref<'connection' | 'hospital' | 'interactions' | 'sync'>('connection');
 
-const _sections = [
+const sections = [
   { key: 'connection', label: 'การเชื่อมต่อ' },
   { key: 'hospital', label: 'ข้อมูลโรงพยาบาล' },
   { key: 'sync', label: 'Cloud Sync' },
@@ -24,7 +24,7 @@ onMounted(() => {
   void store.loadDrugInteractions();
 });
 
-async function _handleTestConnection() {
+async function handleTestConnection() {
   testing.value = true;
   saveResult.value = null;
   saveError.value = null;
@@ -33,7 +33,7 @@ async function _handleTestConnection() {
   testing.value = false;
 }
 
-async function _handleSaveConnection() {
+async function handleSaveConnection() {
   saving.value = true;
   testResult.value = null;
   saveResult.value = null;
@@ -56,7 +56,7 @@ const selectedDrug = ref<{ icode: string; name: string; strength: string } | nul
 const interactionType = ref('increase');
 const searchKeyword = ref('');
 
-async function _onSearchKeyword() {
+async function onSearchKeyword() {
   if (!searchKeyword.value.trim()) {
     return;
   }
@@ -76,13 +76,13 @@ async function _onSearchKeyword() {
   }
 }
 
-function _selectDrug(drug: { icode: string; name: string; strength: string }) {
+function selectDrug(drug: { icode: string; name: string; strength: string }) {
   selectedDrug.value = drug;
   searchResults.value = [];
   searchKeyword.value = `${drug.name} ${drug.strength}`.trim();
 }
 
-async function _saveDrugInteraction() {
+async function saveDrugInteraction() {
   if (!selectedDrug.value) {
     return;
   }
@@ -98,7 +98,7 @@ async function _saveDrugInteraction() {
   interactionType.value = 'increase';
 }
 
-async function _handleDeleteInteraction(id: number) {
+async function handleDeleteInteraction(id: number) {
   if (confirm('ต้องการลบรายการนี้?')) {
     await store.deleteDrugInteraction(id);
   }

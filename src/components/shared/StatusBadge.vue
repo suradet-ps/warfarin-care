@@ -6,7 +6,7 @@ const props = defineProps<{
   variant?: 'patient' | 'appointment';
 }>();
 
-const _config = computed(() => {
+const config = computed(() => {
   if (props.variant === 'appointment') {
     const appointmentMap: Record<
       string,

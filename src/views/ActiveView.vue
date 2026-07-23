@@ -17,9 +17,9 @@ const error = ref<string | null>(null);
 const searchQuery = ref('');
 const searchInputRef = ref<HTMLInputElement | null>(null);
 
-const _criticalAlerts = computed(() => alertStore.alerts.filter((a) => a.severity === 'critical'));
+const criticalAlerts = computed(() => alertStore.alerts.filter((a) => a.severity === 'critical'));
 
-const _filteredSummaries = computed(() => {
+const filteredSummaries = computed(() => {
   if (!searchQuery.value.trim()) {
     return summaries.value;
   }
@@ -55,12 +55,12 @@ async function loadRows() {
   }
 }
 
-function _openVisit(hn: string) {
+function openVisit(hn: string) {
   selectedHn.value = hn;
   visitPanelOpen.value = true;
 }
 
-async function _handleSaved(visitId: number) {
+async function handleSaved(visitId: number) {
   visitPanelOpen.value = false;
   void reviewStore.fetchPendingCount();
   await loadRows();

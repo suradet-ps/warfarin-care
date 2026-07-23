@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { ArrowDown, ArrowUp } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { useSettingsStore } from '#/stores/settings.ts';
+import { formatThaiDate } from '#/utils/clinic.ts';
 
 interface PatientDrugInteractionRecord {
   date: string;
@@ -28,7 +30,7 @@ const props = defineProps<{
   };
 }>();
 
-const _store = useSettingsStore();
+const store = useSettingsStore();
 const loading = ref(false);
 const error = ref<string | null>(null);
 const records = ref<PatientDrugInteractionRecord[]>([]);
@@ -53,7 +55,7 @@ async function loadInteractions() {
   }
 }
 
-const _trendLabel = computed(() => {
+const trendLabel = computed(() => {
   if (!summary.value) {
     return '';
   }

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { onMounted, ref } from 'vue';
 import { useReviewStore } from '#/stores/review.ts';
 import type { WfVisit } from '#/types/visit.ts';
+import { formatThaiDate } from '#/utils/clinic.ts';
 
 const reviewStore = useReviewStore();
 const visits = ref<WfVisit[]>([]);
@@ -26,7 +27,7 @@ async function loadVisits() {
   }
 }
 
-async function _approveVisit(visitId: number) {
+async function approveVisit(visitId: number) {
   approving.value.add(visitId);
   try {
     await invoke('approve_visit', {
@@ -41,27 +42,27 @@ async function _approveVisit(visitId: number) {
   }
 }
 
-function _handleEdit(visit: WfVisit) {
+function handleEdit(visit: WfVisit) {
   selectedHn.value = visit.hn;
   editingVisit.value = visit;
   visitPanelOpen.value = true;
 }
 
-async function _onVisitSaved(_visitId: number) {
+async function onVisitSaved(_visitId: number) {
   visitPanelOpen.value = false;
   editingVisit.value = null;
   await loadVisits();
   await reviewStore.fetchPendingCount();
 }
 
-async function _handleVisitUpdated() {
+async function handleVisitUpdated() {
   visitPanelOpen.value = false;
   editingVisit.value = null;
   await loadVisits();
   await reviewStore.fetchPendingCount();
 }
 
-const _filteredVisits = () => {
+const filteredVisits = () => {
   if (!searchQuery.value.trim()) {
     return visits.value;
   }

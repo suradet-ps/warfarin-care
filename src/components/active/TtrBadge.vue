@@ -3,7 +3,7 @@ import { computed } from 'vue';
 
 const props = defineProps<{ ttr?: number | null }>();
 
-const _badgeClass = computed(() => {
+const badgeClass = computed(() => {
   if (props.ttr === null || props.ttr === undefined) {
     return 'badge-muted';
   }

@@ -1,7 +1,14 @@
 <script setup lang="ts">
+import { ChevronDown, ChevronUp } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useVisitStore } from '#/stores/visit.ts';
 import type { WfVisit } from '#/types/visit.ts';
+import {
+  doseDayKeys,
+  doseDayLabels,
+  formatThaiDate,
+  normalizeDoseSchedule,
+} from '#/utils/clinic.ts';
 
 const props = defineProps<{ visits: WfVisit[]; hn: string }>();
 
@@ -12,11 +19,11 @@ const visitStore = useVisitStore();
 const expandedIds = ref<Set<number>>(new Set());
 const deleteTargetId = ref<number | null>(null);
 
-const _sortedVisits = computed(() =>
+const sortedVisits = computed(() =>
   [...props.visits].sort((a, b) => `${b.visitDate}`.localeCompare(`${a.visitDate}`)),
 );
 
-function _toggleExpand(id: number) {
+function toggleExpand(id: number) {
   if (expandedIds.value.has(id)) {
     expandedIds.value.delete(id);
   } else {
@@ -24,15 +31,15 @@ function _toggleExpand(id: number) {
   }
 }
 
-function _confirmDelete(id: number) {
+function confirmDelete(id: number) {
   deleteTargetId.value = id;
 }
 
-function _handleEdit(visit: WfVisit) {
+function handleEdit(visit: WfVisit) {
   emit('edit', visit);
 }
 
-async function _handleConfirmedDelete() {
+async function handleConfirmedDelete() {
   if (deleteTargetId.value === null) {
     return;
   }
@@ -41,17 +48,17 @@ async function _handleConfirmedDelete() {
   emit('deleted');
 }
 
-function _handleCancelDelete() {
+function handleCancelDelete() {
   deleteTargetId.value = null;
 }
 
-const _adherenceLabels: Record<string, string> = {
+const adherenceLabels: Record<string, string> = {
   good: 'ดี',
   fair: 'พอใช้',
   poor: 'ไม่ดี',
 };
 
-function _adherenceBadgeClass(a?: string | null) {
+function adherenceBadgeClass(a?: string | null) {
   if (a === 'good') {
     return 'badge-success';
   }

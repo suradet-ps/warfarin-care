@@ -42,7 +42,7 @@ function close() {
   emit('cancel');
 }
 
-function _handleKeydown(e: KeyboardEvent) {
+function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     e.preventDefault();
     close();

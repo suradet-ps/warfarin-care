@@ -2,24 +2,24 @@
 import { computed } from 'vue';
 import type { PatientAlert } from '#/types/alert.ts';
 import type { ActivePatientSummary } from '#/types/patient.ts';
-import { daysUntil, formatThaiDate } from '#/utils/clinic.ts';
+import { daysUntil, formatThaiDate, patientFullName } from '#/utils/clinic.ts';
 
 const props = defineProps<{
   summary: ActivePatientSummary;
   alerts?: PatientAlert[];
 }>();
 
-const _emit = defineEmits<{
+const emit = defineEmits<{
   openVisit: [hn: string];
 }>();
 
-const _inrDays = computed(() => {
+const inrDays = computed(() => {
   const delta = daysUntil(props.summary.latestInr?.date ?? undefined);
   return delta === null ? null : Math.abs(delta);
 });
 
 const nextApptDelta = computed(() => daysUntil(props.summary.nextAppointment ?? undefined));
-const _appointmentText = computed(() => {
+const appointmentText = computed(() => {
   if (!props.summary.nextAppointment) {
     return 'ยังไม่มีนัด';
   }

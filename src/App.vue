@@ -5,11 +5,11 @@ import { useAuthStore } from '#/stores/auth.ts';
 import { useSyncStore } from '#/stores/sync.ts';
 
 const route = useRoute();
-const _router = useRouter();
+const router = useRouter();
 const syncStore = useSyncStore();
 const authStore = useAuthStore();
 
-const _isAuthScreen = computed(() => route.path === '/login' || route.path === '/setup');
+const isAuthScreen = computed(() => route.path === '/login' || route.path === '/setup');
 
 function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'n') {

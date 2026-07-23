@@ -5,13 +5,14 @@ import type { DoseSchedule } from '#/types/visit.ts';
 import {
   aggregateDispensingByVisit,
   doseDayLabels,
+  formatThaiDate,
   normalizeDoseSchedule,
 } from '#/utils/clinic.ts';
 
 const props = defineProps<{ records: DispensingRecord[] }>();
-const _orderedVisits = computed(() => aggregateDispensingByVisit(props.records));
+const orderedVisits = computed(() => aggregateDispensingByVisit(props.records));
 
-function _activeDays(scheduleInput?: Partial<DoseSchedule> | string | null) {
+function activeDays(scheduleInput?: Partial<DoseSchedule> | string | null) {
   const schedule = normalizeDoseSchedule(scheduleInput);
   const labels = Object.entries(schedule)
     .filter(([, value]) => Number(value) > 0)
@@ -19,7 +20,7 @@ function _activeDays(scheduleInput?: Partial<DoseSchedule> | string | null) {
   return labels.join(' ') || '-';
 }
 
-function _regimenSummary(items: DispensingRecord[]): string {
+function regimenSummary(items: DispensingRecord[]): string {
   return items
     .map((item) => `${item.strength} x ${item.parsedDose?.tabletsPerDose?.toFixed(2) ?? '?'} เม็ด`)
     .join(' + ');

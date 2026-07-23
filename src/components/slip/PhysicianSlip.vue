@@ -3,7 +3,15 @@ import { computed, ref } from 'vue';
 import { useSettingsStore } from '#/stores/settings.ts';
 import type { PatientDetail } from '#/types/patient.ts';
 import type { WfVisit } from '#/types/visit.ts';
-import { calculateAge, getCssVar, normalizeDoseSchedule } from '#/utils/clinic.ts';
+import {
+  calculateAge,
+  doseDayKeys,
+  doseDayLabels,
+  formatThaiDate,
+  getCssVar,
+  normalizeDoseSchedule,
+  scheduleWeeklyTotal,
+} from '#/utils/clinic.ts';
 import { createRegimenOptionSnapshot } from '#/utils/regimen.ts';
 
 const props = defineProps<{ visit: WfVisit; patient: PatientDetail; ttr: number | null }>();
@@ -101,9 +109,9 @@ function buildSmoothPath(series: ChartPoint[]): string {
   return path;
 }
 
-const _linePath = computed(() => buildSmoothPath(points.value));
+const linePath = computed(() => buildSmoothPath(points.value));
 
-const _targetBand = computed(() => {
+const targetBand = computed(() => {
   const range = valueRange.value;
   if (!range) {
     return null;
@@ -116,7 +124,7 @@ const _targetBand = computed(() => {
   };
 });
 
-const _yTicks = computed(() => {
+const yTicks = computed(() => {
   const range = valueRange.value;
   if (!range) {
     return [];
@@ -129,7 +137,7 @@ const _yTicks = computed(() => {
   return ticks;
 });
 
-const _xTicks = computed(() => {
+const xTicks = computed(() => {
   const records = inrRecords.value;
   if (records.length === 0) {
     return [];
@@ -142,7 +150,7 @@ const _xTicks = computed(() => {
     }));
 });
 
-const _chartPalette = computed(() => ({
+const chartPalette = computed(() => ({
   line: getCssVar('--color-primary') || '#111111',
   canvas: getCssVar('--color-canvas') || '#ffffff',
   grid: getCssVar('--color-hairline-soft') || '#e5e5e6',
@@ -151,11 +159,11 @@ const _chartPalette = computed(() => ({
 }));
 
 const info = computed(() => props.patient.hosxpInfo);
-const _p = computed(() => props.patient.patient);
-const _age = computed(() => (info.value ? calculateAge(info.value.birthday) : null));
-const _currentDoseSchedule = computed(() => normalizeDoseSchedule(props.visit.doseDetail));
-const _newDoseSchedule = computed(() => normalizeDoseSchedule(props.visit.newDoseDetail));
-const _selectedDoseOption = computed(
+const p = computed(() => props.patient.patient);
+const age = computed(() => (info.value ? calculateAge(info.value.birthday) : null));
+const currentDoseSchedule = computed(() => normalizeDoseSchedule(props.visit.doseDetail));
+const newDoseSchedule = computed(() => normalizeDoseSchedule(props.visit.newDoseDetail));
+const selectedDoseOption = computed(
   () =>
     props.visit.selectedDoseOption ??
     createRegimenOptionSnapshot({
@@ -165,13 +173,13 @@ const _selectedDoseOption = computed(
     }),
 );
 
-const _adherenceLabel: Record<string, string> = {
+const adherenceLabel: Record<string, string> = {
   good: 'ดี',
   fair: 'พอใช้',
   poor: 'ไม่ดี',
 };
 
-function _ttrClass(v: number | null): string {
+function ttrClass(v: number | null): string {
   if (v === null) {
     return '';
   }
@@ -199,17 +207,17 @@ const sideEffectOptionsLow: Record<string, string> = {
   other: 'อื่นๆ',
 };
 
-const _adrHighLabels = computed(() => {
+const adrHighLabels = computed(() => {
   const selected = props.visit.sideEffects ?? [];
   return selected.map((k: string) => sideEffectOptionsHigh[k]).filter(Boolean);
 });
 
-const _adrLowLabels = computed(() => {
+const adrLowLabels = computed(() => {
   const selected = props.visit.sideEffects ?? [];
   return selected.map((k: string) => sideEffectOptionsLow[k]).filter(Boolean);
 });
 
-function _daysFromNow(dateStr: string | null): string {
+function daysFromNow(dateStr: string | null): string {
   if (!dateStr) {
     return '';
   }

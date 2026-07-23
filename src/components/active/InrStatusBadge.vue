@@ -40,7 +40,7 @@ const status = computed<InrStatus>(() => {
   return 'in_range';
 });
 
-const _config = computed(() => {
+const config = computed(() => {
   const map: Record<InrStatus, { label: string; className: string; dotClass: string }> = {
     in_range: { label: 'อยู่ในเป้าหมาย', className: 'badge-success', dotClass: 'dot-success' },
     above: { label: 'สูงกว่าเป้าหมาย', className: 'badge-warning', dotClass: 'dot-warning' },

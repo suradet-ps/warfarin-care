@@ -46,10 +46,10 @@ const missedAppts = ref<MissedAppointmentsReport | null>(null);
 const doseAdj = ref<DoseAdjReport | null>(null);
 const monthlyCohort = ref<MonthlyCohortReport | null>(null);
 const loading = ref(false);
-const _dateFrom = ref('');
-const _dateTo = ref('');
+const dateFrom = ref('');
+const dateTo = ref('');
 
-const _reportCards = computed(() => [
+const reportCards = computed(() => [
   {
     key: 'census',
     title: 'สถิติผู้ป่วย',
@@ -161,7 +161,7 @@ async function loadReports() {
   }
 }
 
-function _exportCsv(title: string, rows: string[][]) {
+function exportCsv(title: string, rows: string[][]) {
   const csv = [['หัวข้อ', 'ค่า'], ...rows]
     .map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(','))
     .join('\n');

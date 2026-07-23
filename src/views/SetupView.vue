@@ -59,7 +59,7 @@ const confirmError = computed(() => {
   return null;
 });
 
-async function _handleSubmit() {
+async function handleSubmit() {
   localError.value = null;
   if (usernameError.value || passwordError.value || confirmError.value) {
     localError.value = 'กรุณาตรวจสอบข้อมูลที่กรอก';

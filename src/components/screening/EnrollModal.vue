@@ -21,7 +21,7 @@ const form = ref<EnrollmentInput>({
   notes: '',
 });
 
-function _onIndicationChange() {
+function onIndicationChange() {
   const d = DEFAULT_TARGET_INR_BY_INDICATION[form.value.indication];
   if (d) {
     form.value.targetInrLow = d.low;
@@ -29,7 +29,7 @@ function _onIndicationChange() {
   }
 }
 
-async function _handleSubmit() {
+async function handleSubmit() {
   saving.value = true;
   error.value = null;
   try {

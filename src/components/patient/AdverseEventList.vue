@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { computed, onMounted, ref } from 'vue';
 import type { OutcomeInput, OutcomeType, WfOutcome } from '#/types/outcome.ts';
-import { dateInputToday, sortOutcomes } from '#/utils/clinic.ts';
+import { dateInputToday, formatThaiDate, sortOutcomes } from '#/utils/clinic.ts';
 
 const props = defineProps<{ hn: string }>();
 const outcomes = ref<WfOutcome[]>([]);
@@ -19,7 +19,7 @@ const form = ref<OutcomeInput>({
   actionTaken: '',
 });
 
-const _eventLabels: Record<OutcomeType, string> = {
+const eventLabels: Record<OutcomeType, string> = {
   major_bleeding: 'เลือดออกรุนแรง',
   minor_bleeding: 'เลือดออกเล็กน้อย',
   thromboembolism: 'ลิ่มเลือดอุดตัน',
@@ -28,7 +28,7 @@ const _eventLabels: Record<OutcomeType, string> = {
   other: 'อื่นๆ',
 };
 
-const _orderedOutcomes = computed(() => sortOutcomes(outcomes.value));
+const orderedOutcomes = computed(() => sortOutcomes(outcomes.value));
 
 async function fetchOutcomes() {
   loading.value = true;
@@ -42,7 +42,7 @@ async function fetchOutcomes() {
   }
 }
 
-async function _submitOutcome() {
+async function submitOutcome() {
   saving.value = true;
   error.value = null;
   try {

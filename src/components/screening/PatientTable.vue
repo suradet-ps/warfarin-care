@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { PatientDrugRecord } from '#/types/patient.ts';
-import { calculateAge } from '#/utils/clinic.ts';
+import { calculateAge, formatThaiDate } from '#/utils/clinic.ts';
 
 const props = defineProps<{
   records: PatientDrugRecord[];
@@ -15,15 +15,15 @@ const emit = defineEmits<{
 }>();
 
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)));
-const _rangeStart = computed(() => (props.total === 0 ? 0 : (props.page - 1) * props.pageSize + 1));
-const _rangeEnd = computed(() => Math.min(props.total, props.page * props.pageSize));
+const rangeStart = computed(() => (props.total === 0 ? 0 : (props.page - 1) * props.pageSize + 1));
+const rangeEnd = computed(() => Math.min(props.total, props.page * props.pageSize));
 
-function _ageLabel(birthday: string): string {
+function ageLabel(birthday: string): string {
   const age = calculateAge(birthday);
   return age === null ? '-' : `${age} ปี`;
 }
 
-function _getStrengthClass(strength: string): string {
+function getStrengthClass(strength: string): string {
   if (strength.includes('2')) {
     return 'pill-strength-2mg';
   }
@@ -36,7 +36,7 @@ function _getStrengthClass(strength: string): string {
   return 'pill-muted';
 }
 
-function _getStrengthLabel(strength: string): string {
+function getStrengthLabel(strength: string): string {
   if (strength.includes('2')) {
     return '2 mg';
   }
@@ -49,7 +49,7 @@ function _getStrengthLabel(strength: string): string {
   return strength;
 }
 
-function _goToPage(page: number) {
+function goToPage(page: number) {
   if (page < 1 || page > totalPages.value || page === props.page) {
     return;
   }

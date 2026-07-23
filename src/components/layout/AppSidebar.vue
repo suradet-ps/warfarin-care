@@ -6,12 +6,12 @@ import { useAlertStore } from '#/stores/alerts.ts';
 import { useReviewStore } from '#/stores/review.ts';
 import { useSettingsStore } from '#/stores/settings.ts';
 
-const _route = useRoute();
+const route = useRoute();
 const alertStore = useAlertStore();
 const reviewStore = useReviewStore();
 const settingsStore = useSettingsStore();
 
-const _navItems = [
+const navItems = [
   { name: 'screening', label: 'คัดกรอง', icon: Search, path: '/screening' },
   { name: 'active', label: 'ผู้ป่วยทั้งหมด', icon: Users, path: '/active' },
   { name: 'appointments', label: 'การนัดหมาย', icon: CalendarDays, path: '/appointments' },
@@ -20,8 +20,8 @@ const _navItems = [
   { name: 'settings', label: 'ตั้งค่า', icon: Settings, path: '/settings' },
 ];
 
-const _totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount);
-const _pendingReviewCount = computed(() => reviewStore.pendingCount);
+const totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount);
+const pendingReviewCount = computed(() => reviewStore.pendingCount);
 
 onMounted(() => {
   void Promise.all([

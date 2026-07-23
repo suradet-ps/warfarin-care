@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { AppointmentDayLoad, AppointmentInput, WfAppointment } from '#/types/appointment.ts';
-import { dateInputToday, sortAppointments } from '#/utils/clinic.ts';
+import { dateInputToday, formatThaiDate, sortAppointments } from '#/utils/clinic.ts';
 
 const props = defineProps<{ hn: string }>();
 const appointments = ref<WfAppointment[]>([]);
@@ -16,7 +16,7 @@ const form = ref<AppointmentInput>({
   apptType: 'clinic_visit',
   notes: '',
 });
-const _orderedAppointments = computed(() => sortAppointments(appointments.value));
+const orderedAppointments = computed(() => sortAppointments(appointments.value));
 const loadingDayLoad = ref(false);
 const appointmentDayLoad = ref<AppointmentDayLoad | null>(null);
 
@@ -32,7 +32,7 @@ async function fetchAppointments() {
   }
 }
 
-async function _submitAppointment() {
+async function submitAppointment() {
   saving.value = true;
   error.value = null;
   try {
