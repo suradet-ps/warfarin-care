@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { ClipboardCheck, Pencil, Search } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
+import VisitFormPanel from '#/components/visit/VisitFormPanel.vue';
 import { useReviewStore } from '#/stores/review.ts';
 import type { WfVisit } from '#/types/visit.ts';
 import { formatThaiDate } from '#/utils/clinic.ts';

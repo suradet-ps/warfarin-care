@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { X } from 'lucide-vue-next';
 import { ref } from 'vue';
 import { usePatientStore } from '#/stores/patient.ts';
 import type { EnrollmentInput } from '#/types/patient.ts';

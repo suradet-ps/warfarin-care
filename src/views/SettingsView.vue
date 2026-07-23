@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { Plus, Search, Trash2, X } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
+import SyncPanel from '#/components/settings/SyncPanel.vue';
 import { useSettingsStore } from '#/stores/settings.ts';
 
 const store = useSettingsStore();

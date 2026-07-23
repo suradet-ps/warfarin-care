@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { CalendarDays, CalendarRange, Clock3, Search, Users } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import type { WfAppointment } from '#/types/appointment.ts';
 import type { ActivePatientSummary } from '#/types/patient.ts';

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import ConfirmDialog from '#/components/shared/ConfirmDialog.vue';
 import { usePatientStore } from '#/stores/patient.ts';
 import { dateInputToday } from '#/utils/clinic.ts';
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import RegimenOptionCard from '#/components/visit/RegimenOptionCard.vue';
 import { useSettingsStore } from '#/stores/settings.ts';
 import type { PatientDetail } from '#/types/patient.ts';
 import type { WfVisit } from '#/types/visit.ts';

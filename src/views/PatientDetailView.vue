@@ -5,11 +5,24 @@ import {
   ActivitySquare,
   CalendarDays,
   FileClock,
+  FilePenLine,
   Pill,
   ShieldAlert,
 } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import TtrBadge from '#/components/active/TtrBadge.vue';
+import AdverseEventList from '#/components/patient/AdverseEventList.vue';
+import AppointmentTimeline from '#/components/patient/AppointmentTimeline.vue';
+import DispensingTable from '#/components/patient/DispensingTable.vue';
+import DrugInteractionTable from '#/components/patient/DrugInteractionTable.vue';
+import InrTrendChart from '#/components/patient/InrTrendChart.vue';
+import StatusChangeModal from '#/components/patient/StatusChangeModal.vue';
+import VisitList from '#/components/patient/VisitList.vue';
+import ErrorState from '#/components/shared/ErrorState.vue';
+import LoadingState from '#/components/shared/LoadingState.vue';
+import StatusBadge from '#/components/shared/StatusBadge.vue';
+import VisitFormPanel from '#/components/visit/VisitFormPanel.vue';
 import { useAlertStore } from '#/stores/alerts.ts';
 import { useReviewStore } from '#/stores/review.ts';
 import { useSettingsStore } from '#/stores/settings.ts';

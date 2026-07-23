@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { LogIn } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '#/stores/auth.ts';

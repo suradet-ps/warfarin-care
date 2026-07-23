@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
-import { ArrowDown, ArrowUp } from 'lucide-vue-next';
+import { AlertTriangle, ArrowDown, ArrowUp } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { useSettingsStore } from '#/stores/settings.ts';
 import { formatThaiDate } from '#/utils/clinic.ts';

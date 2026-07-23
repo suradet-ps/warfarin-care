@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { AlertTriangle, Search, Users } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import PatientRow from '#/components/active/PatientRow.vue';
+import ErrorState from '#/components/shared/ErrorState.vue';
+import LoadingState from '#/components/shared/LoadingState.vue';
+import VisitFormPanel from '#/components/visit/VisitFormPanel.vue';
 import { useAlertStore } from '#/stores/alerts.ts';
 import { useReviewStore } from '#/stores/review.ts';
 import type { ActivePatientSummary } from '#/types/patient.ts';

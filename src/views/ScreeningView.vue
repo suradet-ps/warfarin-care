@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { Calendar, Search } from 'lucide-vue-next';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import EnrollModal from '#/components/screening/EnrollModal.vue';
+import PatientTable from '#/components/screening/PatientTable.vue';
 import { useScreeningStore } from '#/stores/screening.ts';
 
 const store = useScreeningStore();

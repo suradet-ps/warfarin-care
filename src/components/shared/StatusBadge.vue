@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import PillBadge from '#/components/shared/PillBadge.vue';
 
 const props = defineProps<{
   status: string;

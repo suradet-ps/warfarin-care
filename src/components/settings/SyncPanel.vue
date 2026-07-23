@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Cloud, Download, Eye, EyeOff, RefreshCw, Upload } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { useSyncStore } from '#/stores/sync.ts';
 

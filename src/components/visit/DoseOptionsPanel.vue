@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RegimenOptionCard from '#/components/visit/RegimenOptionCard.vue';
 import type { RegimenOption } from '#/types/dose.ts';
 
 defineProps<{

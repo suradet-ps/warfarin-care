@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import AppHeader from '#/components/layout/AppHeader.vue';
+import AppSidebar from '#/components/layout/AppSidebar.vue';
 import { useAuthStore } from '#/stores/auth.ts';
 import { useSyncStore } from '#/stores/sync.ts';
 

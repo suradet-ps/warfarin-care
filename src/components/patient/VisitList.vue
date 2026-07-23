@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { Check, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import ConfirmDialog from '#/components/shared/ConfirmDialog.vue';
 import { useVisitStore } from '#/stores/visit.ts';
 import type { WfVisit } from '#/types/visit.ts';
 import {

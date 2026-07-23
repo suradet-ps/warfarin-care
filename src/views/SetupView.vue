@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ShieldCheck } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '#/stores/auth.ts';

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { AlertTriangle } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import type { OutcomeInput, OutcomeType, WfOutcome } from '#/types/outcome.ts';
 import { dateInputToday, formatThaiDate, sortOutcomes } from '#/utils/clinic.ts';

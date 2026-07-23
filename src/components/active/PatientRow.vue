@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { FilePenLine, FileText } from 'lucide-vue-next';
 import { computed } from 'vue';
+import AlertBadge from '#/components/active/AlertBadge.vue';
+import InrStatusBadge from '#/components/active/InrStatusBadge.vue';
+import TtrBadge from '#/components/active/TtrBadge.vue';
 import type { PatientAlert } from '#/types/alert.ts';
 import type { ActivePatientSummary } from '#/types/patient.ts';
 import { daysUntil, formatThaiDate, patientFullName } from '#/utils/clinic.ts';

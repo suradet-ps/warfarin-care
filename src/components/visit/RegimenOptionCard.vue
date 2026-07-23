@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { Check } from 'lucide-vue-next';
 import { computed } from 'vue';
+import PillVisual from '#/components/shared/PillVisual.vue';
 import type { RegimenOption } from '#/types/dose.ts';
 
 const props = withDefaults(

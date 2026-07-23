@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { Calculator } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import type { InrRecord } from '#/types/inr.ts';
 import type { DoseSuggestion, WfVisit } from '#/types/visit.ts';

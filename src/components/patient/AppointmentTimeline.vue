@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
+import { CalendarPlus } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
+import StatusBadge from '#/components/shared/StatusBadge.vue';
 import type { AppointmentDayLoad, AppointmentInput, WfAppointment } from '#/types/appointment.ts';
 import { dateInputToday, formatThaiDate, sortAppointments } from '#/utils/clinic.ts';
 

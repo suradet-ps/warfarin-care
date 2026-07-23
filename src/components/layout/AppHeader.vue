@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Bell, LogOut } from 'lucide-vue-next';
 import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAlertStore } from '#/stores/alerts.ts';
