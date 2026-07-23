@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Search, Trash2, X } from 'lucide-vue-next';
+import { AlertTriangle, Pill, Plus, Search, ShieldAlert, ShieldCheck, ShieldX, Trash2, X } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 import SyncPanel from '#/components/settings/SyncPanel.vue';
 import { useSettingsStore } from '#/stores/settings.ts';
@@ -53,8 +53,8 @@ async function handleSaveConnection() {
 
 const interactionModalOpen = ref(false);
 const searchingDrug = ref(false);
-const searchResults = ref<{ icode: string; name: string; strength: string }[]>([]);
-const selectedDrug = ref<{ icode: string; name: string; strength: string } | null>(null);
+const searchResults = ref<{ icode: string; name: string; strength: string; units: string }[]>([]);
+const selectedDrug = ref<{ icode: string; name: string; strength: string; units: string } | null>(null);
 const interactionType = ref('increase');
 const severity = ref('moderate');
 const clinicalEffect = ref('');
@@ -82,10 +82,22 @@ async function onSearchKeyword() {
   }
 }
 
-function selectDrug(drug: { icode: string; name: string; strength: string }) {
+function selectDrug(drug: { icode: string; name: string; strength: string; units: string }) {
   selectedDrug.value = drug;
   searchResults.value = [];
   searchKeyword.value = `${drug.name} ${drug.strength}`.trim();
+}
+
+function openAddModal() {
+  interactionModalOpen.value = true;
+  selectedDrug.value = null;
+  searchKeyword.value = '';
+  searchResults.value = [];
+  interactionType.value = 'increase';
+  severity.value = 'moderate';
+  clinicalEffect.value = '';
+  management.value = '';
+  evidenceLevel.value = '';
 }
 
 async function saveDrugInteraction() {
@@ -118,23 +130,18 @@ async function handleDeleteInteraction(id: number) {
   }
 }
 
-function severityBadgeClass(severity: string): string {
+function severityConfig(severity: string) {
   switch (severity) {
-    case 'contraindicated': return 'badge-danger';
-    case 'major': return 'badge-danger';
-    case 'moderate': return 'badge-warning';
-    case 'minor': return 'badge-info';
-    default: return 'badge-warning';
-  }
-}
-
-function severityLabel(severity: string): string {
-  switch (severity) {
-    case 'contraindicated': return 'ห้ามใช้ร่วม';
-    case 'major': return 'หลีกเลี่ยง';
-    case 'moderate': return 'ระวัง';
-    case 'minor': return 'ทราบ';
-    default: return severity;
+    case 'contraindicated':
+      return { class: 'severity-contraindicated', label: 'ห้ามใช้ร่วม', icon: ShieldX };
+    case 'major':
+      return { class: 'severity-major', label: 'หลีกเลี่ยง', icon: ShieldAlert };
+    case 'moderate':
+      return { class: 'severity-moderate', label: 'ระวัง', icon: AlertTriangle };
+    case 'minor':
+      return { class: 'severity-minor', label: 'ทราบ', icon: ShieldCheck };
+    default:
+      return { class: 'severity-minor', label: severity, icon: ShieldCheck };
   }
 }
 </script>
@@ -152,6 +159,7 @@ function severityLabel(severity: string): string {
       </button>
     </div>
 
+    <!-- Connection -->
     <div v-if="activeSection === 'connection'" class="settings-section card">
       <h3 class="h4" style="margin-bottom: var(--spacing-xl)">การเชื่อมต่อ HOSxP MySQL</h3>
       <div class="form-grid">
@@ -199,6 +207,7 @@ function severityLabel(severity: string): string {
       </p>
     </div>
 
+    <!-- Hospital -->
     <div v-else-if="activeSection === 'hospital'" class="settings-section card">
       <h3 class="h4" style="margin-bottom: var(--spacing-xl)">ข้อมูลโรงพยาบาล</h3>
       <label class="form-field">
@@ -207,145 +216,209 @@ function severityLabel(severity: string): string {
       </label>
     </div>
 
+    <!-- Sync -->
     <div v-else-if="activeSection === 'sync'" class="settings-section">
       <SyncPanel />
     </div>
 
+    <!-- Drug Interactions -->
     <div v-else-if="activeSection === 'interactions'" class="settings-section">
-      <div class="section-header">
-        <h3 class="h4">Drug interaction ที่มีผลต่อ Warfarin</h3>
-        <button class="btn btn-primary" @click="interactionModalOpen = true">
+      <div class="interaction-header">
+        <div class="interaction-header-text">
+          <h3 class="h4">Drug interaction ที่มีผลต่อ Warfarin</h3>
+          <p class="caption" style="color: var(--color-slate)">
+            กำหนดยายาที่มีปฏิกิริยากับ Warfarin จากฐานข้อมูล HOSxP
+          </p>
+        </div>
+        <button class="btn btn-primary" @click="openAddModal">
           <Plus :size="16" /> เพิ่มยา
         </button>
       </div>
 
-      <div v-if="store.drugInteractions.length === 0" class="card" style="padding: var(--spacing-lg); text-align: center;">
-        <p class="body-sm" style="color: var(--color-slate)">
-          ยังไม่มีการตั้งค่า Drug interaction คลิก "เพิ่มยา" เพื่อเพิ่มรายการ
+      <!-- Empty state -->
+      <div v-if="store.drugInteractions.length === 0" class="empty-state card">
+        <div class="empty-state-icon">
+          <Pill :size="32" />
+        </div>
+        <p class="body-sm" style="color: var(--color-slate); margin: 0">
+          ยังไม่มีการตั้งค่า Drug interaction
+        </p>
+        <p class="caption" style="color: var(--color-stone); margin: 0">
+          คลิก "เพิ่มยา" เพื่อค้นหายาจาก HOSxP และเพิ่มปฏิกิริยา
         </p>
       </div>
 
-      <div v-else class="table-card">
-        <table class="comparison-table">
-          <thead>
-            <tr class="comparison-row">
-              <th>ICode</th>
-              <th>ชื่อยา</th>
-              <th>ความแรง</th>
-              <th>ผลต่อ Warfarin</th>
-              <th>ความรุนแรง</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="drug in store.drugInteractions" :key="drug.id" class="comparison-row">
-              <td class="font-mono">{{ drug.icode }}</td>
-              <td>{{ drug.drugName }}</td>
-              <td>{{ drug.strength || '-' }}</td>
-              <td>
+      <!-- Interaction cards -->
+      <div v-else class="interaction-list">
+        <div
+          v-for="drug in store.drugInteractions"
+          :key="drug.id"
+          class="interaction-card"
+        >
+          <div class="interaction-card-left">
+            <div :class="['severity-indicator', severityConfig(drug.severity).class]">
+              <component :is="severityConfig(drug.severity).icon" :size="16" />
+            </div>
+            <div class="interaction-card-content">
+              <div class="interaction-card-title">
+                <span class="drug-name">{{ drug.drugName }}</span>
+                <span v-if="drug.strength" class="drug-strength">{{ drug.strength }}</span>
+                <span class="drug-icode">{{ drug.icode }}</span>
+              </div>
+              <div class="interaction-card-badges">
                 <span :class="['badge', drug.interactionType === 'increase' ? 'badge-danger' : 'badge-warning']">
                   {{ drug.interactionType === 'increase' ? 'เพิ่มฤทธิ์' : 'ลดฤทธิ์' }}
                 </span>
-              </td>
-              <td>
-                <span :class="['badge', severityBadgeClass(drug.severity)]">
-                  {{ severityLabel(drug.severity) }}
+                <span :class="['badge', severityConfig(drug.severity).class]">
+                  {{ severityConfig(drug.severity).label }}
                 </span>
-              </td>
-              <td class="text-right">
-                <button class="btn btn-ghost btn-icon" @click="handleDeleteInteraction(drug.id)">
-                  <Trash2 :size="16" />
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <span v-if="drug.evidenceLevel" class="badge badge-info">
+                  Evidence {{ drug.evidenceLevel }}
+                </span>
+              </div>
+              <p v-if="drug.clinicalEffect" class="interaction-card-detail">
+                {{ drug.clinicalEffect }}
+              </p>
+              <p v-if="drug.management" class="interaction-card-detail interaction-card-management">
+                แนะนำ: {{ drug.management }}
+              </p>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-icon btn-delete" @click="handleDeleteInteraction(drug.id)">
+            <Trash2 :size="16" />
+          </button>
+        </div>
       </div>
     </div>
 
+    <!-- Add Drug Interaction Modal -->
     <Teleport to="body">
       <div v-if="interactionModalOpen" class="modal-overlay" @click.self="interactionModalOpen = false">
-        <div class="modal-card">
+        <div class="modal-card modal-card-lg">
           <div class="modal-header">
-            <h3 class="h4">เพิ่ม Drug interaction</h3>
+            <div>
+              <h3 class="h4">เพิ่ม Drug interaction</h3>
+              <p class="caption" style="color: var(--color-slate); margin-top: 2px">
+                ค้นหายาจาก HOSxP และกำหนดปฏิกิริยา
+              </p>
+            </div>
             <button class="btn btn-ghost btn-icon" @click="interactionModalOpen = false">
               <X :size="20" />
             </button>
           </div>
 
           <div class="modal-body">
-            <label class="form-field">
-              <span class="caption" style="color:var(--color-slate)">ค้นหายาใน HOSxP</span>
-              <div class="search-input-group">
-                <input
-                  class="input"
-                  v-model="searchKeyword"
-                  placeholder="พิมพ์ชื่อยาหรือรหัสยา..."
-                  @keyup.enter="onSearchKeyword"
-                />
-                <button class="btn btn-secondary" @click="onSearchKeyword" :disabled="searchingDrug">
-                  <Search :size="16" />
-                </button>
-              </div>
-            </label>
+            <!-- Search section -->
+            <div class="form-section">
+              <label class="form-field">
+                <span class="form-label">ค้นหายาใน HOSxP</span>
+                <div class="search-input-group">
+                  <div class="search-input-wrapper">
+                    <Search :size="16" class="search-icon" />
+                    <input
+                      class="input search-input"
+                      v-model="searchKeyword"
+                      placeholder="พิมพ์ชื่อยาหรือรหัสยา..."
+                      @keyup.enter="onSearchKeyword"
+                    />
+                  </div>
+                  <button class="btn btn-primary" @click="onSearchKeyword" :disabled="searchingDrug">
+                    {{ searchingDrug ? 'ค้นหา...' : 'ค้นหา' }}
+                  </button>
+                </div>
+              </label>
 
-            <div v-if="searchResults.length > 0" class="search-results">
-              <button
-                v-for="drug in searchResults"
-                :key="drug.icode"
-                class="search-result-item"
-                @click="selectDrug(drug)"
-              >
-                <span class="drug-name">{{ drug.name }}</span>
-                <span class="drug-strength">{{ drug.strength }}</span>
-                <span class="drug-code">{{ drug.icode }}</span>
-              </button>
+              <!-- Search results -->
+              <div v-if="searchResults.length > 0" class="search-results">
+                <div class="search-results-header">
+                  <span class="caption-bold">พบ {{ searchResults.length }} รายการ</span>
+                </div>
+                <div class="search-results-list">
+                  <button
+                    v-for="drug in searchResults"
+                    :key="drug.icode"
+                    class="search-result-item"
+                    @click="selectDrug(drug)"
+                  >
+                    <div class="search-result-info">
+                      <span class="search-result-name">{{ drug.name }}</span>
+                      <span class="search-result-meta">
+                        <span v-if="drug.strength">{{ drug.strength }}</span>
+                        <span v-if="drug.strength && drug.units"> · </span>
+                        <span v-if="drug.units">{{ drug.units }}</span>
+                      </span>
+                    </div>
+                    <span class="search-result-code">{{ drug.icode }}</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div v-if="selectedDrug" class="selected-drug">
-              <div class="selected-drug-info">
-                <span class="caption">ยาที่เลือก</span>
-                <span class="drug-name">{{ selectedDrug.name }} {{ selectedDrug.strength }}</span>
-                <span class="drug-code">{{ selectedDrug.icode }}</span>
+            <!-- Selected drug + config -->
+            <div v-if="selectedDrug" class="form-section selected-drug-section">
+              <div class="selected-drug-header">
+                <Pill :size="16" style="color: var(--color-primary)" />
+                <span class="form-label">ยาที่เลือก</span>
+              </div>
+              <div class="selected-drug-card">
+                <div class="selected-drug-info">
+                  <span class="selected-drug-name">{{ selectedDrug.name }}</span>
+                  <span class="selected-drug-meta">
+                    <span v-if="selectedDrug.strength">{{ selectedDrug.strength }}</span>
+                    <span class="selected-drug-code">{{ selectedDrug.icode }}</span>
+                  </span>
+                </div>
               </div>
 
-              <label class="form-field">
-                <span class="caption" style="color:var(--color-slate)">ประเภทปฏิกิริยา</span>
-                <select class="input" v-model="interactionType">
-                  <option value="increase">เพิ่มฤทธิ์ Warfarin (Increase)</option>
-                  <option value="decrease">ลดฤทธิ์ Warfarin (Decrease)</option>
-                </select>
-              </label>
+              <div class="config-grid">
+                <label class="form-field">
+                  <span class="form-label">ประเภทปฏิกิริยา</span>
+                  <select class="input" v-model="interactionType">
+                    <option value="increase">เพิ่มฤทธิ์ Warfarin (Increase)</option>
+                    <option value="decrease">ลดฤทธิ์ Warfarin (Decrease)</option>
+                  </select>
+                </label>
 
-              <label class="form-field">
-                <span class="caption" style="color:var(--color-slate)">ความรุนแรง (Severity)</span>
-                <select class="input" v-model="severity">
-                  <option value="minor">Minor - ทราบ</option>
-                  <option value="moderate">Moderate - ระวัง</option>
-                  <option value="major">Major - หลีกเลี่ยง</option>
-                  <option value="contraindicated">Contraindicated - ห้ามใช้ร่วม</option>
-                </select>
-              </label>
+                <label class="form-field">
+                  <span class="form-label">ความรุนแรง (Severity)</span>
+                  <select class="input" v-model="severity">
+                    <option value="minor">Minor - ทราบ</option>
+                    <option value="moderate">Moderate - ระวัง</option>
+                    <option value="major">Major - หลีกเลี่ยง</option>
+                    <option value="contraindicated">Contraindicated - ห้ามใช้ร่วม</option>
+                  </select>
+                </label>
 
-              <label class="form-field" style="grid-column: 1 / -1">
-                <span class="caption" style="color:var(--color-slate)">ผลทางคลินิก (Clinical Effect)</span>
-                <input class="input" v-model="clinicalEffect" placeholder="เช่น เพิ่มฤทธิ์ผ่าน CYP2C9" />
-              </label>
+                <label class="form-field full-width">
+                  <span class="form-label">ผลทางคลินิก (Clinical Effect)</span>
+                  <textarea
+                    class="input textarea"
+                    v-model="clinicalEffect"
+                    placeholder="เช่น เพิ่มฤทธิ์ผ่านการยับยั้ง CYP2C9, ทำให้ INR สูงขึ้น"
+                    rows="2"
+                  />
+                </label>
 
-              <label class="form-field" style="grid-column: 1 / -1">
-                <span class="caption" style="color:var(--color-slate)">การจัดการ (Management)</span>
-                <input class="input" v-model="management" placeholder="เช่น ลดขนาดยา 25-50%, ติดตาม INR" />
-              </label>
+                <label class="form-field full-width">
+                  <span class="form-label">การจัดการ (Management)</span>
+                  <textarea
+                    class="input textarea"
+                    v-model="management"
+                    placeholder="เช่น ลดขนาดยา 25-50%, ติดตาม INR ทุกสัปดาห์"
+                    rows="2"
+                  />
+                </label>
 
-              <label class="form-field">
-                <span class="caption" style="color:var(--color-slate)">ระดับหลักฐาน (Evidence)</span>
-                <select class="input" v-model="evidenceLevel">
-                  <option value="">ไม่ระบุ</option>
-                  <option value="A">A - หลักฐานแข็ง</option>
-                  <option value="B">B - หลักฐานปานกลาง</option>
-                  <option value="C">C - หลักฐานจำกัด</option>
-                </select>
-              </label>
+                <label class="form-field">
+                  <span class="form-label">ระดับหลักฐาน (Evidence)</span>
+                  <select class="input" v-model="evidenceLevel">
+                    <option value="">ไม่ระบุ</option>
+                    <option value="A">A - หลักฐานแข็ง</option>
+                    <option value="B">B - หลักฐานปานกลาง</option>
+                    <option value="C">C - หลักฐานจำกัด</option>
+                  </select>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -356,6 +429,7 @@ function severityLabel(severity: string): string {
               @click="saveDrugInteraction"
               :disabled="!selectedDrug"
             >
+              <Plus :size="16" />
               บันทึก
             </button>
           </div>
@@ -366,7 +440,7 @@ function severityLabel(severity: string): string {
 </template>
 
 <style scoped>
-.settings-view { display: flex; flex-direction: column; gap: var(--spacing-lg); max-width: 800px; }
+.settings-view { display: flex; flex-direction: column; gap: var(--spacing-lg); max-width: 900px; }
 .section-tabs { display: flex; gap: var(--spacing-xs); border-bottom: 1px solid var(--color-hairline); padding-bottom: var(--spacing-xs); }
 .section-tab {
   padding: var(--spacing-sm) var(--spacing-md);
@@ -385,39 +459,306 @@ function severityLabel(severity: string): string {
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-xl); }
 .form-field { display: flex; flex-direction: column; gap: var(--spacing-xs); }
 .settings-actions { display: flex; align-items: center; gap: var(--spacing-md); }
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg); }
-.table-card { border: 1px solid var(--color-hairline); border-radius: var(--rounded-lg); overflow: hidden; }
-.comparison-table { width: 100%; border-collapse: collapse; }
-.font-mono { font-family: monospace; font-size: var(--typography-micro-size); }
-.search-input-group { display: flex; gap: var(--spacing-xs); }
-.search-input-group .input { flex: 1; }
-.search-results { display: flex; flex-direction: column; gap: var(--spacing-xs); max-height: 200px; overflow-y: auto; margin-top: var(--spacing-sm); }
-.search-result-item { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-sm) var(--spacing-md); border: 1px solid var(--color-hairline); border-radius: var(--rounded-md); cursor: pointer; text-align: left; background: var(--color-surface); transition: background 150ms; }
-.search-result-item:hover { background: var(--color-surface-soft); }
-.selected-drug { margin-top: var(--spacing-md); padding: var(--spacing-md); background: var(--color-surface); border-radius: var(--rounded-md); display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); }
-.selected-drug-info { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--spacing-md); }
-.comparison-row th { padding: var(--spacing-sm) var(--spacing-md); text-align: left; font-weight: 600; font-size: var(--typography-micro-uppercase-size); color: var(--color-slate); background: var(--color-surface); }
 .text-right { text-align: right; }
 .btn-icon { padding: var(--spacing-xs); }
-</style>
 
-<style>
+/* Interaction Header */
+.interaction-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xl);
+}
+.interaction-header-text { display: flex; flex-direction: column; gap: var(--spacing-xxs); }
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  text-align: center;
+}
+.empty-state-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--rounded-full);
+  background: var(--color-pink-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+/* Interaction List */
+.interaction-list { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+
+.interaction-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-lg);
+  transition: border-color 150ms;
+}
+.interaction-card:hover { border-color: var(--color-hairline-strong); }
+
+.interaction-card-left {
+  display: flex;
+  gap: var(--spacing-md);
+  flex: 1;
+  min-width: 0;
+}
+
+.severity-indicator {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: var(--rounded-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+.severity-indicator.severity-contraindicated { background: var(--color-danger); }
+.severity-indicator.severity-major { background: var(--color-coral-500); }
+.severity-indicator.severity-moderate { background: var(--color-warning); }
+.severity-indicator.severity-minor { background: var(--color-stone); }
+
+.interaction-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  flex: 1;
+  min-width: 0;
+}
+
+.interaction-card-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.drug-name {
+  font-size: var(--typography-body-md-size);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.drug-strength {
+  font-size: var(--typography-body-sm-size);
+  color: var(--color-slate);
+}
+
+.drug-icode {
+  font-family: var(--font-family-mono);
+  font-size: var(--typography-micro-size);
+  color: var(--color-stone);
+  background: var(--color-surface);
+  padding: 1px var(--spacing-xxs);
+  border-radius: var(--rounded-xs);
+}
+
+.interaction-card-badges {
+  display: flex;
+  gap: var(--spacing-xxs);
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.interaction-card-detail {
+  font-size: var(--typography-caption-size);
+  color: var(--color-slate);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.interaction-card-management {
+  font-weight: 500;
+  color: var(--color-charcoal);
+}
+
+.btn-delete {
+  color: var(--color-stone);
+  transition: color 150ms;
+}
+.btn-delete:hover { color: var(--color-danger); }
+
+/* Modal */
 .modal-overlay {
   position: fixed; inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex; align-items: center; justify-content: center;
   z-index: 100;
+  padding: var(--spacing-xl);
 }
 .modal-card {
   background: var(--color-canvas);
   border-radius: var(--rounded-xl);
-  width: 100%; max-width: 480px;
+  width: 100%; max-width: 520px;
   max-height: 90vh;
   overflow: hidden;
   display: flex; flex-direction: column;
   box-shadow: var(--elevation-4);
 }
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-lg); border-bottom: 1px solid var(--color-hairline); }
-.modal-body { padding: var(--spacing-lg); overflow-y: auto; flex: 1; }
-.modal-footer { display: flex; justify-content: flex-end; gap: var(--spacing-md); padding: var(--spacing-lg); border-top: 1px solid var(--color-hairline); }
+.modal-card-lg { max-width: 640px; }
+.modal-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-hairline);
+}
+.modal-body {
+  padding: var(--spacing-xl);
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-top: 1px solid var(--color-hairline);
+  background: var(--color-surface);
+}
+
+/* Form sections in modal */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.form-label {
+  font-size: var(--typography-caption-bold-size);
+  font-weight: 600;
+  color: var(--color-charcoal);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 48px;
+  line-height: 1.5;
+}
+
+/* Search */
+.search-input-group { display: flex; gap: var(--spacing-xs); }
+.search-input-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-icon {
+  position: absolute;
+  left: var(--spacing-sm);
+  color: var(--color-stone);
+  pointer-events: none;
+}
+.search-input {
+  padding-left: calc(var(--spacing-sm) + 16px + var(--spacing-xs));
+  width: 100%;
+}
+
+.search-results {
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-md);
+  overflow: hidden;
+}
+.search-results-header {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-hairline-soft);
+}
+.search-results-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+.search-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-bottom: 1px solid var(--color-hairline-soft);
+  cursor: pointer;
+  text-align: left;
+  background: var(--color-canvas);
+  width: 100%;
+  transition: background 150ms;
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--color-pink-50); }
+
+.search-result-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.search-result-name {
+  font-size: var(--typography-body-sm-size);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.search-result-meta {
+  font-size: var(--typography-caption-size);
+  color: var(--color-slate);
+}
+.search-result-code {
+  font-family: var(--font-family-mono);
+  font-size: var(--typography-micro-size);
+  color: var(--color-stone);
+  white-space: nowrap;
+}
+
+/* Selected drug section */
+.selected-drug-section {
+  padding: var(--spacing-md);
+  background: var(--color-pink-50);
+  border-radius: var(--rounded-lg);
+  border: 1px solid var(--color-pink-100);
+}
+.selected-drug-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+}
+.selected-drug-card {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-canvas);
+  border-radius: var(--rounded-md);
+  border: 1px solid var(--color-hairline);
+}
+.selected-drug-info { display: flex; flex-direction: column; gap: 2px; }
+.selected-drug-name {
+  font-size: var(--typography-body-md-size);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.selected-drug-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--typography-caption-size);
+  color: var(--color-slate);
+}
+.selected-drug-code {
+  font-family: var(--font-family-mono);
+  font-size: var(--typography-micro-size);
+  color: var(--color-stone);
+  background: var(--color-surface);
+  padding: 1px var(--spacing-xxs);
+  border-radius: var(--rounded-xs);
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+.full-width { grid-column: 1 / -1; }
 </style>
