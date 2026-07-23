@@ -8,6 +8,10 @@ export interface DrugInteraction {
   drugName: string;
   strength: string | null;
   interactionType: string;
+  severity: string;
+  clinicalEffect: string | null;
+  management: string | null;
+  evidenceLevel: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -118,6 +122,10 @@ export const useSettingsStore = defineStore('settings', () => {
     drugName: string;
     strength: string | null;
     interactionType: string;
+    severity: string;
+    clinicalEffect: string | null;
+    management: string | null;
+    evidenceLevel: string | null;
   }) {
     const id = await invoke<number>('add_drug_interaction', { input });
     await loadDrugInteractions();

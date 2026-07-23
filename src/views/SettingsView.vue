@@ -56,6 +56,10 @@ const searchingDrug = ref(false);
 const searchResults = ref<{ icode: string; name: string; strength: string }[]>([]);
 const selectedDrug = ref<{ icode: string; name: string; strength: string } | null>(null);
 const interactionType = ref('increase');
+const severity = ref('moderate');
+const clinicalEffect = ref('');
+const management = ref('');
+const evidenceLevel = ref('');
 const searchKeyword = ref('');
 
 async function onSearchKeyword() {
@@ -93,16 +97,44 @@ async function saveDrugInteraction() {
     drugName: selectedDrug.value.name,
     strength: selectedDrug.value.strength || null,
     interactionType: interactionType.value,
+    severity: severity.value,
+    clinicalEffect: clinicalEffect.value.trim() || null,
+    management: management.value.trim() || null,
+    evidenceLevel: evidenceLevel.value.trim() || null,
   });
   interactionModalOpen.value = false;
   selectedDrug.value = null;
   searchKeyword.value = '';
   interactionType.value = 'increase';
+  severity.value = 'moderate';
+  clinicalEffect.value = '';
+  management.value = '';
+  evidenceLevel.value = '';
 }
 
 async function handleDeleteInteraction(id: number) {
   if (confirm('ต้องการลบรายการนี้?')) {
     await store.deleteDrugInteraction(id);
+  }
+}
+
+function severityBadgeClass(severity: string): string {
+  switch (severity) {
+    case 'contraindicated': return 'badge-danger';
+    case 'major': return 'badge-danger';
+    case 'moderate': return 'badge-warning';
+    case 'minor': return 'badge-info';
+    default: return 'badge-warning';
+  }
+}
+
+function severityLabel(severity: string): string {
+  switch (severity) {
+    case 'contraindicated': return 'ห้ามใช้ร่วม';
+    case 'major': return 'หลีกเลี่ยง';
+    case 'moderate': return 'ระวัง';
+    case 'minor': return 'ทราบ';
+    default: return severity;
   }
 }
 </script>
@@ -201,6 +233,7 @@ async function handleDeleteInteraction(id: number) {
               <th>ชื่อยา</th>
               <th>ความแรง</th>
               <th>ผลต่อ Warfarin</th>
+              <th>ความรุนแรง</th>
               <th></th>
             </tr>
           </thead>
@@ -212,6 +245,11 @@ async function handleDeleteInteraction(id: number) {
               <td>
                 <span :class="['badge', drug.interactionType === 'increase' ? 'badge-danger' : 'badge-warning']">
                   {{ drug.interactionType === 'increase' ? 'เพิ่มฤทธิ์' : 'ลดฤทธิ์' }}
+                </span>
+              </td>
+              <td>
+                <span :class="['badge', severityBadgeClass(drug.severity)]">
+                  {{ severityLabel(drug.severity) }}
                 </span>
               </td>
               <td class="text-right">
@@ -278,6 +316,36 @@ async function handleDeleteInteraction(id: number) {
                   <option value="decrease">ลดฤทธิ์ Warfarin (Decrease)</option>
                 </select>
               </label>
+
+              <label class="form-field">
+                <span class="caption" style="color:var(--color-slate)">ความรุนแรง (Severity)</span>
+                <select class="input" v-model="severity">
+                  <option value="minor">Minor - ทราบ</option>
+                  <option value="moderate">Moderate - ระวัง</option>
+                  <option value="major">Major - หลีกเลี่ยง</option>
+                  <option value="contraindicated">Contraindicated - ห้ามใช้ร่วม</option>
+                </select>
+              </label>
+
+              <label class="form-field" style="grid-column: 1 / -1">
+                <span class="caption" style="color:var(--color-slate)">ผลทางคลินิก (Clinical Effect)</span>
+                <input class="input" v-model="clinicalEffect" placeholder="เช่น เพิ่มฤทธิ์ผ่าน CYP2C9" />
+              </label>
+
+              <label class="form-field" style="grid-column: 1 / -1">
+                <span class="caption" style="color:var(--color-slate)">การจัดการ (Management)</span>
+                <input class="input" v-model="management" placeholder="เช่น ลดขนาดยา 25-50%, ติดตาม INR" />
+              </label>
+
+              <label class="form-field">
+                <span class="caption" style="color:var(--color-slate)">ระดับหลักฐาน (Evidence)</span>
+                <select class="input" v-model="evidenceLevel">
+                  <option value="">ไม่ระบุ</option>
+                  <option value="A">A - หลักฐานแข็ง</option>
+                  <option value="B">B - หลักฐานปานกลาง</option>
+                  <option value="C">C - หลักฐานจำกัด</option>
+                </select>
+              </label>
             </div>
           </div>
 
@@ -326,7 +394,7 @@ async function handleDeleteInteraction(id: number) {
 .search-results { display: flex; flex-direction: column; gap: var(--spacing-xs); max-height: 200px; overflow-y: auto; margin-top: var(--spacing-sm); }
 .search-result-item { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-sm) var(--spacing-md); border: 1px solid var(--color-hairline); border-radius: var(--rounded-md); cursor: pointer; text-align: left; background: var(--color-surface); transition: background 150ms; }
 .search-result-item:hover { background: var(--color-surface-soft); }
-.selected-drug { margin-top: var(--spacing-md); padding: var(--spacing-md); background: var(--color-surface); border-radius: var(--rounded-md); }
+.selected-drug { margin-top: var(--spacing-md); padding: var(--spacing-md); background: var(--color-surface); border-radius: var(--rounded-md); display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); }
 .selected-drug-info { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--spacing-md); }
 .comparison-row th { padding: var(--spacing-sm) var(--spacing-md); text-align: left; font-weight: 600; font-size: var(--typography-micro-uppercase-size); color: var(--color-slate); background: var(--color-surface); }
 .text-right { text-align: right; }
