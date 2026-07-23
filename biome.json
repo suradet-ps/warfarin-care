@@ -15,6 +15,16 @@
       }
     },
     {
+      "includes": ["src/main.ts"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnresolvedImports": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["**/*.vue"],
       "linter": {
         "rules": {
@@ -25,7 +35,8 @@
           "correctness": {
             "useHookAtTopLevel": "off",
             "noUnusedVariables": "off",
-            "noUnusedImports": "off"
+            "noUnusedImports": "off",
+            "noUnresolvedImports": "off"
           }
         }
       }

@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { AlertTriangle, Pill, Plus, Search, ShieldAlert, ShieldCheck, ShieldX, Trash2, X } from 'lucide-vue-next';
+import {
+  AlertTriangle,
+  Pill,
+  Plus,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldX,
+  Trash2,
+  X,
+} from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 import SyncPanel from '#/components/settings/SyncPanel.vue';
 import { useSettingsStore } from '#/stores/settings.ts';
@@ -54,7 +64,9 @@ async function handleSaveConnection() {
 const interactionModalOpen = ref(false);
 const searchingDrug = ref(false);
 const searchResults = ref<{ icode: string; name: string; strength: string; units: string }[]>([]);
-const selectedDrug = ref<{ icode: string; name: string; strength: string; units: string } | null>(null);
+const selectedDrug = ref<{ icode: string; name: string; strength: string; units: string } | null>(
+  null,
+);
 const interactionType = ref('increase');
 const severity = ref('moderate');
 const clinicalEffect = ref('');
