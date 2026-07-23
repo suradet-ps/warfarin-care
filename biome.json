@@ -54,7 +54,7 @@
         "noIncrementDecrement": "off",
         "useBlockStatements": "warn",
         "useDestructuring": "warn",
-        "useExportsLast": "warn",
+        "useExportsLast": "off",
         "noNestedTernary": "off",
         "noExcessiveLinesPerFile": "warn"
       },
