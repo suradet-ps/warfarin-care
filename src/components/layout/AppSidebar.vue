@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { BarChart3, CalendarDays, ClipboardCheck, FileText, Search, Settings, Users } from 'lucide-vue-next';
+import {
+  BarChart3,
+  CalendarDays,
+  ClipboardCheck,
+  FileText,
+  Search,
+  Settings,
+  Users,
+} from 'lucide-vue-next';
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAlertStore } from '#/stores/alerts.ts';

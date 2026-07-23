@@ -2,10 +2,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import { X } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import InteractionChecker from '#/components/patient/InteractionChecker.vue';
 import ConfirmDialog from '#/components/shared/ConfirmDialog.vue';
 import DayDoseTable from '#/components/visit/DayDoseTable.vue';
 import DoseOptionsPanel from '#/components/visit/DoseOptionsPanel.vue';
-import InteractionChecker from '#/components/patient/InteractionChecker.vue';
 import { useVisitStore } from '#/stores/visit.ts';
 import type { AppointmentDayLoad } from '#/types/appointment.ts';
 import type { DispensingRecord } from '#/types/dispensing.ts';

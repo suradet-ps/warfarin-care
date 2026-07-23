@@ -2,14 +2,14 @@
 import { invoke } from '@tauri-apps/api/core';
 import { AlertTriangle, ShieldAlert, ShieldCheck, ShieldX } from 'lucide-vue-next';
 import { onMounted, ref, watch } from 'vue';
-import type { Interaction, Severity } from '#/types/interaction.ts';
 import { useSettingsStore } from '#/stores/settings.ts';
+import type { Interaction, Severity } from '#/types/interaction.ts';
 
 const props = defineProps<{
   hn: string;
 }>();
 
-const emit = defineEmits<{ (e: 'blocked', blocked: boolean): void }>();
+const emit = defineEmits<(e: 'blocked', blocked: boolean) => void>();
 
 const store = useSettingsStore();
 const loading = ref(false);
@@ -82,12 +82,16 @@ const hasContraindicated = () => interactions.value.some((i) => i.severity === '
 watch(
   () => props.hn,
   () => {
-    if (props.hn) void checkInteractions();
+    if (props.hn) {
+      void checkInteractions();
+    }
   },
 );
 
 onMounted(() => {
-  if (props.hn) void checkInteractions();
+  if (props.hn) {
+    void checkInteractions();
+  }
 });
 </script>
 

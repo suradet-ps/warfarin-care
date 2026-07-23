@@ -44,11 +44,21 @@ function actionLabel(action: string): string {
 }
 
 function actionClass(action: string): string {
-  if (action.includes('dose')) return 'action-dose';
-  if (action.includes('visit')) return 'action-visit';
-  if (action.includes('login') || action.includes('logout')) return 'action-auth';
-  if (action.includes('status')) return 'action-status';
-  if (action.includes('adverse')) return 'action-adverse';
+  if (action.includes('dose')) {
+    return 'action-dose';
+  }
+  if (action.includes('visit')) {
+    return 'action-visit';
+  }
+  if (action.includes('login') || action.includes('logout')) {
+    return 'action-auth';
+  }
+  if (action.includes('status')) {
+    return 'action-status';
+  }
+  if (action.includes('adverse')) {
+    return 'action-adverse';
+  }
   return 'action-default';
 }
 
