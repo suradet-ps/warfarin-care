@@ -1,12 +1,12 @@
-import type { WfAppointment } from '#/types/appointment'
-import type { DispensingRecord } from '#/types/dispensing'
-import type { InrRecord } from '#/types/inr'
-import type { WfOutcome } from '#/types/outcome'
-import type { HosxpPatient } from '#/types/patient'
-import type { DoseSchedule, WfVisit } from '#/types/visit'
+import type { WfAppointment } from '#/types/appointment.ts';
+import type { DispensingRecord } from '#/types/dispensing.ts';
+import type { InrRecord } from '#/types/inr.ts';
+import type { WfOutcome } from '#/types/outcome.ts';
+import type { HosxpPatient } from '#/types/patient.ts';
+import type { DoseSchedule, WfVisit } from '#/types/visit.ts';
 
-export const doseDayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
-export type DoseDayKey = (typeof doseDayKeys)[number]
+export const doseDayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+export type DoseDayKey = (typeof doseDayKeys)[number];
 
 export const doseDayLabels: Record<DoseDayKey, string> = {
   mon: 'จ',
@@ -16,7 +16,7 @@ export const doseDayLabels: Record<DoseDayKey, string> = {
   fri: 'ศ',
   sat: 'ส',
   sun: 'อา',
-}
+};
 
 /**
  * Single source of truth for default target-INR ranges by clinical
@@ -31,21 +31,23 @@ export const DEFAULT_TARGET_INR_BY_INDICATION: Record<string, { low: number; hig
   PE: { low: 2.0, high: 3.0 },
   mechanical_valve: { low: 2.5, high: 3.5 },
   other: { low: 2.0, high: 3.0 },
-}
+};
 
-export const DEFAULT_TARGET_INR = { low: 2.0, high: 3.0 } as const
+export const DEFAULT_TARGET_INR = { low: 2.0, high: 3.0 } as const;
 
 export function emptyDoseSchedule(): DoseSchedule {
-  return { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 }
+  return { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 };
 }
 
 export function normalizeDoseSchedule(input?: Partial<DoseSchedule> | string | null): DoseSchedule {
-  if (!input) return emptyDoseSchedule()
+  if (!input) {
+    return emptyDoseSchedule();
+  }
   if (typeof input === 'string') {
     try {
-      return normalizeDoseSchedule(JSON.parse(input) as Partial<DoseSchedule>)
+      return normalizeDoseSchedule(JSON.parse(input) as Partial<DoseSchedule>);
     } catch {
-      return emptyDoseSchedule()
+      return emptyDoseSchedule();
     }
   }
   return {
@@ -56,96 +58,118 @@ export function normalizeDoseSchedule(input?: Partial<DoseSchedule> | string | n
     fri: Number(input.fri ?? 0),
     sat: Number(input.sat ?? 0),
     sun: Number(input.sun ?? 0),
-  }
+  };
 }
 
 export function scheduleWeeklyTotal(schedule?: Partial<DoseSchedule> | string | null): number {
-  const normalized = normalizeDoseSchedule(schedule)
-  return doseDayKeys.reduce((sum, key) => sum + Number(normalized[key] ?? 0), 0)
+  const normalized = normalizeDoseSchedule(schedule);
+  return doseDayKeys.reduce((sum, key) => sum + Number(normalized[key] ?? 0), 0);
 }
 
 export function scheduleAverageDose(schedule?: Partial<DoseSchedule> | string | null): number {
-  return scheduleWeeklyTotal(schedule) / doseDayKeys.length
+  return scheduleWeeklyTotal(schedule) / doseDayKeys.length;
 }
 
 export function formatThaiDate(value?: string | null): string {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  const day = `${date.getDate()}`.padStart(2, '0')
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const year = date.getFullYear() + 543
-  return `${day}/${month}/${year}`
+  if (!value) {
+    return '-';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  const day = `${date.getDate()}`.padStart(2, '0');
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const year = date.getFullYear() + 543;
+  return `${day}/${month}/${year}`;
 }
 
 function formatDateInput(date: Date): string {
-  const year = `${date.getFullYear()}`
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate()}`.padStart(2, '0')
-  return `${year}-${month}-${day}`
+  const year = `${date.getFullYear()}`;
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function dateInputToday(): string {
-  return formatDateInput(new Date())
+  return formatDateInput(new Date());
 }
 
 export function dateInputYearsAgo(years: number): string {
-  const date = new Date()
-  date.setFullYear(date.getFullYear() - years)
-  return formatDateInput(date)
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - years);
+  return formatDateInput(date);
 }
 
 export function calculateAge(birthday?: string | null): number | null {
-  if (!birthday) return null
-  const birth = new Date(birthday)
-  if (Number.isNaN(birth.getTime())) return null
-  const today = new Date()
-  let age = today.getFullYear() - birth.getFullYear()
-  const monthDiff = today.getMonth() - birth.getMonth()
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age -= 1
-  return age
+  if (!birthday) {
+    return null;
+  }
+  const birth = new Date(birthday);
+  if (Number.isNaN(birth.getTime())) {
+    return null;
+  }
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age -= 1;
+  }
+  return age;
 }
 
 export function sexLabel(sex?: string | null): string {
-  if (sex === 'M') return 'ชาย'
-  if (sex === 'F') return 'หญิง'
-  return '-'
+  if (sex === 'M') {
+    return 'ชาย';
+  }
+  if (sex === 'F') {
+    return 'หญิง';
+  }
+  return '-';
 }
 
 export function patientFullName(info?: HosxpPatient | null): string {
-  if (!info) return '-'
-  return [info.pname, info.fname, info.lname].filter(Boolean).join(' ').trim() || info.hn
+  if (!info) {
+    return '-';
+  }
+  return [info.pname, info.fname, info.lname].filter(Boolean).join(' ').trim() || info.hn;
 }
 
 export function daysUntil(dateValue?: string | null): number | null {
-  if (!dateValue) return null
-  const date = new Date(dateValue)
-  if (Number.isNaN(date.getTime())) return null
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  date.setHours(0, 0, 0, 0)
-  return Math.round((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  if (!dateValue) {
+    return null;
+  }
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return Math.round((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export function getCssVar(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
 export function sortAppointments(appointments: WfAppointment[]): WfAppointment[] {
-  return [...appointments].sort((a, b) => `${a.apptDate}`.localeCompare(`${b.apptDate}`))
+  return [...appointments].sort((a, b) => `${a.apptDate}`.localeCompare(`${b.apptDate}`));
 }
 
 export function sortOutcomes(outcomes: WfOutcome[]): WfOutcome[] {
-  return [...outcomes].sort((a, b) => `${b.eventDate}`.localeCompare(`${a.eventDate}`))
+  return [...outcomes].sort((a, b) => `${b.eventDate}`.localeCompare(`${a.eventDate}`));
 }
 
 export function sortDispensing(records: DispensingRecord[]): DispensingRecord[] {
-  return [...records].sort((a, b) => `${b.vstdate}`.localeCompare(`${a.vstdate}`))
+  return [...records].sort((a, b) => `${b.vstdate}`.localeCompare(`${a.vstdate}`));
 }
 
-export function mergeDoseSchedules(...schedules: Array<Partial<DoseSchedule> | string | null | undefined>): DoseSchedule {
+export function mergeDoseSchedules(
+  ...schedules: Array<Partial<DoseSchedule> | string | null | undefined>
+): DoseSchedule {
   return schedules.reduce<DoseSchedule>((merged, schedule) => {
-    const normalized = normalizeDoseSchedule(schedule)
+    const normalized = normalizeDoseSchedule(schedule);
     return {
       mon: merged.mon + normalized.mon,
       tue: merged.tue + normalized.tue,
@@ -154,46 +178,51 @@ export function mergeDoseSchedules(...schedules: Array<Partial<DoseSchedule> | s
       fri: merged.fri + normalized.fri,
       sat: merged.sat + normalized.sat,
       sun: merged.sun + normalized.sun,
-    }
-  }, emptyDoseSchedule())
+    };
+  }, emptyDoseSchedule());
 }
 
 export interface AggregatedDispensingVisit {
-  visitKey: string
-  hn: string
-  vn?: string
-  an?: string
-  vstdate: string
-  items: DispensingRecord[]
-  combinedSchedule: DoseSchedule
-  mgPerWeek: number
-  mgPerDayAverage: number
-  usageTextSummary: string
-  parseNotes: string[]
+  visitKey: string;
+  hn: string;
+  vn?: string;
+  an?: string;
+  vstdate: string;
+  items: DispensingRecord[];
+  combinedSchedule: DoseSchedule;
+  mgPerWeek: number;
+  mgPerDayAverage: number;
+  usageTextSummary: string;
+  parseNotes: string[];
 }
 
-export function aggregateDispensingByVisit(records: DispensingRecord[]): AggregatedDispensingVisit[] {
-  const visitMap = new Map<string, AggregatedDispensingVisit>()
+export function aggregateDispensingByVisit(
+  records: DispensingRecord[],
+): AggregatedDispensingVisit[] {
+  const visitMap = new Map<string, AggregatedDispensingVisit>();
 
   for (const record of sortDispensing(records)) {
-    const visitId = record.vn || record.an || 'no-vn'
-    const visitKey = `${record.vstdate}::${visitId}`
-    const existing = visitMap.get(visitKey)
+    const visitId = record.vn || record.an || 'no-vn';
+    const visitKey = `${record.vstdate}::${visitId}`;
+    const existing = visitMap.get(visitKey);
     if (existing) {
-      existing.items.push(record)
-      existing.combinedSchedule = mergeDoseSchedules(existing.combinedSchedule, record.parsedDose?.schedule)
-      existing.mgPerWeek = scheduleWeeklyTotal(existing.combinedSchedule)
-      existing.mgPerDayAverage = existing.mgPerWeek / doseDayKeys.length
+      existing.items.push(record);
+      existing.combinedSchedule = mergeDoseSchedules(
+        existing.combinedSchedule,
+        record.parsedDose?.schedule,
+      );
+      existing.mgPerWeek = scheduleWeeklyTotal(existing.combinedSchedule);
+      existing.mgPerDayAverage = existing.mgPerWeek / doseDayKeys.length;
       if (record.usageText && !existing.usageTextSummary.includes(record.usageText)) {
-        existing.usageTextSummary = `${existing.usageTextSummary} | ${record.usageText}`
+        existing.usageTextSummary = `${existing.usageTextSummary} | ${record.usageText}`;
       }
       if (record.usageParseNote && !existing.parseNotes.includes(record.usageParseNote)) {
-        existing.parseNotes.push(record.usageParseNote)
+        existing.parseNotes.push(record.usageParseNote);
       }
-      continue
+      continue;
     }
 
-    const combinedSchedule = mergeDoseSchedules(record.parsedDose?.schedule)
+    const combinedSchedule = mergeDoseSchedules(record.parsedDose?.schedule);
     visitMap.set(visitKey, {
       visitKey,
       hn: record.hn,
@@ -206,16 +235,18 @@ export function aggregateDispensingByVisit(records: DispensingRecord[]): Aggrega
       mgPerDayAverage: scheduleAverageDose(combinedSchedule),
       usageTextSummary: record.usageText || '-',
       parseNotes: record.usageParseNote ? [record.usageParseNote] : [],
-    })
+    });
   }
 
-  return [...visitMap.values()].sort((a, b) => `${b.vstdate}::${b.vn || b.an || ''}`.localeCompare(`${a.vstdate}::${a.vn || a.an || ''}`))
+  return [...visitMap.values()].sort((a, b) =>
+    `${b.vstdate}::${b.vn || b.an || ''}`.localeCompare(`${a.vstdate}::${a.vn || a.an || ''}`),
+  );
 }
 
 export function latestVisit(visits: WfVisit[]): WfVisit | undefined {
-  return [...visits].sort((a, b) => `${b.visitDate}`.localeCompare(`${a.visitDate}`))[0]
+  return [...visits].sort((a, b) => `${b.visitDate}`.localeCompare(`${a.visitDate}`))[0];
 }
 
 export function latestInrRecord(records: InrRecord[]): InrRecord | undefined {
-  return [...records].sort((a, b) => `${b.date}`.localeCompare(`${a.date}`))[0]
+  return [...records].sort((a, b) => `${b.date}`.localeCompare(`${a.date}`))[0];
 }

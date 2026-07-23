@@ -1,106 +1,106 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import { Plus, Trash2, Search, X, AlertCircle } from 'lucide-vue-next'
-import { useSettingsStore } from '#/stores/settings'
-import SyncPanel from '#/components/settings/SyncPanel.vue'
+import { onMounted, ref } from 'vue';
+import { useSettingsStore } from '#/stores/settings.ts';
 
-const store = useSettingsStore()
-const testResult = ref<boolean | null>(null)
-const testing = ref(false)
-const saving = ref(false)
-const saveResult = ref<'success' | 'error' | null>(null)
-const saveError = ref<string | null>(null)
+const store = useSettingsStore();
+const testResult = ref<boolean | null>(null);
+const testing = ref(false);
+const saving = ref(false);
+const saveResult = ref<'success' | 'error' | null>(null);
+const saveError = ref<string | null>(null);
 
-const activeSection = ref<'connection' | 'hospital' | 'interactions' | 'sync'>('connection')
+const _activeSection = ref<'connection' | 'hospital' | 'interactions' | 'sync'>('connection');
 
-const sections = [
+const _sections = [
   { key: 'connection', label: 'การเชื่อมต่อ' },
   { key: 'hospital', label: 'ข้อมูลโรงพยาบาล' },
   { key: 'sync', label: 'Cloud Sync' },
   { key: 'interactions', label: 'Drug interaction' },
-] as const
+] as const;
 
 onMounted(() => {
-  void store.loadMysqlConfig()
-  void store.loadSettings()
-  void store.loadDrugInteractions()
-})
+  void store.loadMysqlConfig();
+  void store.loadSettings();
+  void store.loadDrugInteractions();
+});
 
-async function handleTestConnection() {
-  testing.value = true
-  saveResult.value = null
-  saveError.value = null
-  const result = await store.testConnection()
-  testResult.value = result
-  testing.value = false
+async function _handleTestConnection() {
+  testing.value = true;
+  saveResult.value = null;
+  saveError.value = null;
+  const result = await store.testConnection();
+  testResult.value = result;
+  testing.value = false;
 }
 
-async function handleSaveConnection() {
-  saving.value = true
-  testResult.value = null
-  saveResult.value = null
-  saveError.value = null
+async function _handleSaveConnection() {
+  saving.value = true;
+  testResult.value = null;
+  saveResult.value = null;
+  saveError.value = null;
   try {
-    await store.saveMysqlConfig()
-    saveResult.value = 'success'
+    await store.saveMysqlConfig();
+    saveResult.value = 'success';
   } catch (e) {
-    console.error('Save MySQL config failed:', e)
-    saveResult.value = 'error'
-    saveError.value = e instanceof Error ? e.message : String(e)
+    saveResult.value = 'error';
+    saveError.value = e instanceof Error ? e.message : String(e);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
-const interactionModalOpen = ref(false)
-const searchingDrug = ref(false)
-const searchResults = ref<{ icode: string; name: string; strength: string }[]>([])
-const selectedDrug = ref<{ icode: string; name: string; strength: string } | null>(null)
-const interactionType = ref('increase')
-const searchKeyword = ref('')
+const interactionModalOpen = ref(false);
+const searchingDrug = ref(false);
+const searchResults = ref<{ icode: string; name: string; strength: string }[]>([]);
+const selectedDrug = ref<{ icode: string; name: string; strength: string } | null>(null);
+const interactionType = ref('increase');
+const searchKeyword = ref('');
 
-async function onSearchKeyword() {
-  if (!searchKeyword.value.trim()) return
-  
+async function _onSearchKeyword() {
+  if (!searchKeyword.value.trim()) {
+    return;
+  }
+
   if (!store.isConnected) {
-    alert('กรุณาเชื่อมต่อ HOSxP MySQL ก่อนค้นหายา\n(ไปที่แท็บ "การเชื่อมต่อ" และกด "ทดสอบการเชื่อมต่อ")')
-    return
+    alert('กรุณาเชื่อมต่อ HOSxP MySQL ก่อนค้นหายา\n(ไปที่แท็บ "การเชื่อมต่อ" และกด "ทดสอบการเชื่อมต่อ")');
+    return;
   }
-  
-  searchingDrug.value = true
+
+  searchingDrug.value = true;
   try {
-    searchResults.value = await store.searchHosxpDrugs(searchKeyword.value.trim())
-  } catch (e) {
-    console.error('Search failed:', e)
-    searchResults.value = []
+    searchResults.value = await store.searchHosxpDrugs(searchKeyword.value.trim());
+  } catch {
+    searchResults.value = [];
   } finally {
-    searchingDrug.value = false
+    searchingDrug.value = false;
   }
 }
 
-function selectDrug(drug: { icode: string; name: string; strength: string }) {
-  selectedDrug.value = drug
-  searchResults.value = []
-  searchKeyword.value = `${drug.name} ${drug.strength}`.trim()
+function _selectDrug(drug: { icode: string; name: string; strength: string }) {
+  selectedDrug.value = drug;
+  searchResults.value = [];
+  searchKeyword.value = `${drug.name} ${drug.strength}`.trim();
 }
 
-async function saveDrugInteraction() {
-  if (!selectedDrug.value) return
+async function _saveDrugInteraction() {
+  if (!selectedDrug.value) {
+    return;
+  }
   await store.addDrugInteraction({
     icode: selectedDrug.value.icode,
     drugName: selectedDrug.value.name,
     strength: selectedDrug.value.strength || null,
     interactionType: interactionType.value,
-  })
-  interactionModalOpen.value = false
-  selectedDrug.value = null
-  searchKeyword.value = ''
-  interactionType.value = 'increase'
+  });
+  interactionModalOpen.value = false;
+  selectedDrug.value = null;
+  searchKeyword.value = '';
+  interactionType.value = 'increase';
 }
 
-async function handleDeleteInteraction(id: number) {
+async function _handleDeleteInteraction(id: number) {
   if (confirm('ต้องการลบรายการนี้?')) {
-    await store.deleteDrugInteraction(id)
+    await store.deleteDrugInteraction(id);
   }
 }
 </script>

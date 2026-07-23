@@ -1,83 +1,81 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { ClipboardCheck, Pencil, Search } from 'lucide-vue-next'
-import VisitFormPanel from '#/components/visit/VisitFormPanel.vue'
-import { useReviewStore } from '#/stores/review'
-import { formatThaiDate } from '#/utils/clinic'
-import type { WfVisit } from '#/types/visit'
+import { invoke } from '@tauri-apps/api/core';
+import { onMounted, ref } from 'vue';
+import { useReviewStore } from '#/stores/review.ts';
+import type { WfVisit } from '#/types/visit.ts';
 
-const reviewStore = useReviewStore()
-const visits = ref<WfVisit[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
-const searchQuery = ref('')
-const visitPanelOpen = ref(false)
-const selectedHn = ref('')
-const editingVisit = ref<WfVisit | null>(null)
-const approving = ref<Set<number>>(new Set())
+const reviewStore = useReviewStore();
+const visits = ref<WfVisit[]>([]);
+const loading = ref(false);
+const error = ref<string | null>(null);
+const searchQuery = ref('');
+const visitPanelOpen = ref(false);
+const selectedHn = ref('');
+const editingVisit = ref<WfVisit | null>(null);
+const approving = ref<Set<number>>(new Set());
 
 async function loadVisits() {
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
-    visits.value = await invoke<WfVisit[]>('get_pending_review_visits')
+    visits.value = await invoke<WfVisit[]>('get_pending_review_visits');
   } catch (e) {
-    error.value = String(e)
+    error.value = String(e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-async function approveVisit(visitId: number) {
-  approving.value.add(visitId)
+async function _approveVisit(visitId: number) {
+  approving.value.add(visitId);
   try {
     await invoke('approve_visit', {
       visitId,
       reviewer: 'เภสัชกร',
-    })
-    visits.value = visits.value.filter((v) => v.id !== visitId)
-    await reviewStore.fetchPendingCount()
-  } catch (e) {
-    console.error('failed to approve visit', e)
+    });
+    visits.value = visits.value.filter((v) => v.id !== visitId);
+    await reviewStore.fetchPendingCount();
+  } catch {
   } finally {
-    approving.value.delete(visitId)
+    approving.value.delete(visitId);
   }
 }
 
-function handleEdit(visit: WfVisit) {
-  selectedHn.value = visit.hn
-  editingVisit.value = visit
-  visitPanelOpen.value = true
+function _handleEdit(visit: WfVisit) {
+  selectedHn.value = visit.hn;
+  editingVisit.value = visit;
+  visitPanelOpen.value = true;
 }
 
-async function onVisitSaved(visitId: number) {
-  visitPanelOpen.value = false
-  editingVisit.value = null
-  await loadVisits()
-  await reviewStore.fetchPendingCount()
+async function _onVisitSaved(_visitId: number) {
+  visitPanelOpen.value = false;
+  editingVisit.value = null;
+  await loadVisits();
+  await reviewStore.fetchPendingCount();
 }
 
-async function handleVisitUpdated() {
-  visitPanelOpen.value = false
-  editingVisit.value = null
-  await loadVisits()
-  await reviewStore.fetchPendingCount()
+async function _handleVisitUpdated() {
+  visitPanelOpen.value = false;
+  editingVisit.value = null;
+  await loadVisits();
+  await reviewStore.fetchPendingCount();
 }
 
-const filteredVisits = () => {
-  if (!searchQuery.value.trim()) return visits.value
-  const query = searchQuery.value.toLowerCase()
-  return visits.value.filter((v) => v.hn.toLowerCase().includes(query))
-}
+const _filteredVisits = () => {
+  if (!searchQuery.value.trim()) {
+    return visits.value;
+  }
+  const query = searchQuery.value.toLowerCase();
+  return visits.value.filter((v) => v.hn.toLowerCase().includes(query));
+};
 
 onMounted(() => {
   // Refresh both the list and the sidebar badge together — they share the
   // same WHERE clause on the backend, so they must always agree. The count
   // store is only updated on writes (save / approve / edit) and at app
   // start, so without this it can go stale against the live list.
-  void Promise.all([loadVisits(), reviewStore.fetchPendingCount()])
-})
+  void Promise.all([loadVisits(), reviewStore.fetchPendingCount()]);
+});
 </script>
 
 <template>

@@ -1,163 +1,187 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useSettingsStore } from '#/stores/settings'
-import RegimenOptionCard from '#/components/visit/RegimenOptionCard.vue'
-import type { PatientDetail } from '#/types/patient'
-import type { WfVisit } from '#/types/visit'
-import {
-  calculateAge,
-  doseDayKeys,
-  doseDayLabels,
-  formatThaiDate,
-  getCssVar,
-  normalizeDoseSchedule,
-  scheduleWeeklyTotal,
-} from '#/utils/clinic'
-import { createRegimenOptionSnapshot } from '#/utils/regimen'
+import { computed, ref } from 'vue';
+import { useSettingsStore } from '#/stores/settings.ts';
+import type { PatientDetail } from '#/types/patient.ts';
+import type { WfVisit } from '#/types/visit.ts';
+import { calculateAge, getCssVar, normalizeDoseSchedule } from '#/utils/clinic.ts';
+import { createRegimenOptionSnapshot } from '#/utils/regimen.ts';
 
-const props = defineProps<{ visit: WfVisit; patient: PatientDetail; ttr: number | null }>()
+const props = defineProps<{ visit: WfVisit; patient: PatientDetail; ttr: number | null }>();
 
-const settingsStore = useSettingsStore()
-const hospitalName = ref('Warfarin Care')
+const settingsStore = useSettingsStore();
+const hospitalName = ref('Warfarin Care');
 
 void settingsStore.loadSettings().then(() => {
-  hospitalName.value = settingsStore.hospitalName || hospitalName.value
-})
+  hospitalName.value = settingsStore.hospitalName || hospitalName.value;
+});
 
-const CHART_WIDTH = 400
-const CHART_HEIGHT = 160
-const PADDING = { top: 12, right: 32, bottom: 24, left: 12 }
+const CHART_WIDTH = 400;
+const CHART_HEIGHT = 160;
+const PADDING = { top: 12, right: 32, bottom: 24, left: 12 };
 
-type ChartPoint = { date: string; value: number; x: number; y: number }
+interface ChartPoint {
+  date: string;
+  value: number;
+  x: number;
+  y: number;
+}
 
-const inrRecords = computed(() => {
-  return [...(props.patient.inrHistory ?? [])]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-12)
-})
+const inrRecords = computed(() =>
+  [...(props.patient.inrHistory ?? [])].sort((a, b) => a.date.localeCompare(b.date)).slice(-12),
+);
 
 const valueRange = computed(() => {
-  const values = inrRecords.value.map(r => r.value)
-  if (!values.length) return null
-  const targetLow = props.patient.patient.targetInrLow
-  const targetHigh = props.patient.patient.targetInrHigh
-  const rawMin = Math.min(...values, targetLow, targetHigh)
-  const rawMax = Math.max(...values, targetLow, targetHigh)
-  const min = Math.max(0, Math.floor((rawMin - 0.4) * 2) / 2)
-  const max = Math.ceil((rawMax + 0.4) * 2) / 2
-  return { min, max: max === min ? max + 1 : max }
-})
+  const values = inrRecords.value.map((r) => r.value);
+  if (values.length === 0) {
+    return null;
+  }
+  const targetLow = props.patient.patient.targetInrLow;
+  const targetHigh = props.patient.patient.targetInrHigh;
+  const rawMin = Math.min(...values, targetLow, targetHigh);
+  const rawMax = Math.max(...values, targetLow, targetHigh);
+  const min = Math.max(0, Math.floor((rawMin - 0.4) * 2) / 2);
+  const max = Math.ceil((rawMax + 0.4) * 2) / 2;
+  return { min, max: max === min ? max + 1 : max };
+});
 
-const plotWidth = CHART_WIDTH - PADDING.left - PADDING.right
-const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom
+const plotWidth = CHART_WIDTH - PADDING.left - PADDING.right;
+const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom;
 
 function xForDate(date: string): number {
-  const first = inrRecords.value[0]
-  const last = inrRecords.value[inrRecords.value.length - 1]
-  if (!first || !last) return PADDING.left
-  const firstTime = new Date(first.date).getTime()
-  const lastTime = new Date(last.date).getTime()
-  const currentTime = new Date(date).getTime()
-  const span = Math.max(lastTime - firstTime, 1)
-  return PADDING.left + ((currentTime - firstTime) / span) * plotWidth
+  const first = inrRecords.value[0];
+  const last = inrRecords.value.at(-1);
+  if (!(first && last)) {
+    return PADDING.left;
+  }
+  const firstTime = new Date(first.date).getTime();
+  const lastTime = new Date(last.date).getTime();
+  const currentTime = new Date(date).getTime();
+  const span = Math.max(lastTime - firstTime, 1);
+  return PADDING.left + ((currentTime - firstTime) / span) * plotWidth;
 }
 
 function yForValue(value: number): number {
-  const range = valueRange.value
-  if (!range) return PADDING.top
-  return PADDING.top + ((range.max - value) / (range.max - range.min)) * plotHeight
+  const range = valueRange.value;
+  if (!range) {
+    return PADDING.top;
+  }
+  return PADDING.top + ((range.max - value) / (range.max - range.min)) * plotHeight;
 }
 
 const points = computed<ChartPoint[]>(() =>
-  inrRecords.value.map(record => ({
+  inrRecords.value.map((record) => ({
     ...record,
     x: xForDate(record.date),
     y: yForValue(record.value),
-  }))
-)
+  })),
+);
 
 function buildSmoothPath(series: ChartPoint[]): string {
-  if (series.length === 0) return ''
-  if (series.length === 1) return `M ${series[0].x} ${series[0].y}`
-  if (series.length === 2) return `M ${series[0].x} ${series[0].y} L ${series[1].x} ${series[1].y}`
-  let path = `M ${series[0].x} ${series[0].y}`
-  for (let index = 0; index < series.length - 1; index += 1) {
-    const p0 = series[index - 1] ?? series[index]
-    const p1 = series[index]
-    const p2 = series[index + 1]
-    const p3 = series[index + 2] ?? p2
-    const cp1x = p1.x + (p2.x - p0.x) / 6
-    const cp1y = p1.y + (p2.y - p0.y) / 6
-    const cp2x = p2.x - (p3.x - p1.x) / 6
-    const cp2y = p2.y - (p3.y - p1.y) / 6
-    path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`
+  if (series.length === 0) {
+    return '';
   }
-  return path
+  if (series.length === 1) {
+    return `M ${series[0].x} ${series[0].y}`;
+  }
+  if (series.length === 2) {
+    return `M ${series[0].x} ${series[0].y} L ${series[1].x} ${series[1].y}`;
+  }
+  let path = `M ${series[0].x} ${series[0].y}`;
+  for (let index = 0; index < series.length - 1; index += 1) {
+    const p0 = series[index - 1] ?? series[index];
+    const p1 = series[index];
+    const p2 = series[index + 1];
+    const p3 = series[index + 2] ?? p2;
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+  }
+  return path;
 }
 
-const linePath = computed(() => buildSmoothPath(points.value))
+const _linePath = computed(() => buildSmoothPath(points.value));
 
-const targetBand = computed(() => {
-  const range = valueRange.value
-  if (!range) return null
-  const yTop = yForValue(props.patient.patient.targetInrHigh)
-  const yBottom = yForValue(props.patient.patient.targetInrLow)
+const _targetBand = computed(() => {
+  const range = valueRange.value;
+  if (!range) {
+    return null;
+  }
+  const yTop = yForValue(props.patient.patient.targetInrHigh);
+  const yBottom = yForValue(props.patient.patient.targetInrLow);
   return {
     y: Math.min(yTop, yBottom),
     height: Math.abs(yBottom - yTop),
-  }
-})
+  };
+});
 
-const yTicks = computed(() => {
-  const range = valueRange.value
-  if (!range) return []
-  const step = Math.max(0.5, Math.ceil(((range.max - range.min) / 3) * 2) / 2)
-  const ticks: number[] = []
+const _yTicks = computed(() => {
+  const range = valueRange.value;
+  if (!range) {
+    return [];
+  }
+  const step = Math.max(0.5, Math.ceil(((range.max - range.min) / 3) * 2) / 2);
+  const ticks: number[] = [];
   for (let value = range.min; value <= range.max + 0.001; value += step) {
-    ticks.push(Number(value.toFixed(1)))
+    ticks.push(Number(value.toFixed(1)));
   }
-  return ticks
-})
+  return ticks;
+});
 
-const xTicks = computed(() => {
-  const records = inrRecords.value
-  if (!records.length) return []
-  return records.filter((_, i) => i === 0 || i === records.length - 1 || i === Math.floor(records.length / 2)).map(record => ({
-    label: new Date(record.date).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' }),
-    x: xForDate(record.date),
-  }))
-})
+const _xTicks = computed(() => {
+  const records = inrRecords.value;
+  if (records.length === 0) {
+    return [];
+  }
+  return records
+    .filter((_, i) => i === 0 || i === records.length - 1 || i === Math.floor(records.length / 2))
+    .map((record) => ({
+      label: new Date(record.date).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' }),
+      x: xForDate(record.date),
+    }));
+});
 
-const chartPalette = computed(() => ({
+const _chartPalette = computed(() => ({
   line: getCssVar('--color-primary') || '#111111',
   canvas: getCssVar('--color-canvas') || '#ffffff',
   grid: getCssVar('--color-hairline-soft') || '#e5e5e6',
   target: getCssVar('--color-inr-safe') || '#16a34a',
   text: getCssVar('--color-slate') || '#6b7280',
-}))
+}));
 
-const info = computed(() => props.patient.hosxpInfo)
-const p = computed(() => props.patient.patient)
-const age = computed(() => (info.value ? calculateAge(info.value.birthday) : null))
-const currentDoseSchedule = computed(() => normalizeDoseSchedule(props.visit.doseDetail))
-const newDoseSchedule = computed(() => normalizeDoseSchedule(props.visit.newDoseDetail))
-const selectedDoseOption = computed(() => props.visit.selectedDoseOption ?? createRegimenOptionSnapshot({
-  schedule: props.visit.newDoseDetail,
-  visitDate: props.visit.visitDate,
-  nextAppointment: props.visit.nextAppointment,
-}))
+const info = computed(() => props.patient.hosxpInfo);
+const _p = computed(() => props.patient.patient);
+const _age = computed(() => (info.value ? calculateAge(info.value.birthday) : null));
+const _currentDoseSchedule = computed(() => normalizeDoseSchedule(props.visit.doseDetail));
+const _newDoseSchedule = computed(() => normalizeDoseSchedule(props.visit.newDoseDetail));
+const _selectedDoseOption = computed(
+  () =>
+    props.visit.selectedDoseOption ??
+    createRegimenOptionSnapshot({
+      schedule: props.visit.newDoseDetail,
+      visitDate: props.visit.visitDate,
+      nextAppointment: props.visit.nextAppointment,
+    }),
+);
 
-const adherenceLabel: Record<string, string> = {
+const _adherenceLabel: Record<string, string> = {
   good: 'ดี',
   fair: 'พอใช้',
   poor: 'ไม่ดี',
-}
+};
 
-function ttrClass(v: number | null): string {
-  if (v === null) return ''
-  if (v >= 65) return 'ttr-good'
-  if (v >= 50) return 'ttr-warn'
-  return 'ttr-bad'
+function _ttrClass(v: number | null): string {
+  if (v === null) {
+    return '';
+  }
+  if (v >= 65) {
+    return 'ttr-good';
+  }
+  if (v >= 50) {
+    return 'ttr-warn';
+  }
+  return 'ttr-bad';
 }
 
 const sideEffectOptionsHigh: Record<string, string> = {
@@ -166,35 +190,39 @@ const sideEffectOptionsHigh: Record<string, string> = {
   bleeding_gums: 'เลือดออกตามไรฟัน',
   hemoptysis: 'ไอเป็นเลือด',
   hematoma: 'ห้อเลือด',
-}
+};
 const sideEffectOptionsLow: Record<string, string> = {
   headache: 'ปวดหัว',
   dizziness_fatigue: 'เวียนศีรษะหรืออ่อนเพลีย',
   faint_breath: 'รู้สึกหวิวหรือหายใจติดขัด',
   numbness_weakness: 'มีอาการชา หรือกล้ามเนื้ออ่อนแรง',
   other: 'อื่นๆ',
-}
+};
 
-const adrHighLabels = computed(() => {
-  const selected = props.visit.sideEffects ?? []
-  return selected.map((k: string) => sideEffectOptionsHigh[k]).filter(Boolean)
-})
+const _adrHighLabels = computed(() => {
+  const selected = props.visit.sideEffects ?? [];
+  return selected.map((k: string) => sideEffectOptionsHigh[k]).filter(Boolean);
+});
 
-const adrLowLabels = computed(() => {
-  const selected = props.visit.sideEffects ?? []
-  return selected.map((k: string) => sideEffectOptionsLow[k]).filter(Boolean)
-})
+const _adrLowLabels = computed(() => {
+  const selected = props.visit.sideEffects ?? [];
+  return selected.map((k: string) => sideEffectOptionsLow[k]).filter(Boolean);
+});
 
-function daysFromNow(dateStr: string | null): string {
-  if (!dateStr) return ''
-  const targetDate = new Date(dateStr)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  targetDate.setHours(0, 0, 0, 0)
-  const diffMs = targetDate.getTime() - today.getTime()
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
-  if (diffDays < 0) return `(${Math.abs(diffDays)} วันผ่านไปแล้ว)`
-  return `(+${diffDays} วัน)`
+function _daysFromNow(dateStr: string | null): string {
+  if (!dateStr) {
+    return '';
+  }
+  const targetDate = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  targetDate.setHours(0, 0, 0, 0);
+  const diffMs = targetDate.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) {
+    return `(${Math.abs(diffDays)} วันผ่านไปแล้ว)`;
+  }
+  return `(+${diffDays} วัน)`;
 }
 </script>
 

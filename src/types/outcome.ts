@@ -4,26 +4,26 @@ export type OutcomeType =
   | 'thromboembolism'
   | 'hospitalization'
   | 'death'
-  | 'other'
+  | 'other';
 
 export interface WfOutcome {
-  id: number
-  hn: string
-  eventDate: string
-  eventType: OutcomeType
-  description?: string
-  inrAtEvent?: number
-  actionTaken?: string
-  createdBy?: string
-  createdAt: string
+  id: number;
+  hn: string;
+  eventDate: string;
+  eventType: OutcomeType;
+  description?: string;
+  inrAtEvent?: number;
+  actionTaken?: string;
+  createdBy?: string;
+  createdAt: string;
 }
 
 export interface OutcomeInput {
-  hn: string
-  eventDate: string
-  eventType: OutcomeType
-  description?: string
-  inrAtEvent?: number
-  actionTaken?: string
-  createdBy?: string
+  hn: string;
+  eventDate: string;
+  eventType: OutcomeType;
+  description?: string;
+  inrAtEvent?: number;
+  actionTaken?: string;
+  createdBy?: string;
 }

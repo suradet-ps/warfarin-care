@@ -1,60 +1,63 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useScreeningStore } from '#/stores/screening'
-import PatientTable from '#/components/screening/PatientTable.vue'
-import EnrollModal from '#/components/screening/EnrollModal.vue'
-import { Calendar, Search } from 'lucide-vue-next'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useScreeningStore } from '#/stores/screening.ts';
 
-const store = useScreeningStore()
-const showEnrollModal = ref(false)
-const selectedHn = ref<string | null>(null)
+const store = useScreeningStore();
+const _showEnrollModal = ref(false);
+const _selectedHn = ref<string | null>(null);
 // Template refs for date inputs
-const dateFromRef = ref<HTMLInputElement | null>(null)
-const dateToRef = ref<HTMLInputElement | null>(null)
-let autoSearchTimer: ReturnType<typeof window.setTimeout> | null = null
+const dateFromRef = ref<HTMLInputElement | null>(null);
+const dateToRef = ref<HTMLInputElement | null>(null);
+let autoSearchTimer: ReturnType<typeof window.setTimeout> | null = null;
 
 function runSearch(resetPage = true) {
-  if (resetPage) store.resetPage()
-  void store.search()
+  if (resetPage) {
+    store.resetPage();
+  }
+  void store.search();
 }
 
 function scheduleAutoSearch() {
-  if (autoSearchTimer !== null) window.clearTimeout(autoSearchTimer)
+  if (autoSearchTimer !== null) {
+    window.clearTimeout(autoSearchTimer);
+  }
   autoSearchTimer = window.setTimeout(() => {
-    runSearch()
-  }, 250)
+    runSearch();
+  }, 250);
 }
 
-function handlePageChange(page: number) {
-  store.setPage(page)
-  void store.search()
+function _handlePageChange(page: number) {
+  store.setPage(page);
+  void store.search();
 }
 
-function openDateFromPicker() {
-  if (dateFromRef.value) (dateFromRef.value as any).showPicker?.()
+function _openDateFromPicker() {
+  if (dateFromRef.value) {
+    (dateFromRef.value as any).showPicker?.();
+  }
 }
-function openDateToPicker() {
-  if (dateToRef.value) (dateToRef.value as any).showPicker?.()
+function _openDateToPicker() {
+  if (dateToRef.value) {
+    (dateToRef.value as any).showPicker?.();
+  }
 }
 
 onMounted(() => {
-  void store.search()
-})
+  void store.search();
+});
 
 onBeforeUnmount(() => {
-  if (autoSearchTimer !== null) window.clearTimeout(autoSearchTimer)
-})
+  if (autoSearchTimer !== null) {
+    window.clearTimeout(autoSearchTimer);
+  }
+});
 
 watch(
-  [
-    () => store.filters.keyword,
-    () => store.filters.dateFrom,
-    () => store.filters.dateTo,
-  ],
+  [() => store.filters.keyword, () => store.filters.dateFrom, () => store.filters.dateTo],
   () => {
-    scheduleAutoSearch()
+    scheduleAutoSearch();
   },
-)
+);
 </script>
 
 <template>

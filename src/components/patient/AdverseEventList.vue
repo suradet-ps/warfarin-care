@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { AlertTriangle } from 'lucide-vue-next'
-import type { OutcomeInput, OutcomeType, WfOutcome } from '#/types/outcome'
-import { dateInputToday, formatThaiDate, sortOutcomes } from '#/utils/clinic'
+import { invoke } from '@tauri-apps/api/core';
+import { computed, onMounted, ref } from 'vue';
+import type { OutcomeInput, OutcomeType, WfOutcome } from '#/types/outcome.ts';
+import { dateInputToday, sortOutcomes } from '#/utils/clinic.ts';
 
-const props = defineProps<{ hn: string }>()
-const outcomes = ref<WfOutcome[]>([])
-const loading = ref(false)
-const saving = ref(false)
-const error = ref<string | null>(null)
-const showForm = ref(false)
+const props = defineProps<{ hn: string }>();
+const outcomes = ref<WfOutcome[]>([]);
+const loading = ref(false);
+const saving = ref(false);
+const error = ref<string | null>(null);
+const showForm = ref(false);
 
 const form = ref<OutcomeInput>({
   hn: props.hn,
@@ -18,47 +17,55 @@ const form = ref<OutcomeInput>({
   eventType: 'minor_bleeding',
   description: '',
   actionTaken: '',
-})
+});
 
-const eventLabels: Record<OutcomeType, string> = {
+const _eventLabels: Record<OutcomeType, string> = {
   major_bleeding: 'เลือดออกรุนแรง',
   minor_bleeding: 'เลือดออกเล็กน้อย',
   thromboembolism: 'ลิ่มเลือดอุดตัน',
   hospitalization: 'นอนโรงพยาบาล',
   death: 'เสียชีวิต',
   other: 'อื่นๆ',
-}
+};
 
-const orderedOutcomes = computed(() => sortOutcomes(outcomes.value))
+const _orderedOutcomes = computed(() => sortOutcomes(outcomes.value));
 
 async function fetchOutcomes() {
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
-    outcomes.value = await invoke<WfOutcome[]>('get_outcomes', { hn: props.hn })
+    outcomes.value = await invoke<WfOutcome[]>('get_outcomes', { hn: props.hn });
   } catch (e) {
-    error.value = String(e)
+    error.value = String(e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-async function submitOutcome() {
-  saving.value = true
-  error.value = null
+async function _submitOutcome() {
+  saving.value = true;
+  error.value = null;
   try {
-    await invoke<number>('record_adverse_event', { event: { ...form.value, hn: props.hn } })
-    showForm.value = false
-    form.value = { hn: props.hn, eventDate: dateInputToday(), eventType: 'minor_bleeding', description: '', actionTaken: '' }
-    await fetchOutcomes()
+    await invoke<number>('record_adverse_event', { event: { ...form.value, hn: props.hn } });
+    showForm.value = false;
+    form.value = {
+      hn: props.hn,
+      eventDate: dateInputToday(),
+      eventType: 'minor_bleeding',
+      description: '',
+      actionTaken: '',
+    };
+    await fetchOutcomes();
   } catch (e) {
-    error.value = String(e)
+    error.value = String(e);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
-onMounted(() => { void fetchOutcomes() })
+onMounted(() => {
+  void fetchOutcomes();
+});
 </script>
 
 <template>

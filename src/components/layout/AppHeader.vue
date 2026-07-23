@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { Bell, LogOut } from 'lucide-vue-next'
-import { useAlertStore } from '#/stores/alerts'
-import { useAuthStore } from '#/stores/auth'
+import { computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useAlertStore } from '#/stores/alerts.ts';
+import { useAuthStore } from '#/stores/auth.ts';
 
-const route = useRoute()
-const router = useRouter()
-const alertStore = useAlertStore()
-const authStore = useAuthStore()
+const route = useRoute();
+const router = useRouter();
+const alertStore = useAlertStore();
+const authStore = useAuthStore();
 
-const pageTitle = computed(() => {
+const _pageTitle = computed(() => {
   const map: Record<string, string> = {
     '/screening': 'คัดกรองผู้ป่วย',
     '/active': 'ผู้ป่วยคลินิกวาร์ฟาริน',
@@ -18,24 +17,28 @@ const pageTitle = computed(() => {
     '/review': 'ตรวจสอบการบันทึก',
     '/reports': 'รายงาน',
     '/settings': 'ตั้งค่าระบบ',
+  };
+  if (route.path.startsWith('/patient/')) {
+    return 'ข้อมูลผู้ป่วย';
   }
-  if (route.path.startsWith('/patient/')) return 'ข้อมูลผู้ป่วย'
-  if (route.path.startsWith('/slip/')) return 'Warfarin Assessment & Recommendation'
-  return map[route.path] ?? 'คลินิกวาร์ฟาริน'
-})
+  if (route.path.startsWith('/slip/')) {
+    return 'Warfarin Assessment & Recommendation';
+  }
+  return map[route.path] ?? 'คลินิกวาร์ฟาริน';
+});
 
-const totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount)
+const _totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount);
 
-async function handleLogout() {
-  await authStore.logout()
-  await router.replace('/login')
+async function _handleLogout() {
+  await authStore.logout();
+  await router.replace('/login');
 }
 
 onMounted(() => {
-  if (!alertStore.alerts.length) {
-    void alertStore.fetchAlerts()
+  if (alertStore.alerts.length === 0) {
+    void alertStore.fetchAlerts();
   }
-})
+});
 </script>
 
 <template>

@@ -1,25 +1,29 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { CalendarDays, CalendarRange, Clock3, Search, Users } from 'lucide-vue-next'
-import type { WfAppointment } from '#/types/appointment'
-import type { ActivePatientSummary } from '#/types/patient'
-import { daysUntil, formatThaiDate, patientFullName } from '#/utils/clinic'
+import { invoke } from '@tauri-apps/api/core';
+import { computed, onMounted, ref } from 'vue';
+import type { WfAppointment } from '#/types/appointment.ts';
+import type { ActivePatientSummary } from '#/types/patient.ts';
+import { daysUntil, patientFullName } from '#/utils/clinic.ts';
 
-const loading = ref(false)
-const error = ref<string | null>(null)
-const searchQuery = ref('')
-const selectedDate = ref('')
-const appointments = ref<WfAppointment[]>([])
-const summaries = ref<ActivePatientSummary[]>([])
+const loading = ref(false);
+const error = ref<string | null>(null);
+const searchQuery = ref('');
+const selectedDate = ref('');
+const appointments = ref<WfAppointment[]>([]);
+const summaries = ref<ActivePatientSummary[]>([]);
 
-const patientMap = computed(() => new Map(summaries.value.map((summary) => [summary.patient.hn, summary])))
+const patientMap = computed(
+  () => new Map(summaries.value.map((summary) => [summary.patient.hn, summary])),
+);
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => new Date().toISOString().slice(0, 10);
 
 const dateBuckets = computed(() => {
-  const buckets = new Map<string, { date: string; count: number; overdueCount: number; urgentCount: number }>()
-  const cutoff = today()
+  const buckets = new Map<
+    string,
+    { date: string; count: number; overdueCount: number; urgentCount: number }
+  >();
+  const cutoff = today();
 
   for (const appointment of appointments.value) {
     const existing = buckets.get(appointment.apptDate) ?? {
@@ -27,116 +31,138 @@ const dateBuckets = computed(() => {
       count: 0,
       overdueCount: 0,
       urgentCount: 0,
-    }
+    };
 
-    existing.count += 1
-    if (appointment.isOverdue === true) existing.overdueCount += 1
-    if (appointment.apptType === 'urgent') existing.urgentCount += 1
-    buckets.set(appointment.apptDate, existing)
+    existing.count += 1;
+    if (appointment.isOverdue === true) {
+      existing.overdueCount += 1;
+    }
+    if (appointment.apptType === 'urgent') {
+      existing.urgentCount += 1;
+    }
+    buckets.set(appointment.apptDate, existing);
   }
 
   // Keep only dates that are today/future, or past dates that have at least
   // one truly-overdue appointment (clinic ran that day AND patient didn't
   // attend). Past dates on which the clinic was closed have no overdue
   // appointments and are dropped.
-  const filtered = [...buckets.values()].filter((bucket) => {
-    return bucket.date >= cutoff || bucket.overdueCount > 0
-  })
+  const filtered = [...buckets.values()].filter(
+    (bucket) => bucket.date >= cutoff || bucket.overdueCount > 0,
+  );
 
   // Sort: today + future dates ascending first, then past-overdue dates
   // descending (most recent missed first).
   return filtered.sort((a, b) => {
-    const aIsFuture = a.date >= cutoff
-    const bIsFuture = b.date >= cutoff
+    const aIsFuture = a.date >= cutoff;
+    const bIsFuture = b.date >= cutoff;
     if (aIsFuture !== bIsFuture) {
-      return aIsFuture ? -1 : 1
+      return aIsFuture ? -1 : 1;
     }
     if (aIsFuture) {
-      return a.date.localeCompare(b.date)
+      return a.date.localeCompare(b.date);
     }
-    return b.date.localeCompare(a.date)
-  })
-})
+    return b.date.localeCompare(a.date);
+  });
+});
 
 const selectedBucket = computed(() => {
   if (selectedDate.value) {
-    return dateBuckets.value.find((bucket) => bucket.date === selectedDate.value) ?? null
+    return dateBuckets.value.find((bucket) => bucket.date === selectedDate.value) ?? null;
   }
 
-  return dateBuckets.value[0] ?? null
-})
+  return dateBuckets.value[0] ?? null;
+});
 
-const filteredAppointments = computed(() => {
-  const activeDate = selectedBucket.value?.date ?? ''
-  const query = searchQuery.value.trim().toLowerCase()
+const _filteredAppointments = computed(() => {
+  const activeDate = selectedBucket.value?.date ?? '';
+  const query = searchQuery.value.trim().toLowerCase();
 
   return appointments.value
     .filter((appointment) => (activeDate ? appointment.apptDate === activeDate : true))
     .filter((appointment) => {
-      if (!query) return true
-      const summary = patientMap.value.get(appointment.hn)
-      const fullName = patientFullName(summary?.hosxpInfo).toLowerCase()
-      return appointment.hn.toLowerCase().includes(query) || fullName.includes(query)
+      if (!query) {
+        return true;
+      }
+      const summary = patientMap.value.get(appointment.hn);
+      const fullName = patientFullName(summary?.hosxpInfo).toLowerCase();
+      return appointment.hn.toLowerCase().includes(query) || fullName.includes(query);
     })
-    .sort((a, b) => `${a.apptDate}-${a.hn}`.localeCompare(`${b.apptDate}-${b.hn}`))
-})
+    .sort((a, b) => `${a.apptDate}-${a.hn}`.localeCompare(`${b.apptDate}-${b.hn}`));
+});
 
-const stats = computed(() => ({
+const _stats = computed(() => ({
   total: appointments.value.length,
-  today: appointments.value.filter((appointment) => (daysUntil(appointment.apptDate) ?? Number.MAX_SAFE_INTEGER) === 0).length,
+  today: appointments.value.filter(
+    (appointment) => (daysUntil(appointment.apptDate) ?? Number.MAX_SAFE_INTEGER) === 0,
+  ).length,
   nextSevenDays: appointments.value.filter((appointment) => {
-    const delta = daysUntil(appointment.apptDate)
-    return delta !== null && delta >= 0 && delta <= 7
+    const delta = daysUntil(appointment.apptDate);
+    return delta !== null && delta >= 0 && delta <= 7;
   }).length,
   // "Actually overdue" = past + clinic ran that day + patient didn't attend.
   // The Rust backend pre-computes this in get_pending_appointments.
   overdue: appointments.value.filter((appointment) => appointment.isOverdue === true).length,
-}))
+}));
 
 async function loadAppointments() {
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
     const [pendingAppointments, activeSummaries] = await Promise.all([
       invoke<WfAppointment[]>('get_pending_appointments'),
       invoke<ActivePatientSummary[]>('get_active_patient_summaries'),
-    ])
+    ]);
 
-    appointments.value = pendingAppointments
-    summaries.value = activeSummaries
+    appointments.value = pendingAppointments;
+    summaries.value = activeSummaries;
     if (!selectedDate.value) {
-      selectedDate.value = pendingAppointments[0]?.apptDate ?? ''
+      selectedDate.value = pendingAppointments[0]?.apptDate ?? '';
     }
   } catch (invokeError) {
-    error.value = String(invokeError)
+    error.value = String(invokeError);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-function appointmentTypeLabel(apptType?: string) {
-  if (apptType === 'urgent') return 'เร่งด่วน'
-  if (apptType === 'inr_check') return 'ตรวจ INR'
-  return 'ตรวจคลินิก'
+function _appointmentTypeLabel(apptType?: string) {
+  if (apptType === 'urgent') {
+    return 'เร่งด่วน';
+  }
+  if (apptType === 'inr_check') {
+    return 'ตรวจ INR';
+  }
+  return 'ตรวจคลินิก';
 }
 
-function appointmentTypeClass(apptType?: string) {
-  if (apptType === 'urgent') return 'badge-danger'
-  if (apptType === 'inr_check') return 'badge-warning'
-  return 'badge-info'
+function _appointmentTypeClass(apptType?: string) {
+  if (apptType === 'urgent') {
+    return 'badge-danger';
+  }
+  if (apptType === 'inr_check') {
+    return 'badge-warning';
+  }
+  return 'badge-info';
 }
 
-function appointmentTimingText(apptDate: string) {
-  const delta = daysUntil(apptDate)
-  if (delta === null) return '-'
-  if (delta < 0) return `เกินนัด ${Math.abs(delta)} วัน`
-  if (delta === 0) return 'วันนี้'
-  return `อีก ${delta} วัน`
+function _appointmentTimingText(apptDate: string) {
+  const delta = daysUntil(apptDate);
+  if (delta === null) {
+    return '-';
+  }
+  if (delta < 0) {
+    return `เกินนัด ${Math.abs(delta)} วัน`;
+  }
+  if (delta === 0) {
+    return 'วันนี้';
+  }
+  return `อีก ${delta} วัน`;
 }
 
 onMounted(() => {
-  void loadAppointments()
-})
+  void loadAppointments();
+});
 </script>
 
 <template>

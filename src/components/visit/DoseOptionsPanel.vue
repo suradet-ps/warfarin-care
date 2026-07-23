@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import RegimenOptionCard from '#/components/visit/RegimenOptionCard.vue'
-import type { RegimenOption } from '#/types/dose'
+import type { RegimenOption } from '#/types/dose.ts';
 
 defineProps<{
-  options: RegimenOption[]
-  selectedIndex: number | null
-  loading?: boolean
-}>()
+  options: RegimenOption[];
+  selectedIndex: number | null;
+  loading?: boolean;
+}>();
 
-const emit = defineEmits<{
-  (e: 'select', index: number): void
-}>()
+const _emit = defineEmits<(e: 'select', index: number) => void>();
 </script>
 
 <template>

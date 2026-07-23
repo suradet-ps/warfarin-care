@@ -1,59 +1,64 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { Check, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-vue-next'
-import type { WfVisit } from '#/types/visit'
-import { formatThaiDate, normalizeDoseSchedule, doseDayLabels, doseDayKeys } from '#/utils/clinic'
-import { useVisitStore } from '#/stores/visit'
-import ConfirmDialog from '#/components/shared/ConfirmDialog.vue'
+import { computed, ref } from 'vue';
+import { useVisitStore } from '#/stores/visit.ts';
+import type { WfVisit } from '#/types/visit.ts';
 
-const props = defineProps<{ visits: WfVisit[]; hn: string }>()
-const visitStore = useVisitStore()
-const emit = defineEmits<{ (e: 'deleted'): void; (e: 'edit', visit: WfVisit): void }>()
+const props = defineProps<{ visits: WfVisit[]; hn: string }>();
 
-const expandedIds = ref<Set<number>>(new Set())
-const deleteTargetId = ref<number | null>(null)
+const emit = defineEmits<{ (e: 'deleted'): void; (e: 'edit', visit: WfVisit): void }>();
 
-const sortedVisits = computed(() =>
+const visitStore = useVisitStore();
+
+const expandedIds = ref<Set<number>>(new Set());
+const deleteTargetId = ref<number | null>(null);
+
+const _sortedVisits = computed(() =>
   [...props.visits].sort((a, b) => `${b.visitDate}`.localeCompare(`${a.visitDate}`)),
-)
+);
 
-function toggleExpand(id: number) {
+function _toggleExpand(id: number) {
   if (expandedIds.value.has(id)) {
-    expandedIds.value.delete(id)
+    expandedIds.value.delete(id);
   } else {
-    expandedIds.value.add(id)
+    expandedIds.value.add(id);
   }
 }
 
-function confirmDelete(id: number) {
-  deleteTargetId.value = id
+function _confirmDelete(id: number) {
+  deleteTargetId.value = id;
 }
 
-function handleEdit(visit: WfVisit) {
-  emit('edit', visit)
+function _handleEdit(visit: WfVisit) {
+  emit('edit', visit);
 }
 
-async function handleConfirmedDelete() {
-  if (deleteTargetId.value === null) return
-  await visitStore.deleteVisit(deleteTargetId.value, props.hn)
-  deleteTargetId.value = null
-  emit('deleted')
+async function _handleConfirmedDelete() {
+  if (deleteTargetId.value === null) {
+    return;
+  }
+  await visitStore.deleteVisit(deleteTargetId.value, props.hn);
+  deleteTargetId.value = null;
+  emit('deleted');
 }
 
-function handleCancelDelete() {
-  deleteTargetId.value = null
+function _handleCancelDelete() {
+  deleteTargetId.value = null;
 }
 
-const adherenceLabels: Record<string, string> = {
+const _adherenceLabels: Record<string, string> = {
   good: 'ดี',
   fair: 'พอใช้',
   poor: 'ไม่ดี',
-}
+};
 
-function adherenceBadgeClass(a?: string | null) {
-  if (a === 'good') return 'badge-success'
-  if (a === 'poor') return 'badge-danger'
-  return 'badge-tag-coral'
+function _adherenceBadgeClass(a?: string | null) {
+  if (a === 'good') {
+    return 'badge-success';
+  }
+  if (a === 'poor') {
+    return 'badge-danger';
+  }
+  return 'badge-tag-coral';
 }
 </script>
 

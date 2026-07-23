@@ -1,72 +1,77 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { ArrowDown, ArrowUp, Minus, AlertTriangle, Trash2 } from 'lucide-vue-next'
-import { useSettingsStore } from '#/stores/settings'
-import { formatThaiDate } from '#/utils/clinic'
+import { invoke } from '@tauri-apps/api/core';
+import { computed, onMounted, ref } from 'vue';
+import { useSettingsStore } from '#/stores/settings.ts';
 
 interface PatientDrugInteractionRecord {
-  date: string
-  drugName: string
-  strength: string
-  icode: string
-  interactionType: string
+  date: string;
+  drugName: string;
+  strength: string;
+  icode: string;
+  interactionType: string;
 }
 
 interface PatientDrugInteractionSummary {
-  increaseCount: number
-  decreaseCount: number
-  trend: string
+  increaseCount: number;
+  decreaseCount: number;
+  trend: string;
 }
 
 const props = defineProps<{
-  hn: string
+  hn: string;
   mysqlConfig: {
-    host: string
-    port: number
-    database: string
-    username: string
-    password: string
-  }
-}>()
+    host: string;
+    port: number;
+    database: string;
+    username: string;
+    password: string;
+  };
+}>();
 
-const store = useSettingsStore()
-const loading = ref(false)
-const error = ref<string | null>(null)
-const records = ref<PatientDrugInteractionRecord[]>([])
-const summary = ref<PatientDrugInteractionSummary | null>(null)
+const _store = useSettingsStore();
+const loading = ref(false);
+const error = ref<string | null>(null);
+const records = ref<PatientDrugInteractionRecord[]>([]);
+const summary = ref<PatientDrugInteractionSummary | null>(null);
 
 async function loadInteractions() {
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
-    const [recs, sum] = await invoke<[PatientDrugInteractionRecord[], PatientDrugInteractionSummary]>(
-      'get_patient_drug_interactions',
-      {
-        hn: props.hn,
-        mysqlConfig: props.mysqlConfig,
-      }
-    )
-    records.value = recs
-    summary.value = sum
+    const [recs, sum] = await invoke<
+      [PatientDrugInteractionRecord[], PatientDrugInteractionSummary]
+    >('get_patient_drug_interactions', {
+      hn: props.hn,
+      mysqlConfig: props.mysqlConfig,
+    });
+    records.value = recs;
+    summary.value = sum;
   } catch (e) {
-    error.value = String(e)
+    error.value = String(e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-const trendLabel = computed(() => {
-  if (!summary.value) return ''
-  switch (summary.value.trend) {
-    case 'increase': return 'มีแนวโน้มเพิ่มฤทธิ์ยา Warfarin'
-    case 'decrease': return 'มีแนวโน้มลดฤทธิ์ยา Warfarin'
-    case 'none': return 'ไม่มีปฏิกิริยากับยา Warfarin'
-    default: return 'ไม่มีผลต่อยา Warfarin ชัดเจน'
+const _trendLabel = computed(() => {
+  if (!summary.value) {
+    return '';
   }
-})
+  switch (summary.value.trend) {
+    case 'increase':
+      return 'มีแนวโน้มเพิ่มฤทธิ์ยา Warfarin';
+    case 'decrease':
+      return 'มีแนวโน้มลดฤทธิ์ยา Warfarin';
+    case 'none':
+      return 'ไม่มีปฏิกิริยากับยา Warfarin';
+    default:
+      return 'ไม่มีผลต่อยา Warfarin ชัดเจน';
+  }
+});
 
-onMounted(() => { void loadInteractions() })
+onMounted(() => {
+  void loadInteractions();
+});
 </script>
 
 <template>

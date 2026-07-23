@@ -1,8 +1,8 @@
-export type AlertSeverity = 'critical' | 'warning'
+export type AlertSeverity = 'critical' | 'warning';
 
 export interface PatientAlert {
-  hn: string
-  patientName: string
+  hn: string;
+  patientName: string;
   alertType:
     | 'critical_high_inr'
     | 'critical_low_inr'
@@ -11,9 +11,9 @@ export interface PatientAlert {
     | 'no_recent_inr'
     | 'missed_appointment'
     | 'low_ttr'
-    | 'adverse_event_recent'
-  severity: AlertSeverity
-  message: string
-  value?: number
-  date?: string
+    | 'adverse_event_recent';
+  severity: AlertSeverity;
+  message: string;
+  value?: number;
+  date?: string;
 }

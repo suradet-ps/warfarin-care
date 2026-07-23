@@ -1,37 +1,40 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
-import { FilePenLine, FileText } from 'lucide-vue-next'
-import AlertBadge from '#/components/active/AlertBadge.vue'
-import InrStatusBadge from '#/components/active/InrStatusBadge.vue'
-import TtrBadge from '#/components/active/TtrBadge.vue'
-import type { PatientAlert } from '#/types/alert'
-import type { ActivePatientSummary } from '#/types/patient'
-import { daysUntil, formatThaiDate, patientFullName } from '#/utils/clinic'
+import { computed } from 'vue';
+import type { PatientAlert } from '#/types/alert.ts';
+import type { ActivePatientSummary } from '#/types/patient.ts';
+import { daysUntil, formatThaiDate } from '#/utils/clinic.ts';
 
 const props = defineProps<{
-  summary: ActivePatientSummary
-  alerts?: PatientAlert[]
-}>()
+  summary: ActivePatientSummary;
+  alerts?: PatientAlert[];
+}>();
 
-const emit = defineEmits<{
-  openVisit: [hn: string]
-}>()
+const _emit = defineEmits<{
+  openVisit: [hn: string];
+}>();
 
-const inrDays = computed(() => {
-  const delta = daysUntil(props.summary.latestInr?.date ?? undefined)
-  return delta === null ? null : Math.abs(delta)
-})
+const _inrDays = computed(() => {
+  const delta = daysUntil(props.summary.latestInr?.date ?? undefined);
+  return delta === null ? null : Math.abs(delta);
+});
 
-const nextApptDelta = computed(() => daysUntil(props.summary.nextAppointment ?? undefined))
-const appointmentText = computed(() => {
-  if (!props.summary.nextAppointment) return 'ยังไม่มีนัด'
-  const delta = nextApptDelta.value
-  if (delta === null) return formatThaiDate(props.summary.nextAppointment)
-  if (delta < 0) return `${formatThaiDate(props.summary.nextAppointment)} · เกินนัด ${Math.abs(delta)} วัน`
-  if (delta === 0) return `${formatThaiDate(props.summary.nextAppointment)} · วันนี้`
-  return `${formatThaiDate(props.summary.nextAppointment)} · อีก ${delta} วัน`
-})
+const nextApptDelta = computed(() => daysUntil(props.summary.nextAppointment ?? undefined));
+const _appointmentText = computed(() => {
+  if (!props.summary.nextAppointment) {
+    return 'ยังไม่มีนัด';
+  }
+  const delta = nextApptDelta.value;
+  if (delta === null) {
+    return formatThaiDate(props.summary.nextAppointment);
+  }
+  if (delta < 0) {
+    return `${formatThaiDate(props.summary.nextAppointment)} · เกินนัด ${Math.abs(delta)} วัน`;
+  }
+  if (delta === 0) {
+    return `${formatThaiDate(props.summary.nextAppointment)} · วันนี้`;
+  }
+  return `${formatThaiDate(props.summary.nextAppointment)} · อีก ${delta} วัน`;
+});
 </script>
 
 <template>

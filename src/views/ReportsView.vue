@@ -1,35 +1,72 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { Calendar, Download } from 'lucide-vue-next'
+import { invoke } from '@tauri-apps/api/core';
+import { computed, onMounted, ref } from 'vue';
 
-interface CensusReport { active: number; inactive: number; transferred: number; discharged: number; deceased: number; total: number }
-interface TtrReport { meanTtr: number }
-interface AdverseReport { totalEvents: number }
-interface InrDistributionReport { lt_1_5: number; '1_5_to_2_0': number; '2_0_to_3_0': number; '3_0_to_4_0': number; gt_4_0: number; total: number }
-interface MissedAppointmentsReport { total: number; items: Array<{ hn: string; apptDate: string }> }
-interface DoseAdjReport { totalChanges: number; totalVisits: number; patientsWithChanges: number; changeRatio: number }
-interface MonthlyCohortReport { items: Array<{ month: string; count: number }> }
+interface CensusReport {
+  active: number;
+  inactive: number;
+  transferred: number;
+  discharged: number;
+  deceased: number;
+  total: number;
+}
+interface TtrReport {
+  meanTtr: number;
+}
+interface AdverseReport {
+  totalEvents: number;
+}
+interface InrDistributionReport {
+  lt_1_5: number;
+  '1_5_to_2_0': number;
+  '2_0_to_3_0': number;
+  '3_0_to_4_0': number;
+  gt_4_0: number;
+  total: number;
+}
+interface MissedAppointmentsReport {
+  total: number;
+  items: Array<{ hn: string; apptDate: string }>;
+}
+interface DoseAdjReport {
+  totalChanges: number;
+  totalVisits: number;
+  patientsWithChanges: number;
+  changeRatio: number;
+}
+interface MonthlyCohortReport {
+  items: Array<{ month: string; count: number }>;
+}
 
-const census = ref<CensusReport | null>(null)
-const ttr = ref<TtrReport | null>(null)
-const adverse = ref<AdverseReport | null>(null)
-const inrDist = ref<InrDistributionReport | null>(null)
-const missedAppts = ref<MissedAppointmentsReport | null>(null)
-const doseAdj = ref<DoseAdjReport | null>(null)
-const monthlyCohort = ref<MonthlyCohortReport | null>(null)
-const loading = ref(false)
-const dateFrom = ref('')
-const dateTo = ref('')
+const census = ref<CensusReport | null>(null);
+const ttr = ref<TtrReport | null>(null);
+const adverse = ref<AdverseReport | null>(null);
+const inrDist = ref<InrDistributionReport | null>(null);
+const missedAppts = ref<MissedAppointmentsReport | null>(null);
+const doseAdj = ref<DoseAdjReport | null>(null);
+const monthlyCohort = ref<MonthlyCohortReport | null>(null);
+const loading = ref(false);
+const _dateFrom = ref('');
+const _dateTo = ref('');
 
-const reportCards = computed(() => [
+const _reportCards = computed(() => [
   {
     key: 'census',
     title: 'สถิติผู้ป่วย',
     value: census.value ? `${census.value.total}` : '-',
-    description: census.value ? `Active ${census.value.active} · Inactive ${census.value.inactive}` : 'กำลังโหลดข้อมูล',
+    description: census.value
+      ? `Active ${census.value.active} · Inactive ${census.value.inactive}`
+      : 'กำลังโหลดข้อมูล',
     tone: 'card-feature-yellow',
-    rows: census.value ? [['กำลังติดตาม', `${census.value.active}`], ['หยุดติดตาม', `${census.value.inactive}`], ['ส่งต่อ', `${census.value.transferred}`], ['จำหน่าย', `${census.value.discharged}`], ['เสียชีวิต', `${census.value.deceased}`]] : [],
+    rows: census.value
+      ? [
+          ['กำลังติดตาม', `${census.value.active}`],
+          ['หยุดติดตาม', `${census.value.inactive}`],
+          ['ส่งต่อ', `${census.value.transferred}`],
+          ['จำหน่าย', `${census.value.discharged}`],
+          ['เสียชีวิต', `${census.value.deceased}`],
+        ]
+      : [],
   },
   {
     key: 'ttr',
@@ -97,54 +134,49 @@ const reportCards = computed(() => [
       ? monthlyCohort.value.items.map((it) => [it.month, `${it.count}`])
       : [],
   },
-])
+]);
 
 async function loadReports() {
-  loading.value = true
+  loading.value = true;
   try {
-    const [
-      censusData,
-      ttrData,
-      adverseData,
-      inrDistData,
-      missedData,
-      doseAdjData,
-      cohortData,
-    ] = await Promise.all([
-      invoke<CensusReport>('get_report_data', { reportType: 'census' }),
-      invoke<TtrReport>('get_report_data', { reportType: 'ttr' }),
-      invoke<AdverseReport>('get_report_data', { reportType: 'adverse' }),
-      invoke<InrDistributionReport>('get_report_data', { reportType: 'inr_distribution' }),
-      invoke<MissedAppointmentsReport>('get_report_data', { reportType: 'missed_appointments' }),
-      invoke<DoseAdjReport>('get_report_data', { reportType: 'dose_adjustment_frequency' }),
-      invoke<MonthlyCohortReport>('get_report_data', { reportType: 'monthly_cohort' }),
-    ])
-    census.value = censusData
-    ttr.value = ttrData
-    adverse.value = adverseData
-    inrDist.value = inrDistData
-    missedAppts.value = missedData
-    doseAdj.value = doseAdjData
-    monthlyCohort.value = cohortData
+    const [censusData, ttrData, adverseData, inrDistData, missedData, doseAdjData, cohortData] =
+      await Promise.all([
+        invoke<CensusReport>('get_report_data', { reportType: 'census' }),
+        invoke<TtrReport>('get_report_data', { reportType: 'ttr' }),
+        invoke<AdverseReport>('get_report_data', { reportType: 'adverse' }),
+        invoke<InrDistributionReport>('get_report_data', { reportType: 'inr_distribution' }),
+        invoke<MissedAppointmentsReport>('get_report_data', { reportType: 'missed_appointments' }),
+        invoke<DoseAdjReport>('get_report_data', { reportType: 'dose_adjustment_frequency' }),
+        invoke<MonthlyCohortReport>('get_report_data', { reportType: 'monthly_cohort' }),
+      ]);
+    census.value = censusData;
+    ttr.value = ttrData;
+    adverse.value = adverseData;
+    inrDist.value = inrDistData;
+    missedAppts.value = missedData;
+    doseAdj.value = doseAdjData;
+    monthlyCohort.value = cohortData;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-function exportCsv(title: string, rows: string[][]) {
-  const csv = [['หัวข้อ', 'ค่า'], ...rows].map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(',')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${title}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+function _exportCsv(title: string, rows: string[][]) {
+  const csv = [['หัวข้อ', 'ค่า'], ...rows]
+    .map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${title}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 onMounted(() => {
-  void loadReports()
-})
+  void loadReports();
+});
 </script>
 
 <template>

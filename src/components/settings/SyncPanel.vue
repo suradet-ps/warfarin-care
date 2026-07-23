@@ -1,153 +1,150 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { Cloud, Download, Eye, EyeOff, RefreshCw, Upload } from 'lucide-vue-next'
-import { useSyncStore } from '#/stores/sync'
+import { computed, onMounted, ref } from 'vue';
+import { useSyncStore } from '#/stores/sync.ts';
 
-const syncStore = useSyncStore()
+const syncStore = useSyncStore();
 
-const formUrl = ref('')
-const formKey = ref('')
-const showKey = ref(false)
-const testing = ref(false)
-const saving = ref(false)
-const actionError = ref<string | null>(null)
-const testResult = ref<boolean | null>(null)
-const testMessage = ref<string | null>(null)
+const formUrl = ref('');
+const formKey = ref('');
+const _showKey = ref(false);
+const testing = ref(false);
+const saving = ref(false);
+const actionError = ref<string | null>(null);
+const testResult = ref<boolean | null>(null);
+const testMessage = ref<string | null>(null);
 
-const keyPlaceholder = computed(() => {
-  return syncStore.summary.hasAnonKey ? '••••••••••••••••••••••' : 'eyJhbGciOi...'
-})
+const _keyPlaceholder = computed(() =>
+  syncStore.summary.hasAnonKey ? '••••••••••••••••••••••' : 'eyJhbGciOi...',
+);
 
-const machineIdShort = computed(() => {
-  const machineId = syncStore.info.machineId
+const _machineIdShort = computed(() => {
+  const machineId = syncStore.info.machineId;
   if (!machineId) {
-    return '-'
+    return '-';
   }
   if (machineId.length <= 16) {
-    return machineId
+    return machineId;
   }
-  return `${machineId.slice(0, 8)}...${machineId.slice(-4)}`
-})
+  return `${machineId.slice(0, 8)}...${machineId.slice(-4)}`;
+});
 
-const lastSyncLabel = computed(() => {
+const _lastSyncLabel = computed(() => {
   if (!syncStore.info.lastSyncAt) {
-    return 'ยังไม่เคย sync'
+    return 'ยังไม่เคย sync';
   }
 
-  const date = new Date(syncStore.info.lastSyncAt)
+  const date = new Date(syncStore.info.lastSyncAt);
   return new Intl.DateTimeFormat('th-TH', {
     dateStyle: 'medium',
     timeStyle: 'short',
-  }).format(date)
-})
+  }).format(date);
+});
 
-const statusBadgeLabel = computed(() => {
+const _statusBadgeLabel = computed(() => {
   switch (syncStore.status) {
     case 'pushing':
-      return 'กำลัง push'
+      return 'กำลัง push';
     case 'pulling':
-      return 'กำลัง pull'
+      return 'กำลัง pull';
     case 'syncing':
-      return 'กำลัง sync'
+      return 'กำลัง sync';
     case 'success':
-      return 'พร้อมใช้งาน'
+      return 'พร้อมใช้งาน';
     case 'error':
-      return 'มีข้อผิดพลาด'
+      return 'มีข้อผิดพลาด';
     default:
-      return syncStore.info.configured ? 'พร้อมตั้งค่าแล้ว' : 'ยังไม่ตั้งค่า'
+      return syncStore.info.configured ? 'พร้อมตั้งค่าแล้ว' : 'ยังไม่ตั้งค่า';
   }
-})
+});
 
-const statusBadgeClass = computed(() => {
+const _statusBadgeClass = computed(() => {
   switch (syncStore.status) {
     case 'success':
-      return 'badge-success'
+      return 'badge-success';
     case 'error':
-      return 'badge-tag-coral'
+      return 'badge-tag-coral';
     case 'pushing':
     case 'pulling':
     case 'syncing':
-      return 'badge-tag-purple'
+      return 'badge-tag-purple';
     default:
-      return syncStore.info.configured ? 'badge-success' : 'badge-tag-purple'
+      return syncStore.info.configured ? 'badge-success' : 'badge-tag-purple';
   }
-})
+});
 
 onMounted(async () => {
-  await syncStore.refreshAll()
-  formUrl.value = syncStore.summary.supabaseUrl ?? ''
-})
+  await syncStore.refreshAll();
+  formUrl.value = syncStore.summary.supabaseUrl ?? '';
+});
 
-async function handleTestConnection() {
-  actionError.value = null
-  testResult.value = null
-  testMessage.value = null
+async function _handleTestConnection() {
+  actionError.value = null;
+  testResult.value = null;
+  testMessage.value = null;
 
-  if (!formUrl.value.trim() || !formKey.value.trim()) {
-    actionError.value = 'กรอก Project URL และ Anon Key ก่อนทดสอบการเชื่อมต่อ'
-    return
+  if (!(formUrl.value.trim() && formKey.value.trim())) {
+    actionError.value = 'กรอก Project URL และ Anon Key ก่อนทดสอบการเชื่อมต่อ';
+    return;
   }
 
-  testing.value = true
+  testing.value = true;
   try {
-    const result = await syncStore.testConnection(formUrl.value.trim(), formKey.value.trim())
-    testResult.value = result.ok
-    testMessage.value = result.message
+    const result = await syncStore.testConnection(formUrl.value.trim(), formKey.value.trim());
+    testResult.value = result.ok;
+    testMessage.value = result.message;
     if (!result.ok) {
-      actionError.value = result.message
+      actionError.value = result.message;
     }
   } catch (error) {
-    testResult.value = false
-    const msg = error instanceof Error ? error.message : String(error)
-    testMessage.value = msg
-    actionError.value = msg || 'ทดสอบการเชื่อมต่อไม่สำเร็จ'
+    testResult.value = false;
+    const msg = error instanceof Error ? error.message : String(error);
+    testMessage.value = msg;
+    actionError.value = msg || 'ทดสอบการเชื่อมต่อไม่สำเร็จ';
   } finally {
-    testing.value = false
+    testing.value = false;
   }
 }
 
-async function handleSaveConfig() {
-  actionError.value = null
-  testMessage.value = null
+async function _handleSaveConfig() {
+  actionError.value = null;
+  testMessage.value = null;
 
-  if (!formUrl.value.trim() || !formKey.value.trim()) {
-    actionError.value = 'กรอก Project URL และ Anon Key ก่อนบันทึก'
-    return
+  if (!(formUrl.value.trim() && formKey.value.trim())) {
+    actionError.value = 'กรอก Project URL และ Anon Key ก่อนบันทึก';
+    return;
   }
 
-  saving.value = true
+  saving.value = true;
   try {
-    await syncStore.saveConfig(formUrl.value.trim(), formKey.value.trim())
-    formKey.value = ''
-    testResult.value = true
-    testMessage.value = 'บันทึกการตั้งค่าสำเร็จ'
+    await syncStore.saveConfig(formUrl.value.trim(), formKey.value.trim());
+    formKey.value = '';
+    testResult.value = true;
+    testMessage.value = 'บันทึกการตั้งค่าสำเร็จ';
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    actionError.value = msg || 'บันทึกค่า Cloud Sync ไม่สำเร็จ'
+    const msg = error instanceof Error ? error.message : String(error);
+    actionError.value = msg || 'บันทึกค่า Cloud Sync ไม่สำเร็จ';
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
-async function handlePush() {
-  actionError.value = null
+async function _handlePush() {
+  actionError.value = null;
   try {
-    await syncStore.push()
+    await syncStore.push();
   } catch (error) {
-    console.error('Push error:', error)
-    const errorMsg = error instanceof Error ? error.message : String(error)
-    actionError.value = errorMsg || 'Push to cloud ไม่สำเร็จ'
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    actionError.value = errorMsg || 'Push to cloud ไม่สำเร็จ';
   }
 }
 
-async function handlePull() {
-  actionError.value = null
+async function _handlePull() {
+  actionError.value = null;
   try {
-    await syncStore.pull()
+    await syncStore.pull();
   } catch (error) {
-    console.error('Pull error:', error)
-    const errorMsg = error instanceof Error ? error.message : String(error)
-    actionError.value = errorMsg || 'Pull from cloud ไม่สำเร็จ - ตรวจสอบว่ารัน SQL ใน Supabase แล้ว'
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    actionError.value = errorMsg || 'Pull from cloud ไม่สำเร็จ - ตรวจสอบว่ารัน SQL ใน Supabase แล้ว';
   }
 }
 </script>

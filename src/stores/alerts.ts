@@ -1,29 +1,31 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import type { PatientAlert } from '#/types/alert'
+import { invoke } from '@tauri-apps/api/core';
+import { defineStore } from 'pinia';
+import { computed, ref } from 'vue';
+import type { PatientAlert } from '#/types/alert.ts';
 
 export const useAlertStore = defineStore('alerts', () => {
-  const alerts = ref<PatientAlert[]>([])
-  const loading = ref(false)
+  const alerts = ref<PatientAlert[]>([]);
+  const loading = ref(false);
 
-  const criticalCount = computed(() => alerts.value.filter(a => a.severity === 'critical').length)
-  const warningCount = computed(() => alerts.value.filter(a => a.severity === 'warning').length)
+  const criticalCount = computed(
+    () => alerts.value.filter((a) => a.severity === 'critical').length,
+  );
+  const warningCount = computed(() => alerts.value.filter((a) => a.severity === 'warning').length);
 
   async function fetchAlerts() {
-    loading.value = true
+    loading.value = true;
     try {
-      alerts.value = await invoke<PatientAlert[]>('get_patient_alerts')
+      alerts.value = await invoke<PatientAlert[]>('get_patient_alerts');
     } catch {
-      alerts.value = []
+      alerts.value = [];
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
   function getAlertsForPatient(hn: string) {
-    return alerts.value.filter(a => a.hn === hn)
+    return alerts.value.filter((a) => a.hn === hn);
   }
 
-  return { alerts, loading, criticalCount, warningCount, fetchAlerts, getAlertsForPatient }
-})
+  return { alerts, loading, criticalCount, warningCount, fetchAlerts, getAlertsForPatient };
+});

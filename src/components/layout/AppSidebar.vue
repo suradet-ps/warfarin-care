@@ -1,31 +1,35 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { BarChart3, CalendarDays, ClipboardCheck, Search, Settings, Users } from 'lucide-vue-next'
-import { useAlertStore } from '#/stores/alerts'
-import { useReviewStore } from '#/stores/review'
-import { useSettingsStore } from '#/stores/settings'
+import { BarChart3, CalendarDays, ClipboardCheck, Search, Settings, Users } from 'lucide-vue-next';
+import { computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+import { useAlertStore } from '#/stores/alerts.ts';
+import { useReviewStore } from '#/stores/review.ts';
+import { useSettingsStore } from '#/stores/settings.ts';
 
-const route = useRoute()
-const alertStore = useAlertStore()
-const reviewStore = useReviewStore()
-const settingsStore = useSettingsStore()
+const _route = useRoute();
+const alertStore = useAlertStore();
+const reviewStore = useReviewStore();
+const settingsStore = useSettingsStore();
 
-const navItems = [
+const _navItems = [
   { name: 'screening', label: 'คัดกรอง', icon: Search, path: '/screening' },
   { name: 'active', label: 'ผู้ป่วยทั้งหมด', icon: Users, path: '/active' },
   { name: 'appointments', label: 'การนัดหมาย', icon: CalendarDays, path: '/appointments' },
   { name: 'review', label: 'ตรวจสอบ', icon: ClipboardCheck, path: '/review' },
   { name: 'reports', label: 'รายงาน', icon: BarChart3, path: '/reports' },
   { name: 'settings', label: 'ตั้งค่า', icon: Settings, path: '/settings' },
-]
+];
 
-const totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount)
-const pendingReviewCount = computed(() => reviewStore.pendingCount)
+const _totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount);
+const _pendingReviewCount = computed(() => reviewStore.pendingCount);
 
 onMounted(() => {
-  void Promise.all([alertStore.fetchAlerts(), settingsStore.loadSettings(), reviewStore.fetchPendingCount()])
-})
+  void Promise.all([
+    alertStore.fetchAlerts(),
+    settingsStore.loadSettings(),
+    reviewStore.fetchPendingCount(),
+  ]);
+});
 </script>
 
 <template>

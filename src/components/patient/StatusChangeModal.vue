@@ -1,19 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import ConfirmDialog from '#/components/shared/ConfirmDialog.vue'
-import { usePatientStore } from '#/stores/patient'
-import { dateInputToday } from '#/utils/clinic'
+import { computed, ref } from 'vue';
+import { usePatientStore } from '#/stores/patient.ts';
+import { dateInputToday } from '#/utils/clinic.ts';
 
-const props = defineProps<{ hn: string; currentStatus: string }>()
-const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void; (e: 'saved'): void }>()
+const props = defineProps<{ hn: string; currentStatus: string }>();
+const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void; (e: 'saved'): void }>();
 
-const store = usePatientStore()
-const saving = ref(false)
-const error = ref<string | null>(null)
-const newStatus = ref(props.currentStatus)
-const reason = ref('')
-const effectiveDate = ref(dateInputToday())
-const confirmOpen = ref(false)
+const store = usePatientStore();
+const saving = ref(false);
+const error = ref<string | null>(null);
+const newStatus = ref(props.currentStatus);
+const reason = ref('');
+const effectiveDate = ref(dateInputToday());
+const confirmOpen = ref(false);
 
 const statusOptions: { value: string; label: string }[] = [
   { value: 'active', label: 'อยู่ในการดูแล' },
@@ -21,30 +20,33 @@ const statusOptions: { value: string; label: string }[] = [
   { value: 'deceased', label: 'เสียชีวิต' },
   { value: 'transferred', label: 'โอนย้าย' },
   { value: 'discharged', label: 'จำหน่าย' },
-]
+];
 
-const selectedStatusLabel = computed(() => statusOptions.find((option) => option.value === newStatus.value)?.label ?? newStatus.value)
-const confirmMessage = computed(
-  () => `เปลี่ยนสถานะผู้ป่วย HN ${props.hn} เป็น \"${selectedStatusLabel.value}\" ตั้งแต่วันที่ ${effectiveDate.value}`,
-)
+const selectedStatusLabel = computed(
+  () => statusOptions.find((option) => option.value === newStatus.value)?.label ?? newStatus.value,
+);
+const _confirmMessage = computed(
+  () =>
+    `เปลี่ยนสถานะผู้ป่วย HN ${props.hn} เป็น "${selectedStatusLabel.value}" ตั้งแต่วันที่ ${effectiveDate.value}`,
+);
 
-function handleSave() {
-  error.value = null
-  confirmOpen.value = true
+function _handleSave() {
+  error.value = null;
+  confirmOpen.value = true;
 }
 
-async function confirmSave() {
-  saving.value = true
-  confirmOpen.value = false
-  error.value = null
+async function _confirmSave() {
+  saving.value = true;
+  confirmOpen.value = false;
+  error.value = null;
   try {
-    await store.updateStatus(props.hn, newStatus.value, reason.value, effectiveDate.value)
-    emit('saved')
-    emit('update:modelValue', false)
+    await store.updateStatus(props.hn, newStatus.value, reason.value, effectiveDate.value);
+    emit('saved');
+    emit('update:modelValue', false);
   } catch (e) {
-    error.value = String(e)
+    error.value = String(e);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 </script>

@@ -1,45 +1,59 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { PatientDrugRecord } from '#/types/patient'
-import { calculateAge, formatThaiDate } from '#/utils/clinic'
+import { computed } from 'vue';
+import type { PatientDrugRecord } from '#/types/patient.ts';
+import { calculateAge } from '#/utils/clinic.ts';
 
 const props = defineProps<{
-  records: PatientDrugRecord[]
-  total: number
-  page: number
-  pageSize: number
-}>()
+  records: PatientDrugRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+}>();
 const emit = defineEmits<{
-  enroll: [hn: string]
-  pageChange: [page: number]
-}>()
+  enroll: [hn: string];
+  pageChange: [page: number];
+}>();
 
-const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
-const rangeStart = computed(() => (props.total === 0 ? 0 : (props.page - 1) * props.pageSize + 1))
-const rangeEnd = computed(() => Math.min(props.total, props.page * props.pageSize))
+const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)));
+const _rangeStart = computed(() => (props.total === 0 ? 0 : (props.page - 1) * props.pageSize + 1));
+const _rangeEnd = computed(() => Math.min(props.total, props.page * props.pageSize));
 
-function ageLabel(birthday: string): string {
-  const age = calculateAge(birthday)
-  return age === null ? '-' : `${age} ปี`
+function _ageLabel(birthday: string): string {
+  const age = calculateAge(birthday);
+  return age === null ? '-' : `${age} ปี`;
 }
 
-function getStrengthClass(strength: string): string {
-  if (strength.includes('2')) return 'pill-strength-2mg'
-  if (strength.includes('3')) return 'pill-strength-3mg'
-  if (strength.includes('5')) return 'pill-strength-5mg'
-  return 'pill-muted'
+function _getStrengthClass(strength: string): string {
+  if (strength.includes('2')) {
+    return 'pill-strength-2mg';
+  }
+  if (strength.includes('3')) {
+    return 'pill-strength-3mg';
+  }
+  if (strength.includes('5')) {
+    return 'pill-strength-5mg';
+  }
+  return 'pill-muted';
 }
 
-function getStrengthLabel(strength: string): string {
-  if (strength.includes('2')) return '2 mg'
-  if (strength.includes('3')) return '3 mg'
-  if (strength.includes('5')) return '5 mg'
-  return strength
+function _getStrengthLabel(strength: string): string {
+  if (strength.includes('2')) {
+    return '2 mg';
+  }
+  if (strength.includes('3')) {
+    return '3 mg';
+  }
+  if (strength.includes('5')) {
+    return '5 mg';
+  }
+  return strength;
 }
 
-function goToPage(page: number) {
-  if (page < 1 || page > totalPages.value || page === props.page) return
-  emit('pageChange', page)
+function _goToPage(page: number) {
+  if (page < 1 || page > totalPages.value || page === props.page) {
+    return;
+  }
+  emit('pageChange', page);
 }
 </script>
 

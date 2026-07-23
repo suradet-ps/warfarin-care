@@ -1,24 +1,22 @@
 import { ref } from 'vue';
+import type { AvailablePills, DoseOptionsInput, RegimenOption } from '@/types/dose.ts';
+import { DEFAULT_AVAILABLE_PILLS } from '@/types/dose.ts';
 import init, { generate_suggestions_rust } from '@/warfarin_logic/pkg/warfarin_logic.js';
-import type { RegimenOption, DoseOptionsInput, AvailablePills } from '@/types/dose';
-import { DEFAULT_AVAILABLE_PILLS } from '@/types/dose';
 
 const wasmReady = ref(false);
 let initPromise: Promise<void> | null = null;
 
 async function initWasm() {
-  if (wasmReady.value) return;
-  if (initPromise) return initPromise;
+  if (wasmReady.value) {
+    return;
+  }
+  if (initPromise) {
+    return initPromise;
+  }
 
   initPromise = (async () => {
-    try {
-      await init();
-      wasmReady.value = true;
-      console.log('WASM dose calculator initialized');
-    } catch (e) {
-      console.error('Failed to initialize WASM module', e);
-      throw e;
-    }
+    await init();
+    wasmReady.value = true;
   })();
 
   return initPromise;
@@ -30,14 +28,14 @@ async function generateDoseOptions(
   allowHalf: boolean,
   specialDayPattern: string,
   daysUntilAppointment: number,
-  startDayOfWeek: number
+  startDayOfWeek: number,
 ): Promise<RegimenOption[]> {
   if (!wasmReady.value) {
     await initWasm();
   }
 
   const selectedPills = Object.keys(availablePills)
-    .filter(key => availablePills[Number(key)])
+    .filter((key) => availablePills[Number(key)])
     .map(Number);
 
   if (selectedPills.length === 0) {
@@ -56,14 +54,8 @@ async function generateDoseOptions(
     days_until_appointment: daysUntilAppointment,
     start_day_of_week: startDayOfWeek,
   };
-
-  try {
-    const results = await generate_suggestions_rust(input);
-    return results as RegimenOption[];
-  } catch (e) {
-    console.error('Error generating dose options:', e);
-    throw e;
-  }
+  const results = await generate_suggestions_rust(input);
+  return results as RegimenOption[];
 }
 
 export function useDoseCalculator() {

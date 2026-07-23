@@ -1,46 +1,45 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { LogIn } from 'lucide-vue-next'
-import { useAuthStore } from '#/stores/auth'
+import { onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from '#/stores/auth.ts';
 
-const router = useRouter()
-const route = useRoute()
-const store = useAuthStore()
+const router = useRouter();
+const route = useRoute();
+const store = useAuthStore();
 
-const username = ref('')
-const password = ref('')
-const submitting = ref(false)
-const localError = ref<string | null>(null)
+const username = ref('');
+const password = ref('');
+const submitting = ref(false);
+const localError = ref<string | null>(null);
 
 onMounted(() => {
   // If the user lands here already authenticated (e.g. after a hot reload),
   // bounce them back to the original target.
   if (store.currentUser) {
-    void router.replace((route.query.redirect as string) || '/')
+    void router.replace((route.query.redirect as string) || '/');
   }
-})
+});
 
-async function handleSubmit() {
-  localError.value = null
-  store.reset()
-  if (!username.value.trim() || !password.value) {
-    localError.value = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน'
-    return
+async function _handleSubmit() {
+  localError.value = null;
+  store.reset();
+  if (!(username.value.trim() && password.value)) {
+    localError.value = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';
+    return;
   }
-  submitting.value = true
+  submitting.value = true;
   try {
     await store.login({
       username: username.value.trim(),
       password: password.value,
-    })
-    const target = (route.query.redirect as string) || '/'
-    await router.replace(target)
+    });
+    const target = (route.query.redirect as string) || '/';
+    await router.replace(target);
   } catch (e) {
     // Backend already returns a localized, user-safe Thai message. Show as-is.
-    localError.value = store.error ?? (e instanceof Error ? e.message : String(e))
+    localError.value = store.error ?? (e instanceof Error ? e.message : String(e));
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
 }
 </script>

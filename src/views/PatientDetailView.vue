@@ -1,110 +1,109 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { useRoute, useRouter } from 'vue-router'
-import { Activity, CalendarDays, FileClock, FilePenLine, Pill, ShieldAlert, ActivitySquare } from 'lucide-vue-next'
-import AdverseEventList from '#/components/patient/AdverseEventList.vue'
-import AppointmentTimeline from '#/components/patient/AppointmentTimeline.vue'
-import DispensingTable from '#/components/patient/DispensingTable.vue'
-import InrTrendChart from '#/components/patient/InrTrendChart.vue'
-import StatusChangeModal from '#/components/patient/StatusChangeModal.vue'
-import VisitList from '#/components/patient/VisitList.vue'
-import DrugInteractionTable from '#/components/patient/DrugInteractionTable.vue'
-import TtrBadge from '#/components/active/TtrBadge.vue'
-import StatusBadge from '#/components/shared/StatusBadge.vue'
-import VisitFormPanel from '#/components/visit/VisitFormPanel.vue'
-import type { PatientDetail } from '#/types/patient'
-import type { WfVisit } from '#/types/visit'
-import { useAlertStore } from '#/stores/alerts'
-import { useReviewStore } from '#/stores/review'
-import { useSettingsStore } from '#/stores/settings'
-import { calculateAge, formatThaiDate, patientFullName, sexLabel } from '#/utils/clinic'
+import { invoke } from '@tauri-apps/api/core';
+import {
+  Activity,
+  ActivitySquare,
+  CalendarDays,
+  FileClock,
+  Pill,
+  ShieldAlert,
+} from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useAlertStore } from '#/stores/alerts.ts';
+import { useReviewStore } from '#/stores/review.ts';
+import { useSettingsStore } from '#/stores/settings.ts';
+import type { PatientDetail } from '#/types/patient.ts';
+import type { WfVisit } from '#/types/visit.ts';
+import { calculateAge, patientFullName } from '#/utils/clinic.ts';
 
-const route = useRoute()
-const router = useRouter()
-const hn = route.params.hn as string
-const settingsStore = useSettingsStore()
-const alertStore = useAlertStore()
-const reviewStore = useReviewStore()
+const route = useRoute();
+const router = useRouter();
+const hn = route.params.hn as string;
+const _settingsStore = useSettingsStore();
+const alertStore = useAlertStore();
+const reviewStore = useReviewStore();
 
-type TabKey = 'inr' | 'visits' | 'dispensing' | 'interactions' | 'appointments' | 'adverse'
-const activeTab = ref<TabKey>('inr')
-const tabs: { key: TabKey; label: string; icon: unknown }[] = [
+type TabKey = 'inr' | 'visits' | 'dispensing' | 'interactions' | 'appointments' | 'adverse';
+const _activeTab = ref<TabKey>('inr');
+const _tabs: { key: TabKey; label: string; icon: unknown }[] = [
   { key: 'inr', label: 'INR', icon: Activity },
   { key: 'visits', label: 'ประวัติการทำคลินิก', icon: FileClock },
   { key: 'dispensing', label: 'ประวัติยา', icon: Pill },
   { key: 'interactions', label: 'Drug interaction', icon: ActivitySquare },
   { key: 'appointments', label: 'นัดหมาย', icon: CalendarDays },
   { key: 'adverse', label: 'เหตุการณ์', icon: ShieldAlert },
-]
+];
 
-const patientDetail = ref<PatientDetail | null>(null)
-const visits = ref<WfVisit[]>([])
-const ttr = ref<number | null>(null)
-const loading = ref(false)
-const error = ref<string | null>(null)
-const visitPanelOpen = ref(false)
-const editingVisit = ref<WfVisit | null>(null)
-const statusModalOpen = ref(false)
-const appointmentTimelineKey = ref(0)
+const patientDetail = ref<PatientDetail | null>(null);
+const visits = ref<WfVisit[]>([]);
+const ttr = ref<number | null>(null);
+const loading = ref(false);
+const error = ref<string | null>(null);
+const visitPanelOpen = ref(false);
+const editingVisit = ref<WfVisit | null>(null);
+const _statusModalOpen = ref(false);
+const appointmentTimelineKey = ref(0);
 
 async function loadPatient() {
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
     const [detail, visitList, ttrValue] = await Promise.all([
       invoke<PatientDetail>('get_patient_detail', { hn }),
       invoke<WfVisit[]>('get_visit_history', { hn }),
       invoke<number | null>('calculate_ttr', { hn, windowDays: 180 }),
-    ])
-    patientDetail.value = detail
-    visits.value = visitList
-    ttr.value = ttrValue
+    ]);
+    patientDetail.value = detail;
+    visits.value = visitList;
+    ttr.value = ttrValue;
   } catch (e) {
-    error.value = String(e)
+    error.value = String(e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-const age = computed(() => calculateAge(patientDetail.value?.hosxpInfo?.birthday))
-const fullName = computed(() => patientFullName(patientDetail.value?.hosxpInfo))
+const _age = computed(() => calculateAge(patientDetail.value?.hosxpInfo?.birthday));
+const _fullName = computed(() => patientFullName(patientDetail.value?.hosxpInfo));
 
-async function onVisitSaved(visitId: number) {
-  visitPanelOpen.value = false
-  editingVisit.value = null
-  void alertStore.fetchAlerts()
-  void reviewStore.fetchPendingCount()
-  await router.push(`/slip/${visitId}`)
+async function _onVisitSaved(visitId: number) {
+  visitPanelOpen.value = false;
+  editingVisit.value = null;
+  void alertStore.fetchAlerts();
+  void reviewStore.fetchPendingCount();
+  await router.push(`/slip/${visitId}`);
 }
 
-function handleEditVisit(visit: WfVisit) {
-  editingVisit.value = visit
-  visitPanelOpen.value = true
+function _handleEditVisit(visit: WfVisit) {
+  editingVisit.value = visit;
+  visitPanelOpen.value = true;
 }
 
-function handleVisitUpdated() {
-  visitPanelOpen.value = false
-  editingVisit.value = null
-  void alertStore.fetchAlerts()
-  void reviewStore.fetchPendingCount()
-  void refreshVisits()
-  void loadPatient()
+function _handleVisitUpdated() {
+  visitPanelOpen.value = false;
+  editingVisit.value = null;
+  void alertStore.fetchAlerts();
+  void reviewStore.fetchPendingCount();
+  void refreshVisits();
+  void loadPatient();
 }
 
 async function refreshVisits() {
-  const visitList = await invoke<WfVisit[]>('get_visit_history', { hn })
-  visits.value = visitList
-  appointmentTimelineKey.value += 1
+  const visitList = await invoke<WfVisit[]>('get_visit_history', { hn });
+  visits.value = visitList;
+  appointmentTimelineKey.value += 1;
 }
 
-function handleVisitDeleted() {
-  void alertStore.fetchAlerts()
-  void reviewStore.fetchPendingCount()
-  void refreshVisits()
+function _handleVisitDeleted() {
+  void alertStore.fetchAlerts();
+  void reviewStore.fetchPendingCount();
+  void refreshVisits();
 }
 
-onMounted(() => { void loadPatient() })
+onMounted(() => {
+  void loadPatient();
+});
 </script>
 
 <template>

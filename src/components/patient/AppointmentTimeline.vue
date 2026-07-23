@@ -1,75 +1,81 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { CalendarPlus } from 'lucide-vue-next'
-import StatusBadge from '#/components/shared/StatusBadge.vue'
-import type { AppointmentDayLoad, AppointmentInput, WfAppointment } from '#/types/appointment'
-import { dateInputToday, formatThaiDate, sortAppointments } from '#/utils/clinic'
+import { invoke } from '@tauri-apps/api/core';
+import { computed, onMounted, ref, watch } from 'vue';
+import type { AppointmentDayLoad, AppointmentInput, WfAppointment } from '#/types/appointment.ts';
+import { dateInputToday, sortAppointments } from '#/utils/clinic.ts';
 
-const props = defineProps<{ hn: string }>()
-const appointments = ref<WfAppointment[]>([])
-const loading = ref(false)
-const saving = ref(false)
-const error = ref<string | null>(null)
-const showForm = ref(false)
-const form = ref<AppointmentInput>({ hn: props.hn, apptDate: dateInputToday(), apptType: 'clinic_visit', notes: '' })
-const orderedAppointments = computed(() => sortAppointments(appointments.value))
-const loadingDayLoad = ref(false)
-const appointmentDayLoad = ref<AppointmentDayLoad | null>(null)
+const props = defineProps<{ hn: string }>();
+const appointments = ref<WfAppointment[]>([]);
+const loading = ref(false);
+const saving = ref(false);
+const error = ref<string | null>(null);
+const showForm = ref(false);
+const form = ref<AppointmentInput>({
+  hn: props.hn,
+  apptDate: dateInputToday(),
+  apptType: 'clinic_visit',
+  notes: '',
+});
+const _orderedAppointments = computed(() => sortAppointments(appointments.value));
+const loadingDayLoad = ref(false);
+const appointmentDayLoad = ref<AppointmentDayLoad | null>(null);
 
 async function fetchAppointments() {
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
-    appointments.value = await invoke<WfAppointment[]>('get_appointments', { hn: props.hn })
+    appointments.value = await invoke<WfAppointment[]>('get_appointments', { hn: props.hn });
   } catch (invokeError) {
-    error.value = String(invokeError)
+    error.value = String(invokeError);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-async function submitAppointment() {
-  saving.value = true
-  error.value = null
+async function _submitAppointment() {
+  saving.value = true;
+  error.value = null;
   try {
-    await invoke<number>('schedule_appointment', { appt: { ...form.value, hn: props.hn } })
-    showForm.value = false
-    form.value = { hn: props.hn, apptDate: dateInputToday(), apptType: 'clinic_visit', notes: '' }
-    await fetchAppointments()
+    await invoke<number>('schedule_appointment', { appt: { ...form.value, hn: props.hn } });
+    showForm.value = false;
+    form.value = { hn: props.hn, apptDate: dateInputToday(), apptType: 'clinic_visit', notes: '' };
+    await fetchAppointments();
   } catch (invokeError) {
-    error.value = String(invokeError)
+    error.value = String(invokeError);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 async function refreshDayLoad() {
   if (!form.value.apptDate) {
-    appointmentDayLoad.value = null
-    return
+    appointmentDayLoad.value = null;
+    return;
   }
 
-  loadingDayLoad.value = true
+  loadingDayLoad.value = true;
   try {
     appointmentDayLoad.value = await invoke<AppointmentDayLoad>('get_appointment_day_load', {
       apptDate: form.value.apptDate,
-    })
+    });
   } catch {
-    appointmentDayLoad.value = null
+    appointmentDayLoad.value = null;
   } finally {
-    loadingDayLoad.value = false
+    loadingDayLoad.value = false;
   }
 }
 
-watch(() => form.value.apptDate, () => {
-  void refreshDayLoad()
-})
+watch(
+  () => form.value.apptDate,
+  () => {
+    void refreshDayLoad();
+  },
+);
 
 onMounted(() => {
-  void fetchAppointments()
-  void refreshDayLoad()
-})
+  void fetchAppointments();
+  void refreshDayLoad();
+});
 </script>
 
 <template>

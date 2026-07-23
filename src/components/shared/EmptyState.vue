@@ -1,12 +1,12 @@
 <script setup lang="ts">
 defineProps<{
-  message: string
-  actionLabel?: string
-}>()
+  message: string;
+  actionLabel?: string;
+}>();
 
-const emit = defineEmits<{
-  action: []
-}>()
+const _emit = defineEmits<{
+  action: [];
+}>();
 </script>
 
 <template>

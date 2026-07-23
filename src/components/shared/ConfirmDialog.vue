@@ -1,49 +1,51 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue';
 
 const props = defineProps<{
-  open: boolean
-  title: string
-  message: string
-  confirmLabel?: string
-  cancelLabel?: string
-  variant?: 'danger' | 'default'
-}>()
+  open: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: 'danger' | 'default';
+}>();
 
 const emit = defineEmits<{
-  'update:open': [value: boolean]
-  confirm: []
-  cancel: []
-}>()
+  'update:open': [value: boolean];
+  confirm: [];
+  cancel: [];
+}>();
 
-const dialogRef = ref<HTMLDialogElement | null>(null)
-const confirmBtnRef = ref<HTMLButtonElement | null>(null)
+const dialogRef = ref<HTMLDialogElement | null>(null);
+const confirmBtnRef = ref<HTMLButtonElement | null>(null);
 
 watch(
   () => props.open,
   async (open) => {
-    const el = dialogRef.value
-    if (!el) return
+    const el = dialogRef.value;
+    if (!el) {
+      return;
+    }
     if (open && !el.open) {
-      el.showModal()
-      await nextTick()
-      confirmBtnRef.value?.focus()
+      el.showModal();
+      await nextTick();
+      confirmBtnRef.value?.focus();
     } else if (!open && el.open) {
-      el.close()
+      el.close();
     }
   },
   { immediate: true },
-)
+);
 
 function close() {
-  emit('update:open', false)
-  emit('cancel')
+  emit('update:open', false);
+  emit('cancel');
 }
 
-function handleKeydown(e: KeyboardEvent) {
+function _handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
-    e.preventDefault()
-    close()
+    e.preventDefault();
+    close();
   }
 }
 </script>

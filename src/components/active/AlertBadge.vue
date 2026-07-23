@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { PatientAlert } from '#/types/alert'
+import { computed } from 'vue';
+import type { PatientAlert } from '#/types/alert.ts';
 
-const props = defineProps<{ alerts: PatientAlert[] }>()
+const props = defineProps<{ alerts: PatientAlert[] }>();
 
-const summary = computed(() => {
-  const critical = props.alerts.filter((alert) => alert.severity === 'critical').length
-  const warning = props.alerts.filter((alert) => alert.severity === 'warning').length
-  return { critical, warning }
-})
+const _summary = computed(() => {
+  const critical = props.alerts.filter((alert) => alert.severity === 'critical').length;
+  const warning = props.alerts.filter((alert) => alert.severity === 'warning').length;
+  return { critical, warning };
+});
 </script>
 
 <template>

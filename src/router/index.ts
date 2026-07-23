@@ -1,5 +1,5 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '#/stores/auth'
+import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '#/stores/auth.ts';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -9,47 +9,55 @@ const router = createRouter({
     { path: '/setup', name: 'setup', component: () => import('#/views/SetupView.vue') },
     { path: '/screening', name: 'screening', component: () => import('#/views/ScreeningView.vue') },
     { path: '/active', name: 'active', component: () => import('#/views/ActiveView.vue') },
-    { path: '/appointments', name: 'appointments', component: () => import('#/views/AppointmentsView.vue') },
-    { path: '/patient/:hn', name: 'patient-detail', component: () => import('#/views/PatientDetailView.vue') },
+    {
+      path: '/appointments',
+      name: 'appointments',
+      component: () => import('#/views/AppointmentsView.vue'),
+    },
+    {
+      path: '/patient/:hn',
+      name: 'patient-detail',
+      component: () => import('#/views/PatientDetailView.vue'),
+    },
     { path: '/slip/:visitId', name: 'slip', component: () => import('#/views/SlipView.vue') },
     { path: '/review', name: 'review', component: () => import('#/views/ReviewView.vue') },
     { path: '/reports', name: 'reports', component: () => import('#/views/ReportsView.vue') },
     { path: '/settings', name: 'settings', component: () => import('#/views/SettingsView.vue') },
   ],
-})
+});
 
 // Routes that do not require an authenticated session.
-const PUBLIC_PATHS = new Set<string>(['/login', '/setup'])
+const PUBLIC_PATHS = new Set<string>(['/login', '/setup']);
 
 router.beforeEach(async (to) => {
-  const auth = useAuthStore()
+  const auth = useAuthStore();
   // Ensure the auth bootstrap has run before the first navigation decision so
   // a logged-in user is not flashed through the login screen on a hard load.
   if (!auth.bootstrapped) {
-    await auth.bootstrap()
+    await auth.bootstrap();
   }
 
-  const isPublic = PUBLIC_PATHS.has(to.path)
+  const isPublic = PUBLIC_PATHS.has(to.path);
 
   if (isPublic) {
     if (auth.currentUser) {
-      return { path: '/' }
+      return { path: '/' };
     }
     // First-run: no users yet. Always force the bootstrap onto the setup
     // screen, even if the user typed `/login` or hit the app cold.
     if (!auth.hasUsers && to.path !== '/setup') {
-      return { path: '/setup' }
+      return { path: '/setup' };
     }
     if (to.path === '/setup' && auth.hasUsers) {
-      return { path: '/login' }
+      return { path: '/login' };
     }
-    return true
+    return true;
   }
 
   if (!auth.currentUser) {
-    return { path: '/login', query: { redirect: to.fullPath } }
+    return { path: '/login', query: { redirect: to.fullPath } };
   }
-  return true
-})
+  return true;
+});
 
-export default router
+export default router;

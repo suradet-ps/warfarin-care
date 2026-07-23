@@ -1,64 +1,66 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { Calculator } from 'lucide-vue-next'
-import type { InrRecord } from '#/types/inr'
-import type { DoseSuggestion, WfVisit } from '#/types/visit'
-import { formatThaiDate } from '#/utils/clinic'
+import { invoke } from '@tauri-apps/api/core';
+import { computed, onMounted, ref } from 'vue';
+import type { InrRecord } from '#/types/inr.ts';
+import type { DoseSuggestion, WfVisit } from '#/types/visit.ts';
 
-const props = defineProps<{ hn: string; targetLow: number; targetHigh: number }>()
+const props = defineProps<{ hn: string; targetLow: number; targetHigh: number }>();
 
-const loading = ref(false)
-const error = ref<string | null>(null)
-const currentDose = ref<number | null>(null)
-const currentInr = ref<number | null>(null)
-const latestInrDate = ref<string | null>(null)
-const suggestion = ref<DoseSuggestion | null>(null)
+const loading = ref(false);
+const error = ref<string | null>(null);
+const currentDose = ref<number | null>(null);
+const currentInr = ref<number | null>(null);
+const latestInrDate = ref<string | null>(null);
+const suggestion = ref<DoseSuggestion | null>(null);
 
-const urgencyInfo = computed(() => {
+const _urgencyInfo = computed(() => {
   const map: Record<string, { text: string; className: string }> = {
     normal: { text: 'ปกติ', className: 'badge-success' },
     caution: { text: 'ระวัง', className: 'badge-warning' },
     urgent: { text: 'ด่วน', className: 'badge-danger' },
     hold: { text: 'หยุดยา', className: 'badge-danger' },
-  }
-  return suggestion.value ? (map[suggestion.value.urgency] ?? map['normal']) : null
-})
+  };
+  return suggestion.value ? (map[suggestion.value.urgency] ?? map.normal) : null;
+});
 
 async function loadDefaults() {
   try {
     const [latestInr, visits] = await Promise.all([
       invoke<InrRecord | null>('get_latest_inr', { hn: props.hn }),
       invoke<WfVisit[]>('get_visit_history', { hn: props.hn }),
-    ])
-    currentInr.value = latestInr?.value ?? null
-    latestInrDate.value = latestInr?.date ?? null
-    const lastVisit = visits[0]
-    currentDose.value = lastVisit?.newDoseMgday ?? lastVisit?.currentDoseMgday ?? null
+    ]);
+    currentInr.value = latestInr?.value ?? null;
+    latestInrDate.value = latestInr?.date ?? null;
+    const lastVisit = visits[0];
+    currentDose.value = lastVisit?.newDoseMgday ?? lastVisit?.currentDoseMgday ?? null;
   } catch (e) {
-    error.value = String(e)
+    error.value = String(e);
   }
 }
 
-async function calculateSuggestion() {
-  if (currentDose.value === null || currentInr.value === null) return
-  loading.value = true
-  error.value = null
+async function _calculateSuggestion() {
+  if (currentDose.value === null || currentInr.value === null) {
+    return;
+  }
+  loading.value = true;
+  error.value = null;
   try {
     suggestion.value = await invoke<DoseSuggestion>('suggest_dose', {
       currentDoseMgday: currentDose.value,
       currentInr: currentInr.value,
       targetLow: props.targetLow,
       targetHigh: props.targetHigh,
-    })
+    });
   } catch (e) {
-    error.value = String(e)
+    error.value = String(e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-onMounted(() => { void loadDefaults() })
+onMounted(() => {
+  void loadDefaults();
+});
 </script>
 
 <template>

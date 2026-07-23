@@ -1,24 +1,28 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { DispensingRecord } from '#/types/dispensing'
-import type { DoseSchedule } from '#/types/visit'
-import { aggregateDispensingByVisit, doseDayLabels, normalizeDoseSchedule, formatThaiDate } from '#/utils/clinic'
+import { computed } from 'vue';
+import type { DispensingRecord } from '#/types/dispensing.ts';
+import type { DoseSchedule } from '#/types/visit.ts';
+import {
+  aggregateDispensingByVisit,
+  doseDayLabels,
+  normalizeDoseSchedule,
+} from '#/utils/clinic.ts';
 
-const props = defineProps<{ records: DispensingRecord[] }>()
-const orderedVisits = computed(() => aggregateDispensingByVisit(props.records))
+const props = defineProps<{ records: DispensingRecord[] }>();
+const _orderedVisits = computed(() => aggregateDispensingByVisit(props.records));
 
-function activeDays(scheduleInput?: Partial<DoseSchedule> | string | null) {
-  const schedule = normalizeDoseSchedule(scheduleInput)
+function _activeDays(scheduleInput?: Partial<DoseSchedule> | string | null) {
+  const schedule = normalizeDoseSchedule(scheduleInput);
   const labels = Object.entries(schedule)
     .filter(([, value]) => Number(value) > 0)
-    .map(([day]) => doseDayLabels[day as keyof typeof doseDayLabels])
-  return labels.join(' ') || '-'
+    .map(([day]) => doseDayLabels[day as keyof typeof doseDayLabels]);
+  return labels.join(' ') || '-';
 }
 
-function regimenSummary(items: DispensingRecord[]): string {
+function _regimenSummary(items: DispensingRecord[]): string {
   return items
     .map((item) => `${item.strength} x ${item.parsedDose?.tabletsPerDose?.toFixed(2) ?? '?'} เม็ด`)
-    .join(' + ')
+    .join(' + ');
 }
 </script>
 

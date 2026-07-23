@@ -1,66 +1,58 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import AppSidebar from '#/components/layout/AppSidebar.vue'
-import AppHeader from '#/components/layout/AppHeader.vue'
-import { useAuthStore } from '#/stores/auth'
-import { useSyncStore } from '#/stores/sync'
+import { computed, onMounted, onUnmounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from '#/stores/auth.ts';
+import { useSyncStore } from '#/stores/sync.ts';
 
-const route = useRoute()
-const router = useRouter()
-const syncStore = useSyncStore()
-const authStore = useAuthStore()
+const route = useRoute();
+const _router = useRouter();
+const syncStore = useSyncStore();
+const authStore = useAuthStore();
 
-const isAuthScreen = computed(
-  () => route.path === '/login' || route.path === '/setup',
-)
+const _isAuthScreen = computed(() => route.path === '/login' || route.path === '/setup');
 
 function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-    e.preventDefault()
+    e.preventDefault();
     if (route.path.startsWith('/patient/')) {
-      const hn = route.params.hn as string
-      const event = new CustomEvent('open-visit-panel', { detail: { hn } })
-      window.dispatchEvent(event)
+      const hn = route.params.hn as string;
+      const event = new CustomEvent('open-visit-panel', { detail: { hn } });
+      window.dispatchEvent(event);
     }
   }
 }
 
 const hideSplash = () => {
-  const splash = document.getElementById('splash-overlay')
-  const card = splash?.querySelector('.splash-card') as HTMLElement
+  const splash = document.getElementById('splash-overlay');
+  const card = splash?.querySelector('.splash-card') as HTMLElement;
   if (card) {
-    card.classList.add('splash-card-fade-out')
+    card.classList.add('splash-card-fade-out');
   }
   if (splash) {
-    splash.classList.add('splash-fade-out')
-    setTimeout(() => splash.remove(), 400)
+    splash.classList.add('splash-fade-out');
+    setTimeout(() => splash.remove(), 400);
   }
-}
+};
 
 onMounted(async () => {
-  setTimeout(hideSplash, 1200)
+  setTimeout(hideSplash, 1200);
   try {
-    await authStore.bootstrap()
-  } catch (error) {
-    console.error('Failed to bootstrap auth:', error)
-  }
+    await authStore.bootstrap();
+  } catch {}
 
   if (authStore.currentUser) {
     try {
-      await syncStore.refreshAll()
-    } catch (error) {
-      console.error('Failed to refresh sync status:', error)
-    }
-    syncStore.startAutoSync()
+      await syncStore.refreshAll();
+    } catch {}
+    syncStore.startAutoSync();
   }
 
-  document.addEventListener('keydown', handleGlobalKeydown)
-})
+  document.addEventListener('keydown', handleGlobalKeydown);
+});
 
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleGlobalKeydown)
-})
+  document.removeEventListener('keydown', handleGlobalKeydown);
+});
 </script>
 
 <template>

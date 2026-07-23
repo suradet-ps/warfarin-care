@@ -1,25 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Check } from 'lucide-vue-next'
-import PillVisual from '#/components/shared/PillVisual.vue'
-import type { RegimenOption } from '#/types/dose'
+import { computed } from 'vue';
+import type { RegimenOption } from '#/types/dose.ts';
 
-const props = withDefaults(defineProps<{
-  option: RegimenOption
-  selected?: boolean
-  interactive?: boolean
-  label?: string
-}>(), {
-  selected: false,
-  interactive: false,
-  label: '',
-})
+const props = withDefaults(
+  defineProps<{
+    option: RegimenOption;
+    selected?: boolean;
+    interactive?: boolean;
+    label?: string;
+  }>(),
+  {
+    selected: false,
+    interactive: false,
+    label: '',
+  },
+);
 
-const emit = defineEmits<{
-  (e: 'select'): void
-}>()
+const _emit = defineEmits<(e: 'select') => void>();
 
-const dayNames = ['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.']
+const dayNames = ['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.'];
 
 const dayHeaderColors = [
   'bg-day-mon',
@@ -29,30 +28,30 @@ const dayHeaderColors = [
   'bg-day-fri',
   'bg-day-sat',
   'bg-day-sun',
-]
+];
 
-const headerLabel = computed(() => props.label || 'วิธีกินยา')
+const _headerLabel = computed(() => props.label || 'วิธีกินยา');
 
-function expandPills(pills: { mg: number; count: number; is_half: boolean }[]) {
-  const expanded: { mg: number; isHalf: boolean; key: string }[] = []
+function _expandPills(pills: { mg: number; count: number; is_half: boolean }[]) {
+  const expanded: { mg: number; isHalf: boolean; key: string }[] = [];
   for (const pill of pills) {
     for (let i = 0; i < pill.count; i += 1) {
       expanded.push({
         mg: pill.mg,
         isHalf: pill.is_half,
         key: `${pill.mg}-${pill.is_half}-${i}-${expanded.length}`,
-      })
+      });
     }
   }
-  return expanded
+  return expanded;
 }
 
-function getDayName(dayIndex: number): string {
-  return dayNames[dayIndex] ?? ''
+function _getDayName(dayIndex: number): string {
+  return dayNames[dayIndex] ?? '';
 }
 
-function getDayHeaderColor(dayIndex: number): string {
-  return dayHeaderColors[dayIndex] ?? ''
+function _getDayHeaderColor(dayIndex: number): string {
+  return dayHeaderColors[dayIndex] ?? '';
 }
 </script>
 

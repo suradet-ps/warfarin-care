@@ -1,166 +1,180 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { save } from '@tauri-apps/plugin-dialog'
-import { jsPDF } from 'jspdf'
-import { toPng } from 'html-to-image'
-import { Download, Printer } from 'lucide-vue-next'
-import { useRoute } from 'vue-router'
-import PhysicianSlip from '#/components/slip/PhysicianSlip.vue'
-import type { InrRecord } from '#/types/inr'
-import type { PatientDetail } from '#/types/patient'
-import type { WfVisit } from '#/types/visit'
-import { getCssVar } from '#/utils/clinic'
+import { invoke } from '@tauri-apps/api/core';
+import { save } from '@tauri-apps/plugin-dialog';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
+import { computed, nextTick, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import type { InrRecord } from '#/types/inr.ts';
+import type { PatientDetail } from '#/types/patient.ts';
+import type { WfVisit } from '#/types/visit.ts';
+import { getCssVar } from '#/utils/clinic.ts';
 
-const route = useRoute()
+const route = useRoute();
 
-const visitId = computed(() => Number(route.params.visitId))
-const visit = ref<WfVisit | null>(null)
-const patient = ref<PatientDetail | null>(null)
-const ttr = ref<number | null>(null)
-const loading = ref(false)
-const printing = ref(false)
-const exportingPdf = ref(false)
-const loadError = ref<string | null>(null)
-const actionError = ref<string | null>(null)
-const slipCapture = ref<HTMLElement | null>(null)
+const visitId = computed(() => Number(route.params.visitId));
+const visit = ref<WfVisit | null>(null);
+const patient = ref<PatientDetail | null>(null);
+const ttr = ref<number | null>(null);
+const loading = ref(false);
+const printing = ref(false);
+const exportingPdf = ref(false);
+const loadError = ref<string | null>(null);
+const actionError = ref<string | null>(null);
+const slipCapture = ref<HTMLElement | null>(null);
 
-const canOutput = computed(() => Boolean(visit.value && patient.value && slipCapture.value) && !loading.value)
+const canOutput = computed(
+  () => Boolean(visit.value && patient.value && slipCapture.value) && !loading.value,
+);
 const defaultPdfFileName = computed(() => {
-  if (!visit.value) return 'warfarin-slip.pdf'
-  return `warfarin-slip-${visit.value.hn}-${visit.value.visitDate}.pdf`
-})
+  if (!visit.value) {
+    return 'warfarin-slip.pdf';
+  }
+  return `warfarin-slip-${visit.value.hn}-${visit.value.visitDate}.pdf`;
+});
 
 function normalizeError(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return String(error)
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
 }
 
 function ensurePdfExtension(path: string): string {
-  return path.toLowerCase().endsWith('.pdf') ? path : `${path}.pdf`
+  return path.toLowerCase().endsWith('.pdf') ? path : `${path}.pdf`;
 }
 
 async function waitForStableSlip(): Promise<void> {
-  await nextTick()
-  await document.fonts.ready
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+  await nextTick();
+  await document.fonts.ready;
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 async function loadSlip() {
   if (!Number.isInteger(visitId.value) || visitId.value <= 0) {
-    visit.value = null
-    patient.value = null
-    ttr.value = null
-    loadError.value = 'visit id ไม่ถูกต้อง'
-    loading.value = false
-    return
+    visit.value = null;
+    patient.value = null;
+    ttr.value = null;
+    loadError.value = 'visit id ไม่ถูกต้อง';
+    loading.value = false;
+    return;
   }
 
-  loading.value = true
-  loadError.value = null
-  actionError.value = null
-  visit.value = null
-  patient.value = null
-  ttr.value = null
+  loading.value = true;
+  loadError.value = null;
+  actionError.value = null;
+  visit.value = null;
+  patient.value = null;
+  ttr.value = null;
 
   try {
-    const currentVisit = await invoke<WfVisit>('get_visit_by_id', { visitId: visitId.value })
+    const currentVisit = await invoke<WfVisit>('get_visit_by_id', { visitId: visitId.value });
     const [patientDetail, inrHistory, ttrValue] = await Promise.all([
       invoke<PatientDetail>('get_patient_detail', { hn: currentVisit.hn }),
       invoke<InrRecord[]>('get_inr_history', { hn: currentVisit.hn }),
       invoke<number | null>('calculate_ttr', { hn: currentVisit.hn, windowDays: 182 }),
-    ])
+    ]);
 
-    visit.value = currentVisit
-    patient.value = { ...patientDetail, inrHistory }
-    ttr.value = ttrValue
+    visit.value = currentVisit;
+    patient.value = { ...patientDetail, inrHistory };
+    ttr.value = ttrValue;
   } catch (error) {
-    loadError.value = normalizeError(error)
+    loadError.value = normalizeError(error);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-async function printSlip() {
-  if (!canOutput.value) return
+async function _printSlip() {
+  if (!canOutput.value) {
+    return;
+  }
 
-  printing.value = true
-  actionError.value = null
+  printing.value = true;
+  actionError.value = null;
 
   try {
-    await waitForStableSlip()
-    await Promise.resolve(window.print())
+    await waitForStableSlip();
+    await Promise.resolve(window.print());
   } catch (error) {
-    actionError.value = normalizeError(error)
+    actionError.value = normalizeError(error);
   } finally {
-    printing.value = false
+    printing.value = false;
   }
 }
 
-async function exportPdf() {
-  if (!canOutput.value || !slipCapture.value || !visit.value) return
+async function _exportPdf() {
+  if (!(canOutput.value && slipCapture.value && visit.value)) {
+    return;
+  }
 
-  exportingPdf.value = true
-  actionError.value = null
+  exportingPdf.value = true;
+  actionError.value = null;
 
   try {
-    await waitForStableSlip()
+    await waitForStableSlip();
 
     const filePath = await save({
       defaultPath: defaultPdfFileName.value,
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    })
+    });
 
-    if (!filePath) return
+    if (!filePath) {
+      return;
+    }
 
-      const backgroundColor = getCssVar('--color-canvas') || 'white'
-    const rect = slipCapture.value.getBoundingClientRect()
+    const backgroundColor = getCssVar('--color-canvas') || 'white';
+    const rect = slipCapture.value.getBoundingClientRect();
     const imageData = await toPng(slipCapture.value, {
       backgroundColor,
       cacheBust: true,
       pixelRatio: Math.max(window.devicePixelRatio, 2),
       width: Math.round(rect.width),
       height: Math.round(rect.height),
-    })
+    });
 
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
       compress: true,
-    })
+    });
 
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    const imageAspectRatio = rect.height / rect.width
-    let renderWidth = pageWidth
-    let renderHeight = renderWidth * imageAspectRatio
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imageAspectRatio = rect.height / rect.width;
+    let renderWidth = pageWidth;
+    let renderHeight = renderWidth * imageAspectRatio;
 
     if (renderHeight > pageHeight) {
-      renderHeight = pageHeight
-      renderWidth = renderHeight / imageAspectRatio
+      renderHeight = pageHeight;
+      renderWidth = renderHeight / imageAspectRatio;
     }
 
-    const offsetX = (pageWidth - renderWidth) / 2
-    const offsetY = (pageHeight - renderHeight) / 2
-    pdf.addImage(imageData, 'PNG', offsetX, offsetY, renderWidth, renderHeight, undefined, 'FAST')
+    const offsetX = (pageWidth - renderWidth) / 2;
+    const offsetY = (pageHeight - renderHeight) / 2;
+    pdf.addImage(imageData, 'PNG', offsetX, offsetY, renderWidth, renderHeight, undefined, 'FAST');
 
-    const bytes = new Uint8Array(pdf.output('arraybuffer'))
+    const bytes = new Uint8Array(pdf.output('arraybuffer'));
     await invoke('save_slip_pdf', {
       path: ensurePdfExtension(filePath),
       bytes: Array.from(bytes),
-    })
+    });
   } catch (error) {
-    actionError.value = normalizeError(error)
+    actionError.value = normalizeError(error);
   } finally {
-    exportingPdf.value = false
+    exportingPdf.value = false;
   }
 }
 
-watch(visitId, () => {
-  void loadSlip()
-}, { immediate: true })
+watch(
+  visitId,
+  () => {
+    void loadSlip();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>

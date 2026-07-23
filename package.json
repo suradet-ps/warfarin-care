@@ -9,6 +9,9 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "type-check": "vue-tsc --noEmit",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --write src/",
+    "format": "biome format --write src/",
     "fmt": "cd src-tauri && cargo fmt",
     "fmt:check": "cd src-tauri && cargo fmt -- --check",
     "gen-icons": "node scripts/gen-icons.cjs"
@@ -28,6 +31,7 @@
     "warfarin_logic": "file:./src/warfarin_logic/pkg"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.5",
     "@resvg/resvg-js": "^2.6.2",
     "@tauri-apps/cli": "^2.11.1",
     "@vitejs/plugin-vue": "^6.0.6",

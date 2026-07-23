@@ -1,64 +1,85 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { ShieldCheck } from 'lucide-vue-next'
-import { useAuthStore } from '#/stores/auth'
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '#/stores/auth.ts';
 
-const router = useRouter()
-const store = useAuthStore()
+const router = useRouter();
+const store = useAuthStore();
 
-const username = ref('')
-const password = ref('')
-const confirmPassword = ref('')
-const submitting = ref(false)
-const localError = ref<string | null>(null)
+const username = ref('');
+const password = ref('');
+const confirmPassword = ref('');
+const submitting = ref(false);
+const localError = ref<string | null>(null);
 
 const usernameError = computed(() => {
-  const v = username.value.trim()
-  if (!v) return null
-  if (v.length < 3) return 'ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร'
-  if (v.length > 32) return 'ชื่อผู้ใช้ต้องไม่เกิน 32 ตัวอักษร'
-  if (!/^[A-Za-z0-9_.-]+$/.test(v)) return 'ใช้ได้เฉพาะตัวอักษร ตัวเลข _ - .'
-  return null
-})
+  const v = username.value.trim();
+  if (!v) {
+    return null;
+  }
+  if (v.length < 3) {
+    return 'ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร';
+  }
+  if (v.length > 32) {
+    return 'ชื่อผู้ใช้ต้องไม่เกิน 32 ตัวอักษร';
+  }
+  if (!/^[A-Za-z0-9_.-]+$/.test(v)) {
+    return 'ใช้ได้เฉพาะตัวอักษร ตัวเลข _ - .';
+  }
+  return null;
+});
 
 const passwordError = computed(() => {
-  const v = password.value
-  if (!v) return null
-  if (v.length < 8) return 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'
-  if (v.length > 128) return 'รหัสผ่านต้องไม่เกิน 128 ตัวอักษร'
-  if (!/[A-Za-z]/.test(v)) return 'รหัสผ่านต้องมีตัวอักษรอย่างน้อย 1 ตัว'
-  if (!/[0-9]/.test(v)) return 'รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว'
-  return null
-})
+  const v = password.value;
+  if (!v) {
+    return null;
+  }
+  if (v.length < 8) {
+    return 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร';
+  }
+  if (v.length > 128) {
+    return 'รหัสผ่านต้องไม่เกิน 128 ตัวอักษร';
+  }
+  if (!/[A-Za-z]/.test(v)) {
+    return 'รหัสผ่านต้องมีตัวอักษรอย่างน้อย 1 ตัว';
+  }
+  if (!/[0-9]/.test(v)) {
+    return 'รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว';
+  }
+  return null;
+});
 
 const confirmError = computed(() => {
-  if (!confirmPassword.value) return null
-  if (confirmPassword.value !== password.value) return 'รหัสผ่านยืนยันไม่ตรงกัน'
-  return null
-})
+  if (!confirmPassword.value) {
+    return null;
+  }
+  if (confirmPassword.value !== password.value) {
+    return 'รหัสผ่านยืนยันไม่ตรงกัน';
+  }
+  return null;
+});
 
-async function handleSubmit() {
-  localError.value = null
+async function _handleSubmit() {
+  localError.value = null;
   if (usernameError.value || passwordError.value || confirmError.value) {
-    localError.value = 'กรุณาตรวจสอบข้อมูลที่กรอก'
-    return
+    localError.value = 'กรุณาตรวจสอบข้อมูลที่กรอก';
+    return;
   }
-  if (!username.value.trim() || !password.value || !confirmPassword.value) {
-    localError.value = 'กรุณากรอกข้อมูลให้ครบถ้วน'
-    return
+  if (!(username.value.trim() && password.value && confirmPassword.value)) {
+    localError.value = 'กรุณากรอกข้อมูลให้ครบถ้วน';
+    return;
   }
-  submitting.value = true
+  submitting.value = true;
   try {
     await store.setupAdmin({
       username: username.value.trim(),
       password: password.value,
-    })
-    await router.replace('/')
+    });
+    await router.replace('/');
   } catch (e) {
-    localError.value = store.error ?? (e instanceof Error ? e.message : String(e))
+    localError.value = store.error ?? (e instanceof Error ? e.message : String(e));
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
 }
 </script>

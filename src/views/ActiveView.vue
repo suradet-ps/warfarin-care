@@ -1,80 +1,79 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import { useRouter } from 'vue-router'
-import { AlertTriangle, Search, Users } from 'lucide-vue-next'
-import PatientRow from '#/components/active/PatientRow.vue'
-import VisitFormPanel from '#/components/visit/VisitFormPanel.vue'
-import { useAlertStore } from '#/stores/alerts'
-import { useReviewStore } from '#/stores/review'
-import type { ActivePatientSummary } from '#/types/patient'
+import { invoke } from '@tauri-apps/api/core';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAlertStore } from '#/stores/alerts.ts';
+import { useReviewStore } from '#/stores/review.ts';
+import type { ActivePatientSummary } from '#/types/patient.ts';
 
-const alertStore = useAlertStore()
-const reviewStore = useReviewStore()
-const router = useRouter()
-const visitPanelOpen = ref(false)
-const selectedHn = ref<string>('')
-const summaries = ref<ActivePatientSummary[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
-const searchQuery = ref('')
-const searchInputRef = ref<HTMLInputElement | null>(null)
+const alertStore = useAlertStore();
+const reviewStore = useReviewStore();
+const router = useRouter();
+const visitPanelOpen = ref(false);
+const selectedHn = ref<string>('');
+const summaries = ref<ActivePatientSummary[]>([]);
+const loading = ref(false);
+const error = ref<string | null>(null);
+const searchQuery = ref('');
+const searchInputRef = ref<HTMLInputElement | null>(null);
 
-const criticalAlerts = computed(() => alertStore.alerts.filter((a) => a.severity === 'critical'))
+const _criticalAlerts = computed(() => alertStore.alerts.filter((a) => a.severity === 'critical'));
 
-const filteredSummaries = computed(() => {
-  if (!searchQuery.value.trim()) return summaries.value
-  const query = searchQuery.value.toLowerCase()
+const _filteredSummaries = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return summaries.value;
+  }
+  const query = searchQuery.value.toLowerCase();
   return summaries.value.filter((s) => {
-    const hn = s.patient.hn.toLowerCase()
-    const fname = s.hosxpInfo?.fname?.toLowerCase() ?? ''
-    const lname = s.hosxpInfo?.lname?.toLowerCase() ?? ''
-    return hn.includes(query) || fname.includes(query) || lname.includes(query)
-  })
-})
+    const hn = s.patient.hn.toLowerCase();
+    const fname = s.hosxpInfo?.fname?.toLowerCase() ?? '';
+    const lname = s.hosxpInfo?.lname?.toLowerCase() ?? '';
+    return hn.includes(query) || fname.includes(query) || lname.includes(query);
+  });
+});
 
 function handleKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-    e.preventDefault()
-    searchInputRef.value?.focus()
+    e.preventDefault();
+    searchInputRef.value?.focus();
   }
 }
 
 async function loadRows() {
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
-    summaries.value = await invoke<ActivePatientSummary[]>('get_active_patient_summaries')
+    summaries.value = await invoke<ActivePatientSummary[]>('get_active_patient_summaries');
     if (!selectedHn.value) {
-      selectedHn.value = summaries.value[0]?.patient.hn ?? ''
+      selectedHn.value = summaries.value[0]?.patient.hn ?? '';
     }
-    void alertStore.fetchAlerts()
+    void alertStore.fetchAlerts();
   } catch (invokeError) {
-    error.value = String(invokeError)
+    error.value = String(invokeError);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-function openVisit(hn: string) {
-  selectedHn.value = hn
-  visitPanelOpen.value = true
+function _openVisit(hn: string) {
+  selectedHn.value = hn;
+  visitPanelOpen.value = true;
 }
 
-async function handleSaved(visitId: number) {
-  visitPanelOpen.value = false
-  void reviewStore.fetchPendingCount()
-  await loadRows()
-  await router.push(`/slip/${visitId}`)
+async function _handleSaved(visitId: number) {
+  visitPanelOpen.value = false;
+  void reviewStore.fetchPendingCount();
+  await loadRows();
+  await router.push(`/slip/${visitId}`);
 }
 
 onMounted(() => {
-  void loadRows()
-  document.addEventListener('keydown', handleKeydown)
-})
+  void loadRows();
+  document.addEventListener('keydown', handleKeydown);
+});
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeydown)
-})
+  document.removeEventListener('keydown', handleKeydown);
+});
 </script>
 
 <template>

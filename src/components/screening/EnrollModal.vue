@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { usePatientStore } from '#/stores/patient'
-import type { EnrollmentInput } from '#/types/patient'
-import { X } from 'lucide-vue-next'
-import { DEFAULT_TARGET_INR, DEFAULT_TARGET_INR_BY_INDICATION } from '#/utils/clinic'
+import { ref } from 'vue';
+import { usePatientStore } from '#/stores/patient.ts';
+import type { EnrollmentInput } from '#/types/patient.ts';
+import { DEFAULT_TARGET_INR, DEFAULT_TARGET_INR_BY_INDICATION } from '#/utils/clinic.ts';
 
-const props = defineProps<{ hn: string }>()
-const emit = defineEmits<{ close: []; enrolled: [] }>()
+const props = defineProps<{ hn: string }>();
+const emit = defineEmits<{ close: []; enrolled: [] }>();
 
-const store = usePatientStore()
-const saving = ref(false)
-const error = ref<string | null>(null)
+const store = usePatientStore();
+const saving = ref(false);
+const error = ref<string | null>(null);
 
 const form = ref<EnrollmentInput>({
   hn: props.hn,
@@ -20,26 +19,26 @@ const form = ref<EnrollmentInput>({
   enrolledAt: new Date().toISOString().split('T')[0],
   enrolledBy: '',
   notes: '',
-})
+});
 
-function onIndicationChange() {
-  const d = DEFAULT_TARGET_INR_BY_INDICATION[form.value.indication]
+function _onIndicationChange() {
+  const d = DEFAULT_TARGET_INR_BY_INDICATION[form.value.indication];
   if (d) {
-    form.value.targetInrLow = d.low
-    form.value.targetInrHigh = d.high
+    form.value.targetInrLow = d.low;
+    form.value.targetInrHigh = d.high;
   }
 }
 
-async function handleSubmit() {
-  saving.value = true
-  error.value = null
+async function _handleSubmit() {
+  saving.value = true;
+  error.value = null;
   try {
-    await store.enrollPatient(form.value)
-    emit('enrolled')
+    await store.enrollPatient(form.value);
+    emit('enrolled');
   } catch (e) {
-    error.value = String(e)
+    error.value = String(e);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 </script>
