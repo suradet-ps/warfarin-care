@@ -1338,6 +1338,176 @@ pub async fn approve_visit(
   Ok(())
 }
 
+/// Returns a unified audit trail for a patient, merging entries from
+/// `wf_audit_log`, `wf_dose_history`, `wf_patient_status_history`, and
+/// `wf_outcomes`. Sorted by timestamp descending.
+pub async fn get_merged_patient_audit_log(
+  pool: &SqlitePool,
+  hn: &str,
+  limit: u32,
+) -> Result<Vec<AuditLogEntry>> {
+  let rows = sqlx::query(
+    "SELECT hn, action, actor, timestamp, old_value, new_value, detail, timestamp AS created_at
+       FROM wf_audit_log
+       WHERE hn = ?
+     UNION ALL
+     SELECT hn, 'dose_changed' AS action,
+            COALESCE(changed_by, 'system') AS actor,
+            changed_at AS timestamp,
+            CAST(old_dose_mgday AS TEXT) AS old_value,
+            CAST(new_dose_mgday AS TEXT) AS new_value,
+            reason AS detail,
+            created_at
+       FROM wf_dose_history
+       WHERE hn = ?
+     UNION ALL
+     SELECT hn, 'status_changed' AS action,
+            'system' AS actor,
+            effective_date AS timestamp,
+            NULL AS old_value,
+            status AS new_value,
+            reason AS detail,
+            created_at
+       FROM wf_patient_status_history
+       WHERE hn = ?
+     UNION ALL
+     SELECT hn, 'adverse_event' AS action,
+            COALESCE(created_by, 'system') AS actor,
+            event_date AS timestamp,
+            NULL AS old_value,
+            event_type AS new_value,
+            description AS detail,
+            created_at
+       FROM wf_outcomes
+       WHERE hn = ?
+     ORDER BY timestamp DESC
+     LIMIT ?",
+  )
+  .bind(hn)
+  .bind(hn)
+  .bind(hn)
+  .bind(hn)
+  .bind(limit)
+  .fetch_all(pool)
+  .await
+  .context("failed to query merged patient audit log")?;
+
+  Ok(
+    rows
+      .iter()
+      .map(|r| AuditLogEntry {
+        id: 0,
+        hn: r.try_get("hn").ok(),
+        action: r.get("action"),
+        actor: r.get("actor"),
+        timestamp: r.get("timestamp"),
+        old_value: r.try_get("old_value").ok(),
+        new_value: r.try_get("new_value").ok(),
+        detail: r.try_get("detail").ok(),
+        created_at: r.get("created_at"),
+      })
+      .collect(),
+  )
+}
+
+/// Returns a unified global audit trail, merging entries from all tables.
+pub async fn get_merged_audit_log(
+  pool: &SqlitePool,
+  filter: &AuditLogFilter,
+) -> Result<Vec<AuditLogEntry>> {
+  let page = filter.page.unwrap_or(1).max(1);
+  let page_size = filter.page_size.unwrap_or(50).min(200);
+  let offset = (page - 1) * page_size;
+
+  // Build separate queries for each source and UNION them.
+  let mut qb = QueryBuilder::<Sqlite>::new("");
+
+  // wf_audit_log entries
+  qb.push(
+    "SELECT id, hn, action, actor, timestamp, old_value, new_value, detail, created_at \
+       FROM wf_audit_log WHERE 1=1",
+  );
+  if let Some(ref hn) = filter.hn {
+    qb.push(" AND hn = ");
+    qb.push_bind(hn);
+  }
+  if let Some(ref action) = filter.action {
+    qb.push(" AND action = ");
+    qb.push_bind(action);
+  }
+
+  qb.push(" UNION ALL ");
+
+  // wf_dose_history entries
+  qb.push(
+    "SELECT 0 AS id, hn, 'dose_changed' AS action, \
+       COALESCE(changed_by, 'system') AS actor, changed_at AS timestamp, \
+       CAST(old_dose_mgday AS TEXT) AS old_value, CAST(new_dose_mgday AS TEXT) AS new_value, \
+       reason AS detail, created_at \
+       FROM wf_dose_history WHERE 1=1",
+  );
+  if let Some(ref hn) = filter.hn {
+    qb.push(" AND hn = ");
+    qb.push_bind(hn);
+  }
+
+  qb.push(" UNION ALL ");
+
+  // wf_patient_status_history entries
+  qb.push(
+    "SELECT 0 AS id, hn, 'status_changed' AS action, 'system' AS actor, \
+       effective_date AS timestamp, NULL AS old_value, status AS new_value, \
+       reason AS detail, created_at \
+       FROM wf_patient_status_history WHERE 1=1",
+  );
+  if let Some(ref hn) = filter.hn {
+    qb.push(" AND hn = ");
+    qb.push_bind(hn);
+  }
+
+  qb.push(" UNION ALL ");
+
+  // wf_outcomes entries
+  qb.push(
+    "SELECT 0 AS id, hn, 'adverse_event' AS action, \
+       COALESCE(created_by, 'system') AS actor, event_date AS timestamp, \
+       NULL AS old_value, event_type AS new_value, description AS detail, created_at \
+       FROM wf_outcomes WHERE 1=1",
+  );
+  if let Some(ref hn) = filter.hn {
+    qb.push(" AND hn = ");
+    qb.push_bind(hn);
+  }
+
+  qb.push(" ORDER BY timestamp DESC LIMIT ");
+  qb.push_bind(page_size);
+  qb.push(" OFFSET ");
+  qb.push_bind(offset);
+
+  let rows = qb
+    .build()
+    .fetch_all(pool)
+    .await
+    .context("failed to query merged audit log")?;
+
+  Ok(
+    rows
+      .iter()
+      .map(|r| AuditLogEntry {
+        id: r.try_get("id").unwrap_or(0),
+        hn: r.try_get("hn").ok(),
+        action: r.get("action"),
+        actor: r.get("actor"),
+        timestamp: r.get("timestamp"),
+        old_value: r.try_get("old_value").ok(),
+        new_value: r.try_get("new_value").ok(),
+        detail: r.try_get("detail").ok(),
+        created_at: r.get("created_at"),
+      })
+      .collect(),
+  )
+}
+
 // AppState
 
 use std::sync::Arc;

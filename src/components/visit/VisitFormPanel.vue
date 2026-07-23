@@ -86,6 +86,7 @@ const appointmentDayLoad = ref<AppointmentDayLoad | null>(null);
 const panelRef = ref<HTMLDivElement | null>(null);
 const showDoseConfirm = ref(false);
 const pendingSave = ref(false);
+const interactionBlocked = ref(false);
 
 const sideEffectOptionsHigh = [
   { key: 'body_bleeding', label: 'เลือดออกตามร่างกาย' },
@@ -426,6 +427,10 @@ function cancelDoseChange() {
   showDoseConfirm.value = false;
 }
 
+function handleInteractionBlocked(blocked: boolean) {
+  interactionBlocked.value = blocked;
+}
+
 const lastLoaded = ref<{ hn: string; date: string; editId: number | null } | null>(null);
 
 function handlePanelKeydown(e: KeyboardEvent) {
@@ -490,7 +495,7 @@ onUnmounted(() => {
 
           <div v-if="props.mysqlConfig" class="form-section">
             <p class="caption label">Drug Interaction Check</p>
-            <InteractionChecker :hn="props.hn" :mysql-config="props.mysqlConfig" />
+            <InteractionChecker :hn="props.hn" :mysql-config="props.mysqlConfig" @blocked="handleInteractionBlocked" />
           </div>
 
           <div class="form-section">
@@ -594,8 +599,8 @@ onUnmounted(() => {
 
         <div class="panel-footer">
           <button class="btn btn-ghost" @click="modelValue = false">ยกเลิก</button>
-          <button class="btn btn-primary" @click="handleSubmit" :disabled="saving">
-            {{ saving ? 'กำลังบันทึก...' : (isEditMode ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึก & เปิดใบพิมพ์') }}
+          <button class="btn btn-primary" @click="handleSubmit" :disabled="saving || interactionBlocked">
+            {{ saving ? 'กำลังบันทึก...' : (interactionBlocked ? 'มียาห้ามใช้ร่วม' : (isEditMode ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึก & เปิดใบพิมพ์')) }}
           </button>
         </div>
       </div>

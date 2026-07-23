@@ -4,7 +4,8 @@ use tauri::State;
 
 use warfarin_core::models::audit::{AuditLogEntry, AuditLogFilter, AuditLogInput};
 use warfarin_db::sqlite::{
-  AppState, get_audit_log as db_get_audit_log, get_patient_audit_log as db_get_patient_audit_log,
+  AppState, get_merged_audit_log as db_get_merged_audit_log,
+  get_merged_patient_audit_log as db_get_merged_patient_audit_log,
   insert_audit_log as db_insert_audit_log,
 };
 
@@ -25,7 +26,7 @@ pub async fn get_audit_log(
   state: State<'_, AppState>,
 ) -> Result<Vec<AuditLogEntry>, String> {
   state.require_auth().await?;
-  db_get_audit_log(&state.pool, &filter)
+  db_get_merged_audit_log(&state.pool, &filter)
     .await
     .map_err(|e| e.to_string())
 }
@@ -37,7 +38,7 @@ pub async fn get_patient_audit_log(
   state: State<'_, AppState>,
 ) -> Result<Vec<AuditLogEntry>, String> {
   state.require_auth().await?;
-  db_get_patient_audit_log(&state.pool, &hn, limit)
+  db_get_merged_patient_audit_log(&state.pool, &hn, limit)
     .await
     .map_err(|e| e.to_string())
 }

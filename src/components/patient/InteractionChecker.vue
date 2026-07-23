@@ -16,6 +16,8 @@ const props = defineProps<{
   };
 }>();
 
+const emit = defineEmits<{ (e: 'blocked', blocked: boolean): void }>();
+
 const store = useSettingsStore();
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -29,8 +31,10 @@ async function checkInteractions() {
       hn: props.hn,
       mysqlConfig: props.mysqlConfig,
     });
+    emit('blocked', hasContraindicated());
   } catch (e) {
     error.value = String(e);
+    emit('blocked', false);
   } finally {
     loading.value = false;
   }
