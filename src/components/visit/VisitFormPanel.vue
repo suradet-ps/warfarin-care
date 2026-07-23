@@ -5,6 +5,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import ConfirmDialog from '#/components/shared/ConfirmDialog.vue';
 import DayDoseTable from '#/components/visit/DayDoseTable.vue';
 import DoseOptionsPanel from '#/components/visit/DoseOptionsPanel.vue';
+import InteractionChecker from '#/components/patient/InteractionChecker.vue';
 import { useVisitStore } from '#/stores/visit.ts';
 import type { AppointmentDayLoad } from '#/types/appointment.ts';
 import type { DispensingRecord } from '#/types/dispensing.ts';
@@ -34,7 +35,17 @@ import type { AvailablePills, RegimenOption } from '@/types/dose.ts';
 const visitStore = useVisitStore();
 const { generateDoseOptions, DEFAULT_AVAILABLE_PILLS } = useDoseCalculator();
 
-const props = defineProps<{ hn: string; editVisit?: WfVisit | null }>();
+const props = defineProps<{
+  hn: string;
+  editVisit?: WfVisit | null;
+  mysqlConfig?: {
+    host: string;
+    port: number;
+    database: string;
+    username: string;
+    password: string;
+  };
+}>();
 const modelValue = defineModel<boolean>({ default: false });
 const emit = defineEmits<{ (e: 'saved', visitId: number): void; (e: 'updated'): void }>();
 
@@ -475,6 +486,11 @@ onUnmounted(() => {
               <span class="caption label">ค่า INR</span>
               <input class="input" type="number" step="0.1" v-model.number="inrValue" aria-label="ค่า INR วัดได้" />
             </label>
+          </div>
+
+          <div v-if="props.mysqlConfig" class="form-section">
+            <p class="caption label">Drug Interaction Check</p>
+            <InteractionChecker :hn="props.hn" :mysql-config="props.mysqlConfig" />
           </div>
 
           <div class="form-section">

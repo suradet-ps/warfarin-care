@@ -9,10 +9,12 @@ import LoadingState from '#/components/shared/LoadingState.vue';
 import VisitFormPanel from '#/components/visit/VisitFormPanel.vue';
 import { useAlertStore } from '#/stores/alerts.ts';
 import { useReviewStore } from '#/stores/review.ts';
+import { useSettingsStore } from '#/stores/settings.ts';
 import type { ActivePatientSummary } from '#/types/patient.ts';
 
 const alertStore = useAlertStore();
 const reviewStore = useReviewStore();
+const settingsStore = useSettingsStore();
 const router = useRouter();
 const visitPanelOpen = ref(false);
 const selectedHn = ref<string>('');
@@ -146,7 +148,7 @@ onUnmounted(() => {
       </table>
     </div>
 
-    <VisitFormPanel v-if="selectedHn" v-model="visitPanelOpen" :hn="selectedHn" @saved="handleSaved" />
+    <VisitFormPanel v-if="selectedHn" v-model="visitPanelOpen" :hn="selectedHn" :mysql-config="settingsStore.mysqlConfig" @saved="handleSaved" />
   </div>
 </template>
 

@@ -204,10 +204,7 @@ mod tests {
 
   #[test]
   fn check_same_severity_sorted_alphabetically() {
-    let meds = vec![
-      make_med("222", "ZebraDrug"),
-      make_med("111", "AlphaDrug"),
-    ];
+    let meds = vec![make_med("222", "ZebraDrug"), make_med("111", "AlphaDrug")];
     let rules = vec![
       make_rule("222", "ZebraDrug", "major", "increase"),
       make_rule("111", "AlphaDrug", "major", "decrease"),
@@ -277,10 +274,7 @@ mod tests {
   fn check_duplicate_icode_in_meds_matches_once() {
     // A patient cannot have duplicate icode medications in practice,
     // but the function should handle it gracefully.
-    let meds = vec![
-      make_med("123", "Amiodarone"),
-      make_med("123", "Amiodarone"),
-    ];
+    let meds = vec![make_med("123", "Amiodarone"), make_med("123", "Amiodarone")];
     let rules = vec![make_rule("123", "Amiodarone", "major", "increase")];
     let result = check(&meds, &rules);
     // Both medications match the rule — both produce an interaction.

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, CalendarDays, ClipboardCheck, Search, Settings, Users } from 'lucide-vue-next';
+import { BarChart3, CalendarDays, ClipboardCheck, FileText, Search, Settings, Users } from 'lucide-vue-next';
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAlertStore } from '#/stores/alerts.ts';
@@ -17,6 +17,7 @@ const navItems = [
   { name: 'appointments', label: 'การนัดหมาย', icon: CalendarDays, path: '/appointments' },
   { name: 'review', label: 'ตรวจสอบ', icon: ClipboardCheck, path: '/review' },
   { name: 'reports', label: 'รายงาน', icon: BarChart3, path: '/reports' },
+  { name: 'audit', label: 'Audit Trail', icon: FileText, path: '/audit' },
   { name: 'settings', label: 'ตั้งค่า', icon: Settings, path: '/settings' },
 ];
 

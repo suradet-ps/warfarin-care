@@ -228,7 +228,7 @@ onMounted(() => {
       <p class="body-sm">ไม่พบข้อมูลผู้ป่วย HN: {{ hn }}</p>
     </div>
 
-    <VisitFormPanel v-model="visitPanelOpen" :hn="hn" :edit-visit="editingVisit" @saved="onVisitSaved" @updated="handleVisitUpdated" />
+    <VisitFormPanel v-model="visitPanelOpen" :hn="hn" :edit-visit="editingVisit" :mysql-config="settingsStore.mysqlConfig" @saved="onVisitSaved" @updated="handleVisitUpdated" />
 
     <StatusChangeModal
       v-if="statusModalOpen && patientDetail"

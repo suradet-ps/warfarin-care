@@ -3,7 +3,10 @@
 use tauri::State;
 
 use warfarin_core::models::audit::{AuditLogEntry, AuditLogFilter, AuditLogInput};
-use warfarin_db::sqlite::{AppState, get_audit_log as db_get_audit_log, get_patient_audit_log as db_get_patient_audit_log, insert_audit_log as db_insert_audit_log};
+use warfarin_db::sqlite::{
+  AppState, get_audit_log as db_get_audit_log, get_patient_audit_log as db_get_patient_audit_log,
+  insert_audit_log as db_insert_audit_log,
+};
 
 #[tauri::command]
 pub async fn insert_audit_log(
