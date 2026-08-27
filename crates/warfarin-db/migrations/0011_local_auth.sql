@@ -1,7 +1,7 @@
 -- Warfarin Care: Local authentication (users + audit log).
 -- Argon2id PHC strings in `users.password_hash`. No plaintext passwords
 -- are ever written. The audit log records event type, username, success
--- flag, and an optional free-form `details` field - never passwords.
+-- flag, and an optional free-form `details` field — never passwords.
 
 CREATE TABLE IF NOT EXISTS users (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,

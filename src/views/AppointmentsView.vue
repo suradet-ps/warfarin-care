@@ -26,8 +26,14 @@ const dateBuckets = computed(() => {
     { date: string; count: number; overdueCount: number; urgentCount: number }
   >();
   const cutoff = today();
+  const countedHns = new Map<string, Set<string>>();
 
   for (const appointment of appointments.value) {
+    // Only today/future dates are shown.
+    if (appointment.apptDate < cutoff) {
+      continue;
+    }
+
     const existing = buckets.get(appointment.apptDate) ?? {
       date: appointment.apptDate,
       count: 0,
@@ -35,7 +41,14 @@ const dateBuckets = computed(() => {
       urgentCount: 0,
     };
 
-    existing.count += 1;
+    // Count distinct patients per day - the same HN may have multiple
+    // appointment rows (e.g. visit-generated + manual) on one date.
+    const seen = countedHns.get(appointment.apptDate) ?? new Set<string>();
+    countedHns.set(appointment.apptDate, seen);
+    if (!seen.has(appointment.hn)) {
+      seen.add(appointment.hn);
+      existing.count += 1;
+    }
     if (appointment.isOverdue === true) {
       existing.overdueCount += 1;
     }
@@ -45,32 +58,16 @@ const dateBuckets = computed(() => {
     buckets.set(appointment.apptDate, existing);
   }
 
-  // Keep only dates that are today/future, or past dates that have at least
-  // one truly-overdue appointment (clinic ran that day AND patient didn't
-  // attend). Past dates on which the clinic was closed have no overdue
-  // appointments and are dropped.
-  const filtered = [...buckets.values()].filter(
-    (bucket) => bucket.date >= cutoff || bucket.overdueCount > 0,
-  );
-
-  // Sort: today + future dates ascending first, then past-overdue dates
-  // descending (most recent missed first).
-  return filtered.sort((a, b) => {
-    const aIsFuture = a.date >= cutoff;
-    const bIsFuture = b.date >= cutoff;
-    if (aIsFuture !== bIsFuture) {
-      return aIsFuture ? -1 : 1;
-    }
-    if (aIsFuture) {
-      return a.date.localeCompare(b.date);
-    }
-    return b.date.localeCompare(a.date);
-  });
+  return [...buckets.values()].sort((a, b) => a.date.localeCompare(b.date));
 });
 
 const selectedBucket = computed(() => {
   if (selectedDate.value) {
-    return dateBuckets.value.find((bucket) => bucket.date === selectedDate.value) ?? null;
+    return (
+      dateBuckets.value.find((bucket) => bucket.date === selectedDate.value) ??
+      dateBuckets.value[0] ??
+      null
+    );
   }
 
   return dateBuckets.value[0] ?? null;
@@ -79,6 +76,7 @@ const selectedBucket = computed(() => {
 const filteredAppointments = computed(() => {
   const activeDate = selectedBucket.value?.date ?? '';
   const query = searchQuery.value.trim().toLowerCase();
+  const seenHns = new Set<string>();
 
   return appointments.value
     .filter((appointment) => (activeDate ? appointment.apptDate === activeDate : true))
@@ -89,6 +87,14 @@ const filteredAppointments = computed(() => {
       const summary = patientMap.value.get(appointment.hn);
       const fullName = patientFullName(summary?.hosxpInfo).toLowerCase();
       return appointment.hn.toLowerCase().includes(query) || fullName.includes(query);
+    })
+    .filter((appointment) => {
+      // Deduplicate patients on the same day.
+      if (seenHns.has(appointment.hn)) {
+        return false;
+      }
+      seenHns.add(appointment.hn);
+      return true;
     })
     .sort((a, b) => `${a.apptDate}-${a.hn}`.localeCompare(`${b.apptDate}-${b.hn}`));
 });
@@ -103,8 +109,11 @@ const stats = computed(() => ({
     return delta !== null && delta >= 0 && delta <= 7;
   }).length,
   // "Actually overdue" = past + clinic ran that day + patient didn't attend.
-  // The Rust backend pre-computes this in get_pending_appointments.
-  overdue: appointments.value.filter((appointment) => appointment.isOverdue === true).length,
+  // The Rust backend pre-computes this in get_pending_appointments. Count
+  // distinct patients so duplicate rows for the same HN are not double-counted.
+  overdue: new Set(
+    appointments.value.filter((appointment) => appointment.isOverdue === true).map((a) => a.hn),
+  ).size,
 }));
 
 async function loadAppointments() {
@@ -119,7 +128,9 @@ async function loadAppointments() {
     appointments.value = pendingAppointments;
     summaries.value = activeSummaries;
     if (!selectedDate.value) {
-      selectedDate.value = pendingAppointments[0]?.apptDate ?? '';
+      selectedDate.value =
+        pendingAppointments.find((appointment) => appointment.apptDate >= today())?.apptDate ??
+        '';
     }
   } catch (invokeError) {
     error.value = String(invokeError);
