@@ -23,10 +23,10 @@ system in [DESIGN.md](DESIGN.md).
 > treatment -- are listed under "Out of Scope" so the line is drawn on purpose.
 
 Nothing here is called "done" on intent alone. The repo already has a real
-CI pipeline (`.github/workflows/ci.yml`: type-check, `cargo fmt --check`,
-`cargo clippy`, `cargo test`, `cargo-deny`; plus `rust-safety.yml` with
-Miri for `warfarin-core`; plus `test-build.yml` for Tauri build); every
-phase's acceptance is checked against it.
+CI pipeline (`.github/workflows/ci.yml`: frontend type-check, `cargo fmt
+--check`, `cargo-deny`; `rust-safety.yml`: `cargo clippy --all-targets
+-- -D warnings` plus Miri tests on `warfarin-core`; `test-build.yml`: Tauri
+build test); every phase's acceptance is checked against it.
 
 ---
 
@@ -83,33 +83,39 @@ requires a human confirmation. The tool suggests; the clinician decides.
 
 ## Current State (verified against the repo, not assumed)
 
-- **Stack**: Tauri 2.10 + Vue 3.5 (Composition API, `<script setup>`) +
+- **Stack**: Tauri 2.11 + Vue 3.5 (Composition API, `<script setup>`) +
   TypeScript, Rust 2024 backend, Vite 8, Bun, Pinia 4, Vue Router 5.
-  Version `2.2.0` in `package.json` and `src-tauri/Cargo.toml`. Deployed as
+  Version `2.3.0` in `package.json` and `src-tauri/Cargo.toml`. Deployed as
   a native desktop app (Windows, Linux, macOS) via `tauri-apps/tauri-action`.
 - **Data model**: HosXP MySQL (read-only) for patient demographics, drug
   dispensing, and lab results. Local SQLite (read-write) for clinic enrollment,
   visits, dose history, appointments, adverse events, drug interactions, and
   settings. Cloud sync to Supabase PostgreSQL with AES-256-GCM encrypted
-  credentials. 12 SQLite migrations.
+  credentials. 13 SQLite migrations.
 - **Security model**: Argon2id password hashing with account lockout.
-  AES-256-GCM encryption for stored credentials. OS keychain for encryption
-  keys. In-memory session. `#![deny(unsafe_code)]` at crate level.
-  `cargo-deny` for advisory/license checking. Pinned GitHub Actions SHAs.
+  Local multi-user auth with roles (`Admin` / `User`), first-run setup
+  screen, and an auth audit log. AES-256-GCM encryption for stored
+  credentials. OS keychain for encryption keys. In-memory session.
+  `#![deny(unsafe_code)]` at crate level. `cargo-deny` for
+  advisory/license checking. Pinned GitHub Actions SHAs.
 - **Clinical logic** (`crates/warfarin-core`): Pure Rust dose calculator
   (`suggest_dose`) with target-range-aware decision tree, TTR calculation
   (Rosendaal linear interpolation), pill decomposition, usage text parser,
-  AES encryption, password hashing, search normalization. 48+ unit tests.
-  Fully isolated from I/O -- no Tauri, no sqlx.
+  AES encryption, password hashing, search normalization, interaction
+  checker. 54 unit tests. Fully isolated from I/O -- no Tauri, no sqlx.
 - **Data layer** (`crates/warfarin-db`): SQLx queries for HosXP (read-only)
   and SQLite (CRUD). Auth service with lockout logic. Cloud sync models.
-  12 embedded migrations.
-- **Backend** (`src-tauri`): 51 Tauri commands across 12 modules (screening,
+  13 embedded migrations.
+- **Backend** (`src-tauri`): 56 Tauri commands across 14 modules (screening,
   patients, visits, INR, appointments, alerts, reports, settings, outcomes,
-  interaction, sync, slip). Thin wrappers over core + db.
-- **Frontend** (`src/`): 10 views, 40+ components, 8 Pinia stores, 9 type
+  interaction, sync, slip, audit, auth). Thin wrappers over core + db.
+  Actor tracking (`user.username`) on clinical mutations.
+- **Frontend** (`src/`): 11 views, 32 components, 8 Pinia stores, 11 type
   files. INR trend chart (lightweight-charts), printable physician slip
-  (jspdf), dose calculator panel, drug interaction table, alert engine.
+  (jspdf), dose calculator panel, automatic drug interaction checker in the
+  visit flow (blocks save on contraindicated), unified audit trail view,
+  pending-visit review workflow, appointment schedule grouped by date,
+  local auth screens (setup + login).
 - **CI** (4 workflows): Frontend type-check + format, `cargo-deny`, Tauri
   build test, Rust safety (clippy + Miri on `warfarin-core`).
 
@@ -123,17 +129,28 @@ requires a human confirmation. The tool suggests; the clinician decides.
    clinically significant drug interactions; a CYP2C9 inhibitor missed
    during dosing can cause fatal bleeding. **This is the single most
    dangerous gap in the current tool.** (Phase 1.)
+   **Status: RESOLVED.** `InteractionChecker` now runs automatically in the
+   visit form (`VisitFormPanel.vue`) and blocks save on contraindicated
+   interactions; severity/clinical-effect/management/evidence data is
+   configurable in Settings.
 
 2. **No audit trail visualization.** Dose changes are logged in
    `wf_dose_history`, status changes in `wf_patient_status_history`, and
    auth events in `auth_audit_log` -- but there is no unified view. For a
    clinical tool, "who changed what dose and when" is a medicolegal
    requirement, not a feature. (Phase 1.)
+   **Status: RESOLVED.** A unified `/audit` page (with per-patient audit
+   section in `/patient/:hn`) merges dose, status, visit, outcome, and auth
+   events with filtering by HN, action, and date range.
 
 3. **Single-user authentication.** Argon2id hashing is solid, but there is
    one user. Shared clinic machines mean one login for all pharmacists --
    no per-clinician audit trail, no role separation, no accountability.
    (Phase 2.)
+   **Status: PARTIALLY RESOLVED.** Local multi-user auth shipped with
+   roles (`Admin` / `User`), account lockout, and actor tracking on
+   clinical mutations. Remaining Phase 2 items: user management UI,
+   persistent sessions, `viewer` role, Supabase user sync, `clinic_id`.
 
 4. **No batch operations.** A warfarin clinic reviews 20-50 patients per
    weekly session. Today, each patient requires opening their detail page,
@@ -235,9 +252,17 @@ tests in `warfarin-core`.
 A clinic tool used by one login for all pharmacists is a liability. Each
 clinician must be accountable for their own actions.
 
+> **Status: PARTIAL.** Local multi-user auth with `Admin` / `User` roles is
+> already shipped (migration 0011): first-run setup screen, Argon2id hashing,
+> account lockout, auth audit log, and actor tracking on `save_visit`. The
+> items below extend that foundation.
+
 - [ ] **Role-based authentication.** Extend the `users` table with a `role`
   column: `admin`, `clinician`, `pharmacist`, `viewer`. Admin manages users;
   clinicians/pharmacists record visits and change doses; viewers read-only.
+  *(Partially done: `role` column exists with `Admin` / `User`; the
+  `clinician` / `pharmacist` / `viewer` split and enforced permissions are
+  not.)*
 - [ ] **Per-user session management.** Persistent sessions (not just
   in-memory) with configurable timeout. Login screen shows last-login
   timestamp. Account lockout policy remains (5 attempts / 15 min).
@@ -266,11 +291,16 @@ user; a viewer cannot save or modify anything.
 A warfarin clinic reviews 20-50 patients per weekly session. The tool must
 support that workflow, not fight it.
 
+> **Status: PARTIAL.** The `/review` view (pending visit review + approval)
+> and the `/appointments` schedule (grouped by date, overdue tracking) are
+> shipped. The weekly dose review queue and batch operations below are not.
+
 - [ ] **Weekly dose review queue.** A `/review` view that auto-populates with
   patients whose next INR due date is within +/-7 days of today, sorted by
   risk (critical INR first, then out-of-range, then in-range). Each row
   shows: HN, name, last INR, current dose, days until next INR, and a
-  risk badge.
+  risk badge. *(Note: `/review` today lists pending review visits for
+  approval; it is not yet a risk-sorted weekly queue.)*
 - [ ] **Batch dose accept/modify.** From the review queue, a clinician can
   accept the calculator's suggested dose for multiple patients with one
   click, or open each patient's detail for manual adjustment. A diff view
@@ -281,7 +311,9 @@ support that workflow, not fight it.
 - [ ] **Today's clinic schedule.** A `/schedule` view showing all patients
   with appointments today, their INR status, and quick links to their
   detail page. Auto-derived from `wf_appointments` where `appt_date = today`
-  and `status = scheduled`.
+  and `status = scheduled`. *(Partial: `/appointments` shows schedules
+  grouped by date with patient counts; INR status and quick links per
+  patient are not included.)*
 - [ ] **Quick-filter on active dashboard.** Add filter chips to `/active`:
   "Overdue INR" (>90 days), "Critical INR" (>4.0 or <1.5), "Missed
   appointment", "Low TTR" (<50%). Each chip shows a count badge.
