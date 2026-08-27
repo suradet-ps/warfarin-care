@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
-import { ArrowLeft, Filter, Search } from 'lucide-vue-next';
+import { ArrowLeft, Search } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import SearchBox from '#/components/shared/SearchBox.vue';
 import { AUDIT_ACTIONS, type AuditLogEntry, type AuditLogFilter } from '#/types/audit.ts';
 import { formatThaiDate } from '#/utils/clinic.ts';
 
@@ -105,7 +106,12 @@ onMounted(() => {
       <div class="filter-fields">
         <label class="form-field">
           <span class="caption label">HN</span>
-          <input class="input input-sm" type="text" v-model="filterHn" placeholder="กรอก HN..." />
+          <SearchBox
+            v-model="filterHn"
+            placeholder="ค้นหา HN..."
+            aria-label="ค้นหา HN"
+            class="audit-hn-search"
+          />
         </label>
         <label class="form-field">
           <span class="caption label">ประเภท</span>
@@ -219,6 +225,10 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--spacing-xxs);
   min-width: 150px;
+}
+
+.audit-hn-search {
+  --search-box-min-width: 10rem;
 }
 
 .input-sm {

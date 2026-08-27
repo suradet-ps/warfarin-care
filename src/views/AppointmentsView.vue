@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
-import { CalendarDays, CalendarRange, Clock3, Search, Users } from 'lucide-vue-next';
+import { CalendarDays, CalendarRange, Clock3, Users } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
+import SearchBox from '#/components/shared/SearchBox.vue';
 import type { WfAppointment } from '#/types/appointment.ts';
 import type { ActivePatientSummary } from '#/types/patient.ts';
 import { daysUntil, formatThaiDate, patientFullName } from '#/utils/clinic.ts';
@@ -232,10 +233,7 @@ onMounted(() => {
               {{ selectedBucket ? `${formatThaiDate(selectedBucket.date)} · ${selectedBucket.count} คน` : 'ยังไม่ได้เลือกวัน' }}
             </p>
           </div>
-          <div class="search-box">
-            <Search :size="16" class="search-icon" />
-            <input v-model="searchQuery" type="text" class="search-input" placeholder="ค้นหา HN หรือชื่อ" />
-          </div>
+          <SearchBox v-model="searchQuery" placeholder="ค้นหา HN หรือชื่อ" aria-label="ค้นหาผู้ป่วย" />
         </div>
 
         <div v-if="loading" class="empty-state body-sm">กำลังโหลด...</div>
@@ -367,26 +365,6 @@ onMounted(() => {
   justify-content: flex-end;
 }
 
-.search-box {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  min-width: 16rem;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-hairline-soft);
-  border-radius: var(--rounded-md);
-  background: var(--color-canvas);
-}
-
-.search-input {
-  width: 100%;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--color-ink);
-  font-size: var(--typography-body-sm-size);
-}
-
 .table-wrap {
   overflow-x: auto;
 }
@@ -417,10 +395,6 @@ onMounted(() => {
   .panel-header-inline {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .search-box {
-    min-width: 0;
   }
 }
 </style>

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
-import { AlertTriangle, Search, Users } from 'lucide-vue-next';
+import { AlertTriangle, Users } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import PatientRow from '#/components/active/PatientRow.vue';
 import ErrorState from '#/components/shared/ErrorState.vue';
 import LoadingState from '#/components/shared/LoadingState.vue';
+import SearchBox from '#/components/shared/SearchBox.vue';
 import VisitFormPanel from '#/components/visit/VisitFormPanel.vue';
 import { useAlertStore } from '#/stores/alerts.ts';
 import { useReviewStore } from '#/stores/review.ts';
@@ -22,7 +23,7 @@ const summaries = ref<ActivePatientSummary[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const searchQuery = ref('');
-const searchInputRef = ref<HTMLInputElement | null>(null);
+const searchBoxRef = ref<{ focus: () => void } | null>(null);
 
 const criticalAlerts = computed(() => alertStore.alerts.filter((a) => a.severity === 'critical'));
 
@@ -42,7 +43,7 @@ const filteredSummaries = computed(() => {
 function handleKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
     e.preventDefault();
-    searchInputRef.value?.focus();
+    searchBoxRef.value?.focus();
   }
 }
 
@@ -105,17 +106,12 @@ onUnmounted(() => {
           <span class="body-sm">ผู้ป่วย <strong>{{ filteredSummaries.length }}</strong> ราย</span>
         </div>
       </div>
-      <div class="search-box">
-        <Search :size="16" class="search-icon" aria-hidden="true" />
-        <input
-          ref="searchInputRef"
-          v-model="searchQuery"
-          type="text"
-          placeholder="ค้นหา HN, ชื่อ, สกุล (Ctrl+F)"
-          class="search-input"
-          aria-label="ค้นหาผู้ป่วย"
-        />
-      </div>
+      <SearchBox
+        ref="searchBoxRef"
+        v-model="searchQuery"
+        placeholder="ค้นหา HN, ชื่อ, สกุล (Ctrl+F)"
+        aria-label="ค้นหาผู้ป่วย"
+      />
     </div>
 
     <LoadingState v-if="loading" message="กำลังโหลดรายชื่อผู้ป่วย..." />
@@ -194,11 +190,6 @@ onUnmounted(() => {
 .stat-row { display: flex; gap: var(--spacing-md); }
 .stat-chip { display: flex; align-items: center; gap: var(--spacing-xs); }
 .stat-icon { color: var(--color-slate); }
-.search-box { display: flex; align-items: center; gap: var(--spacing-xs); background: var(--color-canvas); border: 1px solid var(--color-hairline-soft); border-radius: var(--rounded-md); padding: var(--spacing-sm) var(--spacing-md); }
-.search-icon { color: var(--color-stone); flex-shrink: 0; }
-.search-input { border: none; outline: none; background: transparent; font-size: var(--typography-body-sm-size); color: var(--color-ink); width: 240px; }
-.search-input::placeholder { color: var(--color-stone); }
-.search-input:focus { outline: 2px solid var(--color-primary); outline-offset: -2px; border-radius: var(--rounded-md); }
 .empty-cell {
   padding: var(--spacing-xxl);
   text-align: center;

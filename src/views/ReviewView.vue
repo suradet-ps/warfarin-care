@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
-import { ClipboardCheck, Pencil, Search } from 'lucide-vue-next';
+import { ClipboardCheck, Pencil } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
+import SearchBox from '#/components/shared/SearchBox.vue';
 import VisitFormPanel from '#/components/visit/VisitFormPanel.vue';
 import { useReviewStore } from '#/stores/review.ts';
 import type { WfVisit } from '#/types/visit.ts';
@@ -90,15 +91,7 @@ onMounted(() => {
           <span class="body-sm">รอตรวจสอบ <strong>{{ visits.length }}</strong> รายการ</span>
         </div>
       </div>
-      <div class="search-box">
-        <Search :size="16" class="search-icon" />
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="ค้นหา HN"
-          class="search-input"
-        />
-      </div>
+      <SearchBox v-model="searchQuery" placeholder="ค้นหา HN" aria-label="ค้นหา HN" />
     </div>
 
     <div v-if="loading" class="card loading-state body-sm">กำลังโหลด...</div>
@@ -190,34 +183,6 @@ onMounted(() => {
 
 .stat-icon {
   color: var(--color-slate);
-}
-
-.search-box {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  background: var(--color-canvas);
-  border: 1px solid var(--color-hairline-soft);
-  border-radius: var(--rounded-md);
-  padding: var(--spacing-sm) var(--spacing-md);
-}
-
-.search-icon {
-  color: var(--color-stone);
-  flex-shrink: 0;
-}
-
-.search-input {
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: var(--typography-body-sm-size);
-  color: var(--color-ink);
-  width: 200px;
-}
-
-.search-input::placeholder {
-  color: var(--color-stone);
 }
 
 .empty-state {

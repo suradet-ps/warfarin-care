@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Calendar, Search } from 'lucide-vue-next';
+import { Calendar } from 'lucide-vue-next';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import EnrollModal from '#/components/screening/EnrollModal.vue';
 import PatientTable from '#/components/screening/PatientTable.vue';
+import SearchBox from '#/components/shared/SearchBox.vue';
 import { useScreeningStore } from '#/stores/screening.ts';
 
 const store = useScreeningStore();
@@ -82,16 +83,12 @@ watch(
           </div>
         </div>
       </div>
-      <div class="search-box">
-        <Search :size="16" class="search-icon" />
-        <input
-          v-model.trim="store.filters.keyword"
-          type="text"
-          class="search-input"
-          placeholder="ค้นหา HN, ชื่อ, นามสกุล, เบอร์โทร"
-          @keydown.enter.prevent="runSearch()"
-        />
-      </div>
+      <SearchBox
+        v-model.trim="store.filters.keyword"
+        placeholder="ค้นหา HN, ชื่อ, นามสกุล, เบอร์โทร"
+        aria-label="ค้นหาผู้ป่วย"
+        @enter="runSearch()"
+      />
     </div>
 
     <p class="caption helper-text"></p>
@@ -117,10 +114,6 @@ watch(
 .screening-view { display: flex; flex-direction: column; gap: var(--spacing-xl); }
 .page-toolbar { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--spacing-md); flex-wrap: wrap; }
 .toolbar-left { display: flex; align-items: flex-end; gap: var(--spacing-md); flex-wrap: wrap; }
-.search-box { display: flex; align-items: center; gap: var(--spacing-xs); background: var(--color-canvas); border: 1px solid var(--color-hairline-soft); border-radius: var(--rounded-md); padding: var(--spacing-sm) var(--spacing-md); }
-.search-icon { color: var(--color-stone); flex-shrink: 0; }
-.search-input { border: none; outline: none; background: transparent; font-size: var(--typography-body-sm-size); color: var(--color-ink); width: 200px; }
-.search-input::placeholder { color: var(--color-stone); }
 .date-field { display: flex; flex-direction: column; gap: 4px; }
 .date-label { font-size: var(--typography-micro-size); color: var(--color-slate); font-weight: var(--typography-body-sm-medium-weight); }
 .date-input-wrap { position: relative; display: flex; align-items: center; }

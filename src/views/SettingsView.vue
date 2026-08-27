@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   Pill,
   Plus,
-  Search,
   ShieldAlert,
   ShieldCheck,
   ShieldX,
@@ -12,6 +11,7 @@ import {
 } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 import SyncPanel from '#/components/settings/SyncPanel.vue';
+import SearchBox from '#/components/shared/SearchBox.vue';
 import { useSettingsStore } from '#/stores/settings.ts';
 
 const store = useSettingsStore();
@@ -325,15 +325,13 @@ function severityConfig(severity: string) {
               <label class="form-field">
                 <span class="form-label">ค้นหายาใน HOSxP</span>
                 <div class="search-input-group">
-                  <div class="search-input-wrapper">
-                    <Search :size="16" class="search-icon" />
-                    <input
-                      class="input search-input"
-                      v-model="searchKeyword"
-                      placeholder="พิมพ์ชื่อยาหรือรหัสยา..."
-                      @keyup.enter="onSearchKeyword"
-                    />
-                  </div>
+                  <SearchBox
+                    class="search-fill"
+                    v-model="searchKeyword"
+                    placeholder="พิมพ์ชื่อยาหรือรหัสยา..."
+                    aria-label="ค้นหายาใน HOSxP"
+                    @enter="onSearchKeyword"
+                  />
                   <button class="btn btn-primary" @click="onSearchKeyword" :disabled="searchingDrug">
                     {{ searchingDrug ? 'ค้นหา...' : 'ค้นหา' }}
                   </button>
@@ -660,22 +658,7 @@ function severityConfig(severity: string) {
 
 /* Search */
 .search-input-group { display: flex; gap: var(--spacing-xs); }
-.search-input-wrapper {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.search-icon {
-  position: absolute;
-  left: var(--spacing-sm);
-  color: var(--color-stone);
-  pointer-events: none;
-}
-.search-input {
-  padding-left: calc(var(--spacing-sm) + 16px + var(--spacing-xs));
-  width: 100%;
-}
+.search-fill { flex: 1; }
 
 .search-results {
   border: 1px solid var(--color-hairline);
