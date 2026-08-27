@@ -55,7 +55,7 @@ pub struct User {
   pub updated_at: String,
 }
 
-/// Public user DTO — safe to send to the frontend over Tauri IPC.
+/// Public user DTO - safe to send to the frontend over Tauri IPC.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PublicUser {

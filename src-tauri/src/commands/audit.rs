@@ -1,4 +1,4 @@
-//! Audit trail commands — log and query clinical actions.
+//! Audit trail commands - log and query clinical actions.
 
 use tauri::State;
 

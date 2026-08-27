@@ -1,4 +1,4 @@
-//! Patient management commands — enroll, list, detail, status change.
+//! Patient management commands - enroll, list, detail, status change.
 
 use chrono::Utc;
 use tauri::State;
@@ -131,7 +131,7 @@ pub async fn get_patient_detail(
     .map_err(|e| e.to_string())?
     .ok_or_else(|| format!("patient not found: {hn}"))?;
 
-  // Fetch HOSxP demographics — graceful fallback if MySQL is unavailable.
+  // Fetch HOSxP demographics - graceful fallback if MySQL is unavailable.
   let hosxp_info = try_get_hosxp_patient(&state, &hn).await;
 
   // Combine INR from clinic visits (SQLite) as fallback / supplement.

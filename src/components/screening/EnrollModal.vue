@@ -48,7 +48,7 @@ async function handleSubmit() {
   <div class="modal-overlay" @click.self="emit('close')">
     <div class="modal-box card">
       <div class="modal-header">
-        <h3 class="h4">นำเข้าคลินิก — HN {{ hn }}</h3>
+        <h3 class="h4">นำเข้าคลินิก - HN {{ hn }}</h3>
         <button class="btn btn-ghost" style="padding: 4px;" @click="emit('close')"><X :size="18" /></button>
       </div>
 

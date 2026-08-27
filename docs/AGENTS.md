@@ -1,4 +1,4 @@
-# Warfarin Care — Agent Specification
+# Warfarin Care - Agent Specification
 
 ## Project Overview
 
@@ -37,7 +37,7 @@ A Tauri 2.10 (Rust) + Vue 3.5 (TypeScript) + lucide-vue-next desktop application
 
 ### HosXP Tables Used (Read-Only)
 
-#### `opitemrece` — Drug Dispensing Records
+#### `opitemrece` - Drug Dispensing Records
 ```
 hn        VARCHAR  -- hospital number
 vstdate   DATE     -- dispensing date
@@ -46,7 +46,7 @@ qty       DECIMAL  -- quantity dispensed
 unitprice DECIMAL  -- unit price
 ```
 
-#### `drugitems` — Drug Master
+#### `drugitems` - Drug Master
 ```
 icode     VARCHAR  -- drug code
 name      VARCHAR  -- drug full name
@@ -55,7 +55,7 @@ strength  VARCHAR  -- drug strength (e.g. "5 mg")
 units     VARCHAR  -- dispensing unit
 ```
 
-#### `patient` — Patient Demographics
+#### `patient` - Patient Demographics
 ```
 hn        VARCHAR  -- hospital number
 pname     VARCHAR  -- title
@@ -67,7 +67,7 @@ addrpart  VARCHAR
 phone     VARCHAR
 ```
 
-#### `ovst` — Outpatient Visit Records
+#### `ovst` - Outpatient Visit Records
 ```
 hn        VARCHAR
 vn        VARCHAR  -- visit number
@@ -76,7 +76,7 @@ doctor    VARCHAR
 diagtext  VARCHAR
 ```
 
-#### `lab_head` — Lab Order Header (in-house)
+#### `lab_head` - Lab Order Header (in-house)
 ```
 lab_order_number  VARCHAR
 vn                VARCHAR
@@ -86,20 +86,20 @@ report_date       DATE
 department        VARCHAR
 ```
 
-#### `lab_order` — Lab Order Results (in-house)
+#### `lab_order` - Lab Order Results (in-house)
 ```
 lab_order_number  VARCHAR
 lab_items_code    VARCHAR
 lab_order_result  VARCHAR
 ```
 
-#### `lab_items_code` — Lab Item Master
+#### `lab_items_code` - Lab Item Master
 ```
 lab_items_code    VARCHAR
 lab_items_name    VARCHAR
 ```
 
-#### `lab_app_head` — Lab Order Header (external/app)
+#### `lab_app_head` - Lab Order Header (external/app)
 ```
 lab_app_order_number  VARCHAR
 vn                    VARCHAR
@@ -107,7 +107,7 @@ hn                    VARCHAR
 order_date            DATE
 ```
 
-#### `lab_app_order` — Lab Order Results (external/app)
+#### `lab_app_order` - Lab Order Results (external/app)
 ```
 lab_app_order_number  VARCHAR
 lab_items_code        VARCHAR
@@ -131,7 +131,7 @@ lab_order_result      VARCHAR
 
 ### Local SQLite Schema
 
-#### `wf_patients` — Enrolled Warfarin Care Patients
+#### `wf_patients` - Enrolled Warfarin Care Patients
 ```sql
 CREATE TABLE wf_patients (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -150,7 +150,7 @@ CREATE TABLE wf_patients (
 );
 ```
 
-#### `wf_visits` — Warfarin Care Visit Records
+#### `wf_visits` - Warfarin Care Visit Records
 ```sql
 CREATE TABLE wf_visits (
     id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -179,7 +179,7 @@ CREATE TABLE wf_visits (
 );
 ```
 
-#### `wf_dose_history` — Dose Change Log
+#### `wf_dose_history` - Dose Change Log
 ```sql
 CREATE TABLE wf_dose_history (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -196,7 +196,7 @@ CREATE TABLE wf_dose_history (
 );
 ```
 
-#### `wf_appointments` — Appointment Schedule
+#### `wf_appointments` - Appointment Schedule
 ```sql
 CREATE TABLE wf_appointments (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -213,7 +213,7 @@ CREATE TABLE wf_appointments (
 );
 ```
 
-#### `wf_outcomes` — Adverse Events & Outcomes
+#### `wf_outcomes` - Adverse Events & Outcomes
 ```sql
 CREATE TABLE wf_outcomes (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -231,7 +231,7 @@ CREATE TABLE wf_outcomes (
 );
 ```
 
-#### `wf_patient_status_history` — Patient Status Change Log (from 0002 migration)
+#### `wf_patient_status_history` - Patient Status Change Log (from 0002 migration)
 ```sql
 CREATE TABLE wf_patient_status_history (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -244,7 +244,7 @@ CREATE TABLE wf_patient_status_history (
 );
 ```
 
-#### `wf_settings` — Application Settings (key-value store)
+#### `wf_settings` - Application Settings (key-value store)
 ```sql
 CREATE TABLE wf_settings (
     key     TEXT PRIMARY KEY,
@@ -252,7 +252,7 @@ CREATE TABLE wf_settings (
 );
 ```
 
-#### `wf_drug_interactions` — Drug Interaction Rules (from 0006 migration)
+#### `wf_drug_interactions` - Drug Interaction Rules (from 0006 migration)
 ```sql
 CREATE TABLE wf_drug_interactions (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -270,7 +270,7 @@ CREATE TABLE wf_drug_interactions (
 
 ## Application Modules
 
-### Module 1: Screening — Patient Drug Search (`/screening`)
+### Module 1: Screening - Patient Drug Search (`/screening`)
 
 **Purpose:** Query all HosXP patients who have ever received warfarin. Entry point for identifying and enrolling patients into the warfarin clinic.
 
@@ -281,11 +281,11 @@ CREATE TABLE wf_drug_interactions (
 - Checkbox per row → **"นำเข้าคลินิก"** button → enrollment modal
 - Already-enrolled patients marked with a green badge, cannot be re-enrolled
 - Default sort: last dispensing date descending
-- Server-side pagination (Tauri command level) — may return thousands of rows
+- Server-side pagination (Tauri command level) - may return thousands of rows
 
 **Enrollment Modal fields:**
 - Indication (AF, DVT, PE, Mechanical Valve, Other)
-- Target INR range (low / high — defaults 2.0–3.0, adjustable per indication)
+- Target INR range (low / high - defaults 2.0-3.0, adjustable per indication)
 - Enrollment date
 - Enrolled by (staff name)
 - Notes
@@ -305,7 +305,7 @@ CREATE TABLE wf_drug_interactions (
   - ⚪ No recent INR (> 90 days or never)
 - Current warfarin dose (mg/day)
 - Next appointment date + days until / overdue indicator
-- TTR badge (Time in Therapeutic Range, last 6 months) — see Alert Engine
+- TTR badge (Time in Therapeutic Range, last 6 months) - see Alert Engine
 - Quick actions: View Detail, Add Visit, Print Slip
 
 **Alert indicators on dashboard:**
@@ -325,7 +325,7 @@ CREATE TABLE wf_drug_interactions (
 - Name, HN, age, sex, phone (from HosXP `patient`)
 - Indication badge, target INR range, enrollment date
 - Current status badge (active / inactive / deceased / transferred)
-- TTR (%) for last 6 months — displayed prominently
+- TTR (%) for last 6 months - displayed prominently
 
 #### 3b. INR Trend Chart
 - Line chart of all historical INR values over time
@@ -353,12 +353,12 @@ CREATE TABLE wf_drug_interactions (
 - Target INR range (from patient record)
 - Suggested dose adjustment output based on built-in algorithm:
   - If INR in range: maintain dose
-  - If INR slightly low/high (±0.5 of range): ±10–15% adjustment suggestion
-  - If INR significantly out of range: ±20–25% adjustment suggestion
+  - If INR slightly low/high (±0.5 of range): ±10-15% adjustment suggestion
+  - If INR significantly out of range: ±20-25% adjustment suggestion
   - If INR > 4.0: hold recommendation + recheck interval suggestion
   - If INR > 5.0: urgent hold + consider reversal note
 - The calculation engine is a separate Rust module (bring in existing dose calculator logic)
-- Output is a suggestion only — pharmacist/physician confirms before saving
+- Output is a suggestion only - pharmacist/physician confirms before saving
 
 #### 3f. Appointment Timeline
 - Upcoming and past appointments from SQLite `wf_appointments`
@@ -381,13 +381,13 @@ CREATE TABLE wf_drug_interactions (
 
 **Fields:**
 - Visit date (defaults to today)
-- INR value (auto-fetched from HosXP lab — editable if manual entry needed)
+- INR value (auto-fetched from HosXP lab - editable if manual entry needed)
 - INR source indicator (lab_order / lab_app_order / manual)
-- Current dose (mg/day) — auto-filled from last visit record
-- Per-day dose schedule (Mon–Sun table, mg per day — supports alternating dose regimens)
+- Current dose (mg/day) - auto-filled from last visit record
+- Per-day dose schedule (Mon-Sun table, mg per day - supports alternating dose regimens)
 - Dose calculator output (read-only suggestion from Module 3e)
-- New dose (mg/day) — confirmed by pharmacist, defaults to suggestion
-- Per-day new dose schedule (Mon–Sun)
+- New dose (mg/day) - confirmed by pharmacist, defaults to suggestion
+- Per-day new dose schedule (Mon-Sun)
 - Next appointment date
 - Next INR due date
 - Physician name
@@ -411,10 +411,10 @@ CREATE TABLE wf_drug_interactions (
 │  ชื่อ-สกุล: [Name]          HN: [HN]        │
 │  อายุ: [Age]   เพศ: [Sex]   วันที่: [Date]  │
 │  ข้อบ่งชี้: [Indication]                    │
-│  เป้าหมาย INR: [low] – [high]              │
+│  เป้าหมาย INR: [low] - [high]              │
 ├─────────────────────────────────────────────┤
 │  ผล INR วันนี้: [ X.X ]  ←── large display │
-│  (เป้าหมาย: [low]–[high])                  │
+│  (เป้าหมาย: [low]-[high])                  │
 │                                             │
 │  INR ย้อนหลัง 3 ครั้ง:                     │
 │  [Date]: X.X  [Date]: X.X  [Date]: X.X     │
@@ -454,7 +454,7 @@ CREATE TABLE wf_drug_interactions (
 |--------|-------------|
 | Patient Census | Active / inactive / discharged count by period |
 | TTR Summary | Mean TTR across all active patients (Rosendaal method) |
-| INR Distribution | Histogram of all INR values: <1.5, 1.5–2.0, 2.0–3.0, 3.0–4.0, >4.0 |
+| INR Distribution | Histogram of all INR values: <1.5, 1.5-2.0, 2.0-3.0, 3.0-4.0, >4.0 |
 | Adverse Events Log | All recorded events by type and date |
 | Missed Appointments | Patients who missed scheduled visits |
 | Dose Adjustment Frequency | How often doses were changed per visit |
@@ -468,7 +468,7 @@ CREATE TABLE wf_drug_interactions (
 
 - **HosXP MySQL Connection**: host, port, database, username, password, test connection button
 - **Warfarin Drug Codes**: view/edit the 3 icode mappings
-- **Default Target INR Ranges**: per indication (AF: 2–3, Mechanical Valve: 2.5–3.5, etc.)
+- **Default Target INR Ranges**: per indication (AF: 2-3, Mechanical Valve: 2.5-3.5, etc.)
 - **Staff Names**: list for "created by" / "physician" dropdowns
 - **Hospital Name & Logo**: used in printed slips
 - **Cloud Sync (Supabase)**: configure backup/restore, push/pull controls, auto-sync settings (see CLOUD-SYNC.md)
@@ -603,13 +603,13 @@ pub struct DoseSuggestion {
 }
 
 pub fn suggest_dose(current_dose: f64, inr: f64, target_low: f64, target_high: f64) -> DoseSuggestion {
-    // INR in range: maintain, recheck in 28–42 days
-    // INR 0.1–0.5 below low: increase 10%, recheck 14 days
-    // INR > 0.5 below low: increase 15–20%, recheck 7–14 days
-    // INR 0.1–0.5 above high: decrease 10%, recheck 14 days
-    // INR 0.5–1.0 above high: decrease 15–20%, recheck 7 days
-    // INR 4.0–5.0: hold 1 dose, decrease 20–25%, recheck 3–7 days
-    // INR > 5.0: hold, urgent review, recheck 1–3 days
+    // INR in range: maintain, recheck in 28-42 days
+    // INR 0.1-0.5 below low: increase 10%, recheck 14 days
+    // INR > 0.5 below low: increase 15-20%, recheck 7-14 days
+    // INR 0.1-0.5 above high: decrease 10%, recheck 14 days
+    // INR 0.5-1.0 above high: decrease 15-20%, recheck 7 days
+    // INR 4.0-5.0: hold 1 dose, decrease 20-25%, recheck 3-7 days
+    // INR > 5.0: hold, urgent review, recheck 1-3 days
     // Round to nearest 0.5 mg/day practical dose
 }
 ```
@@ -648,27 +648,27 @@ pub fn suggest_dose(current_dose: f64, inr: f64, target_low: f64, target_high: f
 ## Design System
 
 > **`DESIGN.md` is the single source of truth for all visual design decisions.**
-> Read `DESIGN.md` in full before writing any UI code. Use token names from `DESIGN.md` directly — never hardcode hex values, pixel sizes, or shadow strings.
+> Read `DESIGN.md` in full before writing any UI code. Use token names from `DESIGN.md` directly - never hardcode hex values, pixel sizes, or shadow strings.
 
 Key pointers into `DESIGN.md`:
 
-- **Colors** — use the Brand & Accent, Surface, Text, and Semantic token sets. Primary CTA uses `{colors.primary}` (black); `{colors.brand-yellow}` is reserved for the wordmark and promo elements only. For INR status mapping:
+- **Colors** - use the Brand & Accent, Surface, Text, and Semantic token sets. Primary CTA uses `{colors.primary}` (black); `{colors.brand-yellow}` is reserved for the wordmark and promo elements only. For INR status mapping:
   - In range → `{colors.success-accent}` (green)
   - Above/below range → `{colors.brand-coral}` or `{colors.brand-orange-light}` (warning)
   - Critical (INR > 4.0 or < 1.5) → `{colors.brand-red}` / `{colors.brand-red-dark}`
   - No recent data → `{colors.stone}` (muted)
-- **TTR badge** — pill shape (`{rounded.full}`), colored by threshold: ≥65% use `{colors.success-accent}`, 50–64% use `{colors.brand-coral}`, <50% use `{colors.brand-red-dark}`; foreground always `{colors.on-primary}` (white)
-- **Typography** — use Roobert PRO across all surfaces per the type hierarchy table in DESIGN.md (hero-display → body-sm → micro). Apply negative letter-spacing at heading sizes exactly as specified. Button labels use `{typography.button-md}`.
-- **Spacing** — 4px base unit; use named spacing tokens (`{spacing.xs}` through `{spacing.section-lg}`). Card internal padding: `{spacing.xl}` compact, `{spacing.xxl}` feature panels.
-- **Border Radius** — `{rounded.md}` (8px) for inputs; `{rounded.xl}` (16px) for standard cards; `{rounded.xxxl}` (28px) for pastel feature cards; `{rounded.full}` (9999px) for all buttons, pill tabs, and status badges. Never soften button corners.
-- **Borders & Shadows** — `{colors.hairline}` for standard 1px borders; `{colors.hairline-soft}` for table row dividers. Elevation levels 0–4 from the Elevation & Depth section; use Level 2 for content cards, Level 4 for modals.
-- **Buttons** — `button-primary` (black pill) for all primary actions; `button-secondary` (outlined pill) for secondary; `button-ghost` for quiet actions. All buttons use `{rounded.full}`.
-- **Cards** — `card-base` for standard content; `card-feature-coral` / `card-feature-teal` / `card-feature-yellow` for pastel accent panels (e.g. alert summary cards, stat panels).
-- **Badges** — `badge-tag-coral` for warning indicators; `badge-success` for in-range/completed; `badge-tag-purple` for informational. All use `{rounded.full}` and `{typography.caption-bold}`.
-- **Comparison table** — use `comparison-table` + `comparison-row` component specs for the dispensing history and report tables.
-- **Icons** — `lucide-vue-next` exclusively. Size and visual weight should align with surrounding typography scale from DESIGN.md.
-- **Print slip** — `@media print`: `{colors.canvas}` background, `{colors.ink}` text, `{colors.hairline}` table borders, elevation Level 0 (no shadows). Typography follows DESIGN.md scale; no Roobert PRO fallback issues in print since it is a desktop app.
-- **Accessibility** — focus states, contrast ratios, touch target sizes, and interactive state behaviors are defined in DESIGN.md Accessibility section. Follow them for all interactive elements.
+- **TTR badge** - pill shape (`{rounded.full}`), colored by threshold: ≥65% use `{colors.success-accent}`, 50-64% use `{colors.brand-coral}`, <50% use `{colors.brand-red-dark}`; foreground always `{colors.on-primary}` (white)
+- **Typography** - use Roobert PRO across all surfaces per the type hierarchy table in DESIGN.md (hero-display → body-sm → micro). Apply negative letter-spacing at heading sizes exactly as specified. Button labels use `{typography.button-md}`.
+- **Spacing** - 4px base unit; use named spacing tokens (`{spacing.xs}` through `{spacing.section-lg}`). Card internal padding: `{spacing.xl}` compact, `{spacing.xxl}` feature panels.
+- **Border Radius** - `{rounded.md}` (8px) for inputs; `{rounded.xl}` (16px) for standard cards; `{rounded.xxxl}` (28px) for pastel feature cards; `{rounded.full}` (9999px) for all buttons, pill tabs, and status badges. Never soften button corners.
+- **Borders & Shadows** - `{colors.hairline}` for standard 1px borders; `{colors.hairline-soft}` for table row dividers. Elevation levels 0-4 from the Elevation & Depth section; use Level 2 for content cards, Level 4 for modals.
+- **Buttons** - `button-primary` (black pill) for all primary actions; `button-secondary` (outlined pill) for secondary; `button-ghost` for quiet actions. All buttons use `{rounded.full}`.
+- **Cards** - `card-base` for standard content; `card-feature-coral` / `card-feature-teal` / `card-feature-yellow` for pastel accent panels (e.g. alert summary cards, stat panels).
+- **Badges** - `badge-tag-coral` for warning indicators; `badge-success` for in-range/completed; `badge-tag-purple` for informational. All use `{rounded.full}` and `{typography.caption-bold}`.
+- **Comparison table** - use `comparison-table` + `comparison-row` component specs for the dispensing history and report tables.
+- **Icons** - `lucide-vue-next` exclusively. Size and visual weight should align with surrounding typography scale from DESIGN.md.
+- **Print slip** - `@media print`: `{colors.canvas}` background, `{colors.ink}` text, `{colors.hairline}` table borders, elevation Level 0 (no shadows). Typography follows DESIGN.md scale; no Roobert PRO fallback issues in print since it is a desktop app.
+- **Accessibility** - focus states, contrast ratios, touch target sizes, and interactive state behaviors are defined in DESIGN.md Accessibility section. Follow them for all interactive elements.
 
 ---
 
@@ -727,12 +727,12 @@ uuid = { version = "1", features = ["v4", "serde"] }
 
 ```
 warfarin-care/
-├── Cargo.toml                       # [workspace] root — no [workspace.dependencies]
+├── Cargo.toml                       # [workspace] root - no [workspace.dependencies]
 ├── .cargo/config.toml               # ws-check / ws-test / ws-clippy aliases
 ├── .clippy.toml                     # msrv = "1.85"
 ├── rustfmt.toml                     # shared formatting (max_width=100, tab_spaces=2)
 ├── crates/
-│   ├── warfarin-core/               # pure domain logic — NO sqlx, NO tauri
+│   ├── warfarin-core/               # pure domain logic - NO sqlx, NO tauri
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs
@@ -753,7 +753,7 @@ warfarin-care/
 │   │           ├── dispensing.rs
 │   │           ├── outcome.rs       # Adverse events model
 │   │           └── interaction.rs   # Drug interaction model
-│   └── warfarin-db/                 # sqlx data layer — NO tauri
+│   └── warfarin-db/                 # sqlx data layer - NO tauri
 │       ├── Cargo.toml
 │       ├── migrations/              # 0001..0010 SQL migrations (sqlx::migrate!)
 │       └── src/
@@ -761,7 +761,7 @@ warfarin-care/
 │           ├── mysql.rs             # HosXP read-only queries: screening, dispensing, INR
 │           ├── sqlite.rs            # local CRUD, AppState, map_visit_row
 │           └── sync_models.rs       # cloud-sync row types (derive sqlx::FromRow)
-├── src-tauri/                       # thin Tauri wrapper — commands + IPC glue only
+├── src-tauri/                       # thin Tauri wrapper - commands + IPC glue only
 │   ├── Cargo.toml                   # depends on warfarin-core + warfarin-db (path)
 │   └── src/
 │       ├── main.rs
@@ -820,7 +820,7 @@ warfarin-care/
 │   │   │   └── StatusChangeModal.vue
 │   │   ├── visit/
 │   │   │   ├── VisitFormPanel.vue     # side panel visit entry
-│   │   │   └── DayDoseTable.vue       # Mon–Sun per-day dose grid
+│   │   │   └── DayDoseTable.vue       # Mon-Sun per-day dose grid
 │   │   ├── slip/
 │   │   │   └── PhysicianSlip.vue      # printable slip component
 │   │   ├── settings/
@@ -847,20 +847,20 @@ warfarin-care/
 ## Key Business Rules
 
 1. **Three warfarin icodes**: Always query all three (`1600014`, `1600013`, `1600024`) together. Display strength from `drugitems.strength`.
-2. **Dual INR lab source**: Always merge `lab_order` (via `lab_head`) and `lab_app_order` (via `lab_app_head`) for INR code `751`. Deduplicate by date — prefer `lab_order` if both exist on the same date.
+2. **Dual INR lab source**: Always merge `lab_order` (via `lab_head`) and `lab_app_order` (via `lab_app_head`) for INR code `751`. Deduplicate by date - prefer `lab_order` if both exist on the same date.
 3. **HosXP is read-only**: Never write to HosXP MySQL. All clinic data lives in SQLite only.
-4. **Alternating dose regimens**: Warfarin is often prescribed on alternating days (e.g. 5 mg Mon/Wed/Fri, 2.5 mg other days). The dose schedule must support per-day (Mon–Sun) entry.
+4. **Alternating dose regimens**: Warfarin is often prescribed on alternating days (e.g. 5 mg Mon/Wed/Fri, 2.5 mg other days). The dose schedule must support per-day (Mon-Sun) entry.
 5. **TTR ≥ 65%** is the international quality benchmark (AHA/ACC guideline). Flag patients below this threshold.
 6. **Target INR range by indication**:
-   - AF, DVT, PE: 2.0–3.0
-   - Mechanical mitral valve: 2.5–3.5
-   - Mechanical aortic valve (bileaflet): 2.0–3.0
-   - Recurrent VTE on warfarin: 2.5–3.5
+   - AF, DVT, PE: 2.0-3.0
+   - Mechanical mitral valve: 2.5-3.5
+   - Mechanical aortic valve (bileaflet): 2.0-3.0
+   - Recurrent VTE on warfarin: 2.5-3.5
    - These defaults are configurable in Settings
 7. **Buddhist Era display**: Show all dates in Thai format (วัน/เดือน/พ.ศ.) in the UI. Store as ISO 8601 (CE) in SQLite and MySQL.
-8. **Print slip** must be functional offline — all data rendered from SQLite + most recent MySQL INR fetch cached in the visit record.
+8. **Print slip** must be functional offline - all data rendered from SQLite + most recent MySQL INR fetch cached in the visit record.
 9. **INR > 5.0**: Always surface as a critical alert regardless of target range; this is a medical emergency threshold.
-10. **Recheck interval guidance**: After dose change, next INR due date defaults to 7–14 days (configurable per dose change magnitude). After stable INR in range, interval extends to 28–42 days.
+10. **Recheck interval guidance**: After dose change, next INR due date defaults to 7-14 days (configurable per dose change magnitude). After stable INR in range, interval extends to 28-42 days.
 
 ---
 
@@ -871,8 +871,8 @@ warfarin-care/
 - The alert engine runs as a background Tokio task; communicate to frontend via `tauri::Emitter` events
 - INR trend chart: use a charting library that supports SVG export (for potential slip embedding); keep bundle size minimal
 - All dose arithmetic uses `f64` with rounding to nearest 0.5 mg/day practical step
-- The `dose/calculator.rs` module is pure functions with no I/O — fully unit-testable with `#[cfg(test)]`
+- The `dose/calculator.rs` module is pure functions with no I/O - fully unit-testable with `#[cfg(test)]`
 - Server-side pagination in `search_warfarin_patients` Tauri command (limit/offset parameters)
 - Store MySQL credentials using Tauri's OS keychain plugin (`tauri-plugin-stronghold` or `tauri-plugin-os`)
-- **Design tokens**: The canonical INR/TTR color table is `DESIGN.md` §"Semantic — INR Status (Clinical Convention)". A convenience lookup table in §"INR Status Colors (for all components)" mirrors it — keep them in sync.
+- **Design tokens**: The canonical INR/TTR color table is `DESIGN.md` §"Semantic - INR Status (Clinical Convention)". A convenience lookup table in §"INR Status Colors (for all components)" mirrors it - keep them in sync.
 - **Encryption key storage**: The 32-byte AES key is held in the OS keychain (service `warfarin-care`, user `mysql-encryption-key`) via the `keyring` crate. A one-time migration lifts any legacy key stored in `wf_settings` (`encryption_key` row) into the keychain on first run, then deletes the row.

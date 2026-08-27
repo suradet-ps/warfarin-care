@@ -95,9 +95,9 @@ const reportCards = computed(() => [
     rows: inrDist.value
       ? [
           ['< 1.5', `${inrDist.value.lt_1_5}`],
-          ['1.5 – 2.0', `${inrDist.value['1_5_to_2_0']}`],
-          ['2.0 – 3.0', `${inrDist.value['2_0_to_3_0']}`],
-          ['3.0 – 4.0', `${inrDist.value['3_0_to_4_0']}`],
+          ['1.5 - 2.0', `${inrDist.value['1_5_to_2_0']}`],
+          ['2.0 - 3.0', `${inrDist.value['2_0_to_3_0']}`],
+          ['3.0 - 4.0', `${inrDist.value['3_0_to_4_0']}`],
           ['> 4.0', `${inrDist.value.gt_4_0}`],
         ]
       : [],

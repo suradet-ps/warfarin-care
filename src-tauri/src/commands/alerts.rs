@@ -1,4 +1,4 @@
-//! Alert engine command — evaluates all active patients for clinical alerts.
+//! Alert engine command - evaluates all active patients for clinical alerts.
 
 use chrono::{NaiveDate, Utc};
 use tauri::State;
@@ -52,7 +52,7 @@ pub async fn get_patient_alerts(state: State<'_, AppState>) -> Result<Vec<Patien
           patient_name: display_name.clone(),
           alert_type: "critical_high_inr".to_string(),
           severity: "critical".to_string(),
-          message: format!("INR สูงวิกฤต {inr:.1} — เสี่ยงเลือดออกรุนแรง"),
+          message: format!("INR สูงวิกฤต {inr:.1} - เสี่ยงเลือดออกรุนแรง"),
           value: Some(inr),
           date: Some(rec.date.clone()),
         });
@@ -72,7 +72,7 @@ pub async fn get_patient_alerts(state: State<'_, AppState>) -> Result<Vec<Patien
           patient_name: display_name.clone(),
           alert_type: "critical_low_inr".to_string(),
           severity: "critical".to_string(),
-          message: format!("INR ต่ำวิกฤต {inr:.1} (< 1.5) — เสี่ยงลิ่มเลือด"),
+          message: format!("INR ต่ำวิกฤต {inr:.1} (< 1.5) - เสี่ยงลิ่มเลือด"),
           value: Some(inr),
           date: Some(rec.date.clone()),
         });
@@ -83,7 +83,7 @@ pub async fn get_patient_alerts(state: State<'_, AppState>) -> Result<Vec<Patien
           alert_type: "inr_above_range".to_string(),
           severity: "warning".to_string(),
           message: format!(
-            "INR {inr:.1} สูงกว่าเป้าหมาย ({:.1}–{:.1})",
+            "INR {inr:.1} สูงกว่าเป้าหมาย ({:.1}-{:.1})",
             patient.target_inr_low, patient.target_inr_high
           ),
           value: Some(inr),
@@ -96,7 +96,7 @@ pub async fn get_patient_alerts(state: State<'_, AppState>) -> Result<Vec<Patien
           alert_type: "inr_below_range".to_string(),
           severity: "warning".to_string(),
           message: format!(
-            "INR {inr:.1} ต่ำกว่าเป้าหมาย ({:.1}–{:.1})",
+            "INR {inr:.1} ต่ำกว่าเป้าหมาย ({:.1}-{:.1})",
             patient.target_inr_low, patient.target_inr_high
           ),
           value: Some(inr),

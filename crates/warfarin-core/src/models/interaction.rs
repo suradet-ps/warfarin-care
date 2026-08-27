@@ -104,7 +104,7 @@ pub const INTERACTION_TYPES: [InteractionType; 2] = [INTERACTION_INCREASE, INTER
 /// A medication currently prescribed to a patient.
 ///
 /// Used as input to the interaction checker. Only the fields needed
-/// for matching are included — no I/O or runtime coupling.
+/// for matching are included - no I/O or runtime coupling.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PatientMedication {

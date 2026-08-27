@@ -61,7 +61,7 @@ pub async fn init_pool(db_path: PathBuf) -> Result<SqlitePool> {
 }
 
 /// Ensures the enriched columns exist on `wf_drug_interactions` and the
-/// audit trail table exists. Safe to call on every startup — no-ops if
+/// audit trail table exists. Safe to call on every startup - no-ops if
 /// already present. This prevents panics on existing DBs where sqlx
 /// migration 0013 was recorded as complete but only partially applied.
 async fn ensure_interaction_columns(pool: &SqlitePool) -> Result<()> {

@@ -16,8 +16,8 @@ use crate::models::interaction::{DrugInteraction, Interaction, PatientMedication
 ///
 /// # Arguments
 ///
-/// * `patient_medications` — drugs currently prescribed to the patient.
-/// * `interaction_rules` — the full set of known warfarin interaction
+/// * `patient_medications` - drugs currently prescribed to the patient.
+/// * `interaction_rules` - the full set of known warfarin interaction
 ///   definitions (loaded from `wf_drug_interactions`).
 ///
 /// # Examples
@@ -277,7 +277,7 @@ mod tests {
     let meds = vec![make_med("123", "Amiodarone"), make_med("123", "Amiodarone")];
     let rules = vec![make_rule("123", "Amiodarone", "major", "increase")];
     let result = check(&meds, &rules);
-    // Both medications match the rule — both produce an interaction.
+    // Both medications match the rule - both produce an interaction.
     assert_eq!(result.len(), 2);
   }
 

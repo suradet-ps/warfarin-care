@@ -1,4 +1,4 @@
-//! Visit management commands — save, query, and dose suggestion.
+//! Visit management commands - save, query, and dose suggestion.
 
 use tauri::State;
 

@@ -5,7 +5,7 @@ const KEY_SIZE: usize = 32;
 
 /// A well-known application constant used as the master key for
 /// `encrypt_value` / `decrypt_value`. The actual secret entropy comes from
-/// the `machine_id` passed as the encryptman *context* parameter — matching
+/// the `machine_id` passed as the encryptman *context* parameter - matching
 /// the same security model as the old HKDF-based derivation where the salt
 /// and info were also public constants.
 const APP_MASTER_KEY: [u8; KEY_SIZE] = [

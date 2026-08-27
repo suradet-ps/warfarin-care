@@ -160,7 +160,7 @@ onMounted(() => {
           <div class="header-item">
             <span class="caption header-label">เป้าหมาย INR</span>
             <span class="body-sm-medium">
-              {{ patientDetail.patient.targetInrLow.toFixed(1) }}–{{ patientDetail.patient.targetInrHigh.toFixed(1) }}
+              {{ patientDetail.patient.targetInrLow.toFixed(1) }}-{{ patientDetail.patient.targetInrHigh.toFixed(1) }}
             </span>
           </div>
           <div class="header-item">

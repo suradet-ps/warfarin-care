@@ -74,7 +74,7 @@ const filteredVisits = () => {
 };
 
 onMounted(() => {
-  // Refresh both the list and the sidebar badge together — they share the
+  // Refresh both the list and the sidebar badge together - they share the
   // same WHERE clause on the backend, so they must always agree. The count
   // store is only updated on writes (save / approve / edit) and at app
   // start, so without this it can go stale against the live list.

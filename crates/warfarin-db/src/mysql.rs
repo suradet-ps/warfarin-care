@@ -701,7 +701,7 @@ pub async fn get_dispensing_history(config: &DbConfig, hn: &str) -> Result<Vec<D
 pub async fn get_inr_history(config: &DbConfig, hn: &str) -> Result<Vec<InrRecord>> {
   let pool = create_pool(config).await?;
 
-  // In-house lab — follows the same join pattern as the TB project reference query.
+  // In-house lab - follows the same join pattern as the TB project reference query.
   let inhouse_rows = sqlx::query(
     r"
         SELECT

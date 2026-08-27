@@ -13,7 +13,7 @@ name = "warfarin_db"
 # Shared domain models + pure helpers (dose parsing, pill summaries, etc.).
 warfarin-core = { path = "../warfarin-core" }
 
-# Database drivers. Runtime queries only — no DATABASE_URL is needed at
+# Database drivers. Runtime queries only - no DATABASE_URL is needed at
 # compile time for either MySQL (HOSxP) or the local SQLite store.
 sqlx = { version = "0.9", features = ["mysql", "sqlite", "runtime-tokio", "chrono", "macros"] }
 

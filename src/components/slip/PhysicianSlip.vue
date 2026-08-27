@@ -255,7 +255,7 @@ function daysFromNow(dateStr: string | null): string {
         </tr>
         <tr>
           <td><span class="label">ข้อบ่งชี้</span>{{ p.indication || '-' }}</td>
-          <td><span class="label">เป้าหมาย INR</span>{{ p.targetInrLow.toFixed(1) }}–{{ p.targetInrHigh.toFixed(1) }}</td>
+          <td><span class="label">เป้าหมาย INR</span>{{ p.targetInrLow.toFixed(1) }}-{{ p.targetInrHigh.toFixed(1) }}</td>
           <td><span class="label">TTR 6 เดือน</span><span :class="ttrClass(ttr)">{{ ttr != null ? ttr.toFixed(0) + '%' : '-' }}</span></td>
           <td><span class="label">การรับประทานยา</span>{{ adherenceLabel[props.visit.adherence ?? ''] ?? '-' }}</td>
         </tr>

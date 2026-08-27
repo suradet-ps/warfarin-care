@@ -1,6 +1,6 @@
 //! Dose suggestion and TTR calculation for warfarin clinic.
 //!
-//! All functions are pure with no I/O — fully unit-testable.
+//! All functions are pure with no I/O - fully unit-testable.
 
 use crate::models::visit::DoseSuggestion;
 
@@ -79,21 +79,21 @@ fn round_to_half_mg(value: f64) -> f64 {
 ///
 /// The decision tree uses **deltas from the patient's target range**, not
 /// hard-coded population thresholds. This is critical: a patient with a
-/// mechanical mitral valve (target 2.5–3.5) and INR = 3.2 must be
+/// mechanical mitral valve (target 2.5-3.5) and INR = 3.2 must be
 /// considered "in range", not "above 3.0" as it would be with absolute
 /// thresholds.
 ///
 /// | Relation to target            | Adjustment | Urgency | Recheck |
 /// |-------------------------------|------------|---------|---------|
-/// | Within `[target_low, target_high]` | 0%        | normal  | 28–42 d |
+/// | Within `[target_low, target_high]` | 0%        | normal  | 28-42 d |
 /// | > 1.0 above `target_high`     | -20%       | urgent  | 3 d     |
-/// | 0.5–1.0 above `target_high`   | -15%       | caution | 7 d     |
+/// | 0.5-1.0 above `target_high`   | -15%       | caution | 7 d     |
 /// | < 0.5 above `target_high`     | -10%       | caution | 14 d    |
-/// | 0.5–1.0 above `target_high` AND INR ≥ 5.0 | hold 1–2d + Vit K, -20% | hold | 3–5 d |
-/// | INR ≥ 5.0 with `target_high < 4.0` | hold + Vit K | hold | 3–5 d |
-/// | 0.5–1.0 below `target_low`    | +10%       | caution | 14 d    |
-/// | > 1.0 below `target_low`      | +20%       | urgent  | 7–14 d  |
-/// | INR < 1.5 (any target)        | +20%       | urgent  | 7–14 d  |
+/// | 0.5-1.0 above `target_high` AND INR ≥ 5.0 | hold 1-2d + Vit K, -20% | hold | 3-5 d |
+/// | INR ≥ 5.0 with `target_high < 4.0` | hold + Vit K | hold | 3-5 d |
+/// | 0.5-1.0 below `target_low`    | +10%       | caution | 14 d    |
+/// | > 1.0 below `target_low`      | +20%       | urgent  | 7-14 d  |
+/// | INR < 1.5 (any target)        | +20%       | urgent  | 7-14 d  |
 #[must_use]
 pub fn suggest_dose(
   current_dose_weekly: f64,
@@ -101,7 +101,7 @@ pub fn suggest_dose(
   target_low: f64,
   target_high: f64,
 ) -> DoseSuggestion {
-  // Guard against invalid ranges. Fall back to the most common 2.0–3.0.
+  // Guard against invalid ranges. Fall back to the most common 2.0-3.0.
   // Treats any inversion or non-finite value as "use defaults" rather than
   // trying to repair one side and leaving the other unrepaired.
   let (target_low, target_high) = if target_low.is_finite()
@@ -204,14 +204,14 @@ pub fn suggest_dose(
 /// interpolation method.
 ///
 /// # Arguments
-/// * `inr_records` — slice of `(date_str, inr_value)` pairs, any order.
-/// * `target_low` — lower bound of therapeutic range.
-/// * `target_high` — upper bound of therapeutic range.
-/// * `window_days` — only consider INR readings within this many days from today.
+/// * `inr_records` - slice of `(date_str, inr_value)` pairs, any order.
+/// * `target_low` - lower bound of therapeutic range.
+/// * `target_high` - upper bound of therapeutic range.
+/// * `window_days` - only consider INR readings within this many days from today.
 ///   Pass `u32::MAX` to use all available data.
 ///
 /// # Returns
-/// TTR as a percentage (0.0 – 100.0), or `None` if there are fewer than 2
+/// TTR as a percentage (0.0 - 100.0), or `None` if there are fewer than 2
 /// readings in the window.
 #[must_use]
 pub fn calculate_ttr(
@@ -354,7 +354,7 @@ mod tests {
 
   #[test]
   fn suggest_dose_in_range_returns_no_change() {
-    // Patient target 2.0-3.0, INR 2.5 — in range.
+    // Patient target 2.0-3.0, INR 2.5 - in range.
     let result = suggest_dose(35.0, 2.5, 2.0, 3.0);
     assert_eq!(result.adjustment_percent, 0.0);
     assert_eq!(result.urgency, "normal");
@@ -364,7 +364,7 @@ mod tests {
 
   #[test]
   fn suggest_dose_just_above_target_decreases_10_percent() {
-    // Patient target 2.0-3.0, INR 3.3 — 0.3 above high → -10%.
+    // Patient target 2.0-3.0, INR 3.3 - 0.3 above high → -10%.
     let result = suggest_dose(35.0, 3.3, 2.0, 3.0);
     assert_eq!(result.adjustment_percent, -10.0);
     assert_eq!(result.urgency, "caution");
@@ -551,7 +551,7 @@ mod tests {
 
   #[test]
   fn ttr_half_in_range_returns_approximately_50() {
-    // Days 1–7: INR interpolates 2.0→4.0, passes through 3.0 at midpoint.
+    // Days 1-7: INR interpolates 2.0→4.0, passes through 3.0 at midpoint.
     // Days in range: those where interpolated INR <= 3.0.
     let records = vec![
       ("2024-01-01".to_string(), 2.0),

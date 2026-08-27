@@ -1,4 +1,4 @@
-//! Screening command — queries `HOSxP` warfarin dispensing records.
+//! Screening command - queries `HOSxP` warfarin dispensing records.
 //!
 //! When `MySQL` is not configured this falls back to an empty response so the UI
 //! remains functional.  The `HOSxP` `MySQL` integration is in `warfarin_db::mysql`.

@@ -9,7 +9,7 @@ use warfarin_db::sqlite::{AppState, get_active_patients, get_outcome_counts_by_h
 
 /// Calculates TTR (Rosendaal method) for a single patient over a given window.
 ///
-/// `window_days` — 0 means all-time.
+/// `window_days` - 0 means all-time.
 #[tauri::command]
 pub async fn calculate_ttr(
   hn: String,

@@ -117,7 +117,7 @@ function getDayHeaderColor(dayIndex: number): string {
         <div v-for="line in option.total_pills_summary.pill_lines" :key="line.mg" class="summary-line">
           <PillVisual :mg="line.mg" />
           <span>{{ line.mg }}mg: {{ line.dispensed_count }} เม็ด</span>
-          <span v-if="line.usage_note" class="usage-note">— {{ line.usage_note }}</span>
+          <span v-if="line.usage_note" class="usage-note">- {{ line.usage_note }}</span>
         </div>
       </div>
       <span v-else class="no-pills">ไม่ต้องจ่ายยา</span>

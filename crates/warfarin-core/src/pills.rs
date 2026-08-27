@@ -14,7 +14,7 @@ use crate::models::visit::{
 };
 
 /// Decompose a single-day dose (in mg) into a list of pill pieces.
-/// Each piece is `(strength, is_half)` — `is_half = false` means a whole
+/// Each piece is `(strength, is_half)` - `is_half = false` means a whole
 /// pill, `true` means half a pill of that strength. The algorithm searches
 /// the small combination space (whole/half of 2/3/5 mg) for the combination
 /// that (a) sums to the prescribed dose in 0.5 mg steps, and (b) uses the
@@ -23,7 +23,7 @@ use crate::models::visit::{
 /// Pill strengths follow AGENTS.md (2 mg, 3 mg, 5 mg). Any dose that is
 /// not a multiple of 0.5 mg (e.g. 4.7 mg) is rounded to the nearest 0.5.
 /// Doses that are still unrepresentable with these pieces (e.g. 0.5 mg
-/// exactly — there's no 1 mg pill to half) are skipped.
+/// exactly - there's no 1 mg pill to half) are skipped.
 // `dose_mg` is a warfarin daily dose (≤ ~15 mg), so `round()` yields a small
 // integer that fits `i32` without truncation.
 #[allow(clippy::cast_possible_truncation)]
@@ -112,7 +112,7 @@ fn h_count(strength: u8, h5: i32, h3: i32, h2: i32) -> usize {
 }
 
 /// Pure pill-tally: given a list of per-day doses in mg, return the total
-/// (whole, half) count per pill strength. Pure function — no I/O — so the
+/// (whole, half) count per pill strength. Pure function - no I/O - so the
 /// caller (`calculate_pills_summary`) handles the date range and the unit
 /// tests can target the algorithm directly.
 #[must_use]

@@ -222,7 +222,7 @@ const xTicks = computed(() => {
           ล่าสุด: {{ formatThaiDate(displayRecords[displayRecords.length - 1]?.date) }} · แสดงย้อนหลัง 1 ปี
         </p>
       </div>
-      <span class="badge badge-success">เป้าหมาย {{ targetLow.toFixed(1) }}–{{ targetHigh.toFixed(1) }}</span>
+      <span class="badge badge-success">เป้าหมาย {{ targetLow.toFixed(1) }}-{{ targetHigh.toFixed(1) }}</span>
     </div>
 
     <div v-if="!displayRecords.length" class="trend-empty card">
@@ -298,7 +298,7 @@ const xTicks = computed(() => {
             stroke="var(--color-canvas)"
             stroke-width="2"
             class="trend-point"
-            :aria-label="`INR ${point.value.toFixed(2)} วันที่ ${point.date} — ${point.status === 'in_range' ? 'อยู่ในเป้าหมาย' : point.status === 'above' ? 'สูงกว่าเป้าหมาย' : point.status === 'below' ? 'ต่ำกว่าเป้าหมาย' : 'วิกฤต'}`"
+            :aria-label="`INR ${point.value.toFixed(2)} วันที่ ${point.date} - ${point.status === 'in_range' ? 'อยู่ในเป้าหมาย' : point.status === 'above' ? 'สูงกว่าเป้าหมาย' : point.status === 'below' ? 'ต่ำกว่าเป้าหมาย' : 'วิกฤต'}`"
           />
         </g>
 

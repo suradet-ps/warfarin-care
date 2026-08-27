@@ -1,15 +1,15 @@
-# Warfarin Care Design System — v2.0
+# Warfarin Care Design System - v2.0
 
 ## Overview
 
-Warfarin Care is a Tauri desktop application for managing anticoagulation therapy. The visual identity is built around a **layered pink heart** — a three-ring pink heart icon rendered at every brand touchpoint. The entire color system is derived from the primary brand pink `#EC4899`, with semantic and INR-status palettes tuned for clinical precision and WCAG AA+ compliance.
+Warfarin Care is a Tauri desktop application for managing anticoagulation therapy. The visual identity is built around a **layered pink heart** - a three-ring pink heart icon rendered at every brand touchpoint. The entire color system is derived from the primary brand pink `#EC4899`, with semantic and INR-status palettes tuned for clinical precision and WCAG AA+ compliance.
 
 **Design Principles:**
-- Pink heart icon as the sole brand mark — appears in sidebar logo, splash screen, and print header
+- Pink heart icon as the sole brand mark - appears in sidebar logo, splash screen, and print header
 - Three-layer pink heart with `stroke-width: 12` and opacity layers (100% / 60% / 30%) giving visual depth
 - All accent colors derived from pink: teal (complementary), coral (analogue), yellow (split-complementary)
 - INR status colors follow clinical convention: green = safe zone, yellow = warning, red = critical
-- Noto Sans Thai as primary typeface — supports full Thai script without dependency on external commercial fonts
+- Noto Sans Thai as primary typeface - supports full Thai script without dependency on external commercial fonts
 - Contrast ratios verified against WCAG 2.1 AA (4.5:1 normal text, 3:1 large text)
 
 ---
@@ -30,12 +30,12 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 | `{colors.pink-300}` | `#F9A8D4` | Heart third ring (30% opacity fill) | n/a (transparency) |
 | `{colors.pink-100}` | `#FCE7F3` | Pastel pink surface tint | n/a (background) |
 | `{colors.pink-50}` | `#FDF2F8` | Softest pink wash | n/a (background) |
-| `{colors.teal-600}` | `#0D9488` | ~~Replaced~~ | — |
-| `{colors.teal-500}` | `#14B8A6` | ~~Replaced~~ | — |
+| `{colors.teal-600}` | `#0D9488` | ~~Replaced~~ | - |
+| `{colors.teal-500}` | `#14B8A6` | ~~Replaced~~ | - |
 | `{colors.teal-100}` | `#CCFBF1` | ~~Replaced~~ | n/a (background) |
-| `{colors.purple-700}` | `#6D28D9` | ~~Replaced~~ | — |
-| `{colors.purple-600}` | `#7C3AED` | ~~Replaced~~ | — |
-| `{colors.purple-500}` | `#8B5CF6` | ~~Replaced~~ | — |
+| `{colors.purple-700}` | `#6D28D9` | ~~Replaced~~ | - |
+| `{colors.purple-600}` | `#7C3AED` | ~~Replaced~~ | - |
+| `{colors.purple-500}` | `#8B5CF6` | ~~Replaced~~ | - |
 | `{colors.purple-100}` | `#EDE9FE` | ~~Replaced~~ | n/a (background) |
 | `{colors.coral-500}` | `#F97316` | Warning/analogue accent | AAA (4.57:1) |
 | `{colors.coral-100}` | `#FFEDD5` | Coral pastel surface | n/a (background) |
@@ -61,13 +61,13 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 | `{colors.ink}` | `#1A1A2E` | AAA (13.2:1) |
 | `{colors.charcoal}` | `#2D2D3A` | AAA (12.9:1) |
 | `{colors.slate}` | `#5A5A72` | AA (5.0:1) |
-| `{colors.steel}` | `#8A8A9C` | AA (3.1:1) — large text only |
-| `{colors.stone}` | `#A1A1AA` | AA (3.5:1) — large text only |
-| `{colors.muted}` | `#D0D0D8` | Fail — decorative only |
+| `{colors.steel}` | `#8A8A9C` | AA (3.1:1) - large text only |
+| `{colors.stone}` | `#A1A1AA` | AA (3.5:1) - large text only |
+| `{colors.muted}` | `#D0D0D8` | Fail - decorative only |
 | `{colors.on-dark}` | `#FFFFFF` | n/a (dark surfaces) |
 | `{colors.on-dark-muted}` | `rgba(255,255,255,0.7)` | n/a (dark surfaces) |
 
-### Semantic — INR Status (Clinical Convention)
+### Semantic - INR Status (Clinical Convention)
 
 | Token | Hex | Meaning | Contrast on White |
 |---|---|---|---|
@@ -79,26 +79,26 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 | `{colors.inr-high-bg}` | `#FEE2E2` | Above range tint | n/a |
 | `{colors.inr-critical}` | `#991B1B` | INR > 5.0 or < 1.5 | AAA on white |
 | `{colors.inr-critical-bg}` | `#FEE2E2` | Critical tint | n/a |
-| `{colors.inr-none}` | `#A1A1AA` | No recent INR data | AA (3.5:1) — large text only |
+| `{colors.inr-none}` | `#A1A1AA` | No recent INR data | AA (3.5:1) - large text only |
 | `{colors.inr-none-bg}` | `#F4F4F5` | No data tint | n/a |
 | `{colors.success}` | `#059669` | Generic success / in-range |
 | `{colors.warning}` | `#D97706` | Generic warning |
 | `{colors.danger}` | `#DC2626` | Generic danger / error |
 
-### Semantic — TTR Badge
+### Semantic - TTR Badge
 
 | Token | Hex | Meaning |
 |---|---|---|
-| `{colors.ttr-good}` | `#34D399` | TTR ≥ 65% — ฟ้าอ่อน/เขียวอ่อน ✅ |
-| `{colors.ttr-warn}` | `#FBBF24` | TTR 50–64% — ส้มอ่อน/เหลือง |
-| `{colors.ttr-bad}` | `#F87171` | TTR < 50% — แดงอ่อน |
+| `{colors.ttr-good}` | `#34D399` | TTR ≥ 65% - ฟ้าอ่อน/เขียวอ่อน ✅ |
+| `{colors.ttr-warn}` | `#FBBF24` | TTR 50-64% - ส้มอ่อน/เหลือง |
+| `{colors.ttr-bad}` | `#F87171` | TTR < 50% - แดงอ่อน |
 
 ---
 
 ## Typography
 
 ### Font Family
-**Noto Sans Thai** — Primary typeface for all UI surfaces. Supports full Thai script with proper line breaking. Fallback chain: `'Noto Sans Thai', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif`.
+**Noto Sans Thai** - Primary typeface for all UI surfaces. Supports full Thai script with proper line breaking. Fallback chain: `'Noto Sans Thai', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif`.
 
 > If Thai diacritics appear broken, ensure the OS has Noto Sans Thai installed or that the Google Fonts import in `design-tokens.css` loads successfully.
 
@@ -207,7 +207,7 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 ## Components
 
 ### Heart Brand Mark
-**`heart-logo`** — Three-ring pink heart with shadow.
+**`heart-logo`** - Three-ring pink heart with shadow.
 - Size: 40×40px (sidebar), scalable
 - Stroke: `#EC4899`, `stroke-width: 12`, `stroke-linecap/join: round`
 - Three concentric hearts at 100% / 60% / 30% opacity
@@ -247,10 +247,10 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 
 ### INR Status Colors (for all components)
 
-> **Canonical reference: "Semantic — INR Status (Clinical Convention)" above (lines 71–87).**
+> **Canonical reference: "Semantic - INR Status (Clinical Convention)" above (lines 71-87).**
 > Every INR status surface (in-range badge, below/above-range chip, critical alert pill, trend chart point, slip print colour) MUST use those tokens. Do not introduce a second palette.
 >
-> Quick status → token lookup (kept for convenience only — if a token is renamed, update both places):
+> Quick status → token lookup (kept for convenience only - if a token is renamed, update both places):
 >
 > | Status | Color Token | Background Token |
 > |---|---|---|
@@ -293,7 +293,7 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 | Text | `{colors.ink}` |
 | Borders | `{colors.hairline}` 1px |
 | Shadows | Level 0 (none) |
-| Font | Noto Sans Thai (desktop app — always available) |
+| Font | Noto Sans Thai (desktop app - always available) |
 
 ---
 
@@ -330,7 +330,7 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 - **ARIA Labels**: All interactive elements must have `aria-label` or `aria-labelledby`. Navigation must have `aria-label="เมนูหลัก"`.
 - **Focus Management**: When a slide panel opens, focus must move to the first focusable element inside. When it closes, focus returns to the trigger element.
 - **Keyboard Navigation**: All actions must be completable via keyboard. Tab order must be logical. Escape closes modals and panels.
-- **Color Contrast**: Minimum 4.5:1 for normal text, 3:1 for large text. Never rely on color alone to convey information — always pair with text or icon.
+- **Color Contrast**: Minimum 4.5:1 for normal text, 3:1 for large text. Never rely on color alone to convey information - always pair with text or icon.
 
 ### Dose Unit Consistency
 - All dose displays MUST include units: `mg/วัน` (per day) or `mg/สัปดาห์` (per week).
@@ -353,14 +353,14 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 - Use pastel pink surfaces (`{colors.pink-50}`, `{colors.pink-100}`) for feature panels
 - Reserve `{colors.coral-500}` for warning/analogue accents
 - All interactive elements must be 44px+ touch target
-- Use `{rounded.full}` on ALL buttons, badges, and pills — never soften corners
+- Use `{rounded.full}` on ALL buttons, badges, and pills - never soften corners
 
 ### Don't
 - Don't use the old Miro yellow brand colors (`brand-yellow`, `brand-coral` from v1.x)
-- Don't use `{colors.pink-600}` directly for text on white — it fails AA for body text; use for icon strokes and borders only
+- Don't use `{colors.pink-600}` directly for text on white - it fails AA for body text; use for icon strokes and borders only
 - Don't apply heavy shadows to table rows or form inputs (Level 0 only)
-- Don't use `brand-coral` token — replace with `coral-500` or `coral-100`
-- Don't use `brand-pink` or `brand-teal` token names — use color scale tokens
+- Don't use `brand-coral` token - replace with `coral-500` or `coral-100`
+- Don't use `brand-pink` or `brand-teal` token names - use color scale tokens
 
 ---
 
@@ -368,7 +368,7 @@ Warfarin Care is a Tauri desktop application for managing anticoagulation therap
 
 | Old Token | New Token |
 |---|---|
-| `{colors.brand-yellow}` | Not used — reserved for print header accent only |
+| `{colors.brand-yellow}` | Not used - reserved for print header accent only |
 | `{colors.brand-coral}` | `{colors.coral-500}` |
 | `{colors.coral-light}` | `{colors.coral-100}` |
 | `{colors.brand-teal}` | `{colors.teal-600}` |

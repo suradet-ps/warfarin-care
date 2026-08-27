@@ -25,7 +25,7 @@ type SqliteFut<'a, T> = Pin<Box<dyn std::future::Future<Output = Result<T, Strin
 /// batch-fetched existence map. The `apply` closure encapsulates the
 /// per-table SQL: it receives the existing local `updated_at` (or `None` if
 /// the row is new) and returns the number of rows affected. The closure is
-/// also responsible for the "stale row" check — returning `Ok(0)` when the
+/// also responsible for the "stale row" check - returning `Ok(0)` when the
 /// remote row is older than the local copy counts as a conflict.
 #[allow(clippy::too_many_arguments)]
 async fn pull_table<T, F>(
@@ -92,7 +92,7 @@ const LAST_SYNC_AT_KEY: &str = "last_sync_at";
 
 /// Allowlist of table names that can be passed into `ensure_sync_ids` and other
 /// dynamic-table SQL builders. The Rust compiler cannot verify that the table
-/// parameter is one of these — we match on it explicitly in every helper that
+/// parameter is one of these - we match on it explicitly in every helper that
 /// takes `table: &str`.
 const SYNC_TABLES: &[&str] = &[
   "wf_patients",
@@ -436,7 +436,7 @@ pub async fn test_supabase_connection(
   let client = supabase_client();
 
   // Probe `wf_patients?limit=1` directly. Supabase's `/rest/v1/` root is
-  // service_role-only, so it always rejects anon keys with 401 — using it
+  // service_role-only, so it always rejects anon keys with 401 - using it
   // as a "connection test" gave false negatives. The table probe works with
   // anon keys when RLS allows SELECT, and PostgREST returns a structured
   // JSON error body whose `code` / `message` we can use to tell the user
@@ -461,7 +461,7 @@ pub async fn test_supabase_connection(
   }
 
   // PostgREST returns `42P01` when the relation doesn't exist. Treat this as
-  // a "connected but not yet set up" signal — distinct from a bad anon key.
+  // a "connected but not yet set up" signal - distinct from a bad anon key.
   if status.as_u16() == 404 || body.contains("42P01") || body.contains("does not exist") {
     return Ok(ConnectionTestResult {
       ok: false,
@@ -486,7 +486,7 @@ pub async fn test_supabase_connection(
     return Ok(ConnectionTestResult {
       ok: false,
       message: format!(
-        "ไม่มีสิทธิ์เข้าถึงตาราง wf_patients — ตรวจสอบ RLS policy ใน Supabase (HTTP 403). รายละเอียด: {preview}"
+        "ไม่มีสิทธิ์เข้าถึงตาราง wf_patients - ตรวจสอบ RLS policy ใน Supabase (HTTP 403). รายละเอียด: {preview}"
       ),
       status_code,
     });
@@ -986,7 +986,7 @@ async fn pull_table_patients(
   Ok((pulled, conflicts))
 }
 
-// Per-table INSERT helpers — keep the SQL column lists next to the row struct
+// Per-table INSERT helpers - keep the SQL column lists next to the row struct
 // they reference for easy auditing when the schema changes.
 
 async fn insert_patient(pool: &sqlx::SqlitePool, row: &WfPatientSync) -> Result<u64, String> {

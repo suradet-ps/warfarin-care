@@ -1,11 +1,11 @@
 /* ========================================================
-   DESIGN TOKENS — Warfarin Care v2.0
-   Pink Heart Theme — Source of truth: DESIGN.md
+   DESIGN TOKENS - Warfarin Care v2.0
+   Pink Heart Theme - Source of truth: DESIGN.md
    NEVER hardcode hex values or px sizes outside this file
    ======================================================== */
 
 :root {
-  /* Brand — Pink Scale */
+  /* Brand - Pink Scale */
   --color-pink-900: #831843;
   --color-pink-700: #BE185D;
   --color-pink-600: #EC4899;
@@ -20,11 +20,11 @@
   --color-on-primary: #FFFFFF;
   --color-primary-pressed: #831843;
 
-  /* Brand — Coral (warm analogue) */
+  /* Brand - Coral (warm analogue) */
   --color-coral-500: #F97316;
   --color-coral-100: #FFEDD5;
 
-  /* Brand — Yellow (split-complementary) */
+  /* Brand - Yellow (split-complementary) */
   --color-yellow-500: #EAB308;
   --color-yellow-100: #FEF9C3;
 
@@ -48,7 +48,7 @@
   --color-on-dark:    #FFFFFF;
   --color-on-dark-muted: rgba(255,255,255,0.7);
 
-  /* Semantic — INR Status */
+  /* Semantic - INR Status */
   --color-inr-safe:       #059669;
   --color-inr-safe-bg:    #D1FAE5;
   --color-inr-low:        #D97706;
@@ -59,17 +59,17 @@
   --color-inr-none:       #A1A1AA;
   --color-inr-none-bg:    #F4F4F5;
 
-  /* Semantic — TTR Badge */
+  /* Semantic - TTR Badge */
   --color-ttr-good:  #34D399;
   --color-ttr-warn:  #FBBF24;
   --color-ttr-bad:   #F87171;
 
-  /* Semantic — General */
+  /* Semantic - General */
   --color-success:  #059669;
   --color-warning:  #D97706;
   --color-danger:   #DC2626;
 
-  /* Typography — Thai-capable system font stack.
+  /* Typography - Thai-capable system font stack.
      Replaces the previous Google Fonts `@import` to keep the app fully
      offline-capable and CSP-clean (no third-party origin). The first
      entry is a system-installed Thai font on each major OS; the generic
@@ -80,7 +80,7 @@
   --font-family-mono: "SF Mono", "JetBrains Mono", "Fira Code", Menlo,
                        Consolas, monospace;
 
-  /* Pill — Warfarin Strength */
+  /* Pill - Warfarin Strength */
   --color-pill-2mg:  #FED7AA;
   --color-pill-2mg-text: #9A3412;
   --color-pill-3mg:  #BFDBFE;

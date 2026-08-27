@@ -9,7 +9,7 @@
 //!
 //! Every public function that returns `Result` propagates `sqlx::Error`
 //! (connection, query, or row-decode failures) and, where JSON columns are
-//! decoded, `serde_json::Error` — both wrapped in `anyhow::Error`. That
+//! decoded, `serde_json::Error` - both wrapped in `anyhow::Error`. That
 //! contract is uniform across the crate, so per-function `# Errors`
 //! sections would only duplicate this note. `clippy::missing_errors_doc`
 //! is therefore relaxed at the crate level; functions whose error behaviour

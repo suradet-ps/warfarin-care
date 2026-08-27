@@ -89,7 +89,7 @@ onMounted(() => {
     </div>
 
     <div class="calc-range body-sm">
-      เป้าหมาย INR: <strong>{{ targetLow.toFixed(1) }}–{{ targetHigh.toFixed(1) }}</strong>
+      เป้าหมาย INR: <strong>{{ targetLow.toFixed(1) }}-{{ targetHigh.toFixed(1) }}</strong>
     </div>
 
     <button class="btn btn-primary" @click="calculateSuggestion" :disabled="loading || currentDose === null || currentInr === null">

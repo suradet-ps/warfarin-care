@@ -1,4 +1,4 @@
-//! Slip export commands — persist generated PDF output for the printable slip view.
+//! Slip export commands - persist generated PDF output for the printable slip view.
 
 use anyhow::{Context, Result};
 use std::{

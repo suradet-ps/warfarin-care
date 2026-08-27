@@ -1,4 +1,4 @@
-## Cloud Sync — Supabase Backup & Restore (`/settings` → Sync tab)
+## Cloud Sync - Supabase Backup & Restore (`/settings` → Sync tab)
 
 ### Overview
 
@@ -7,7 +7,7 @@ Supabase (PostgreSQL) serves as a cloud backup and sync layer, enabling the appl
 to be installed on multiple machines without requiring them to share the same network.
 
 ```text
-[Machine A — Ward]                [Machine B — OPD]
+[Machine A - Ward]                [Machine B - OPD]
   SQLite ──────────┐              SQLite ──────────┐
   (local data)     ▼              (local data)     ▼
               Supabase PostgreSQL (Cloud)
@@ -41,9 +41,9 @@ The Rust backend encrypts the key with AES-256-GCM before writing it to disk.
 
 | Data | Storage | Encrypted? | Reason |
 |---|---|---|---|
-| Supabase anon key | `tauri-plugin-store` | YES — AES-256-GCM | API credential — must not be readable in plain text on disk |
+| Supabase anon key | `tauri-plugin-store` | YES - AES-256-GCM | API credential - must not be readable in plain text on disk |
 | Supabase project URL | `tauri-plugin-store` | No | Not a secret; URL alone cannot be abused |
-| HosXP MySQL password | `tauri-plugin-store` | YES — AES-256-GCM | Already encrypted in existing implementation; keep consistent |
+| HosXP MySQL password | `tauri-plugin-store` | YES - AES-256-GCM | Already encrypted in existing implementation; keep consistent |
 | `machine_id` | `tauri-plugin-store` | No | Random UUID, not sensitive |
 | `last_pull_at` | `tauri-plugin-store` | No | ISO timestamp, not sensitive |
 | SQLite clinical data | SQLite file on disk | Out of scope | OS-level file permissions are acceptable for an internal hospital tool |
@@ -56,25 +56,25 @@ decrypt:  read store → base64 decode → split nonce | ciphertext → AES-256-
 ```
 
 The 256-bit AES key is **derived from `machine_id` + a static app salt** baked into
-the binary. This is deterministic — no extra key file needs to be stored or managed.
+the binary. This is deterministic - no extra key file needs to be stored or managed.
 
 ---
 
 ### New Dependencies (add to existing `Cargo.toml`)
 
 ```toml
-# Add to [dependencies] — some required crates are already present (see below)
+# Add to [dependencies] - some required crates are already present (see below)
 reqwest = { version = "0.12", features = ["json"] }
 uuid    = { version = "1",    features = ["v4", "serde"] }
 ```
 
 **Already present** (do NOT add again):
-- `tauri-plugin-store` — for credentials storage
-- `aes-gcm` — for encryption
-- `rand` — for random bytes
-- `base64` — for encoding
-- `serde` / `serde_json` — for serialization
-- `chrono` — for timestamps
+- `tauri-plugin-store` - for credentials storage
+- `aes-gcm` - for encryption
+- `rand` - for random bytes
+- `base64` - for encoding
+- `serde` / `serde_json` - for serialization
+- `chrono` - for timestamps
 - `sqlx` with `sqlite`, `runtime-tokio`, `chrono`, `macros`
 - `tokio` with `full`
 
@@ -82,7 +82,7 @@ uuid    = { version = "1",    features = ["v4", "serde"] }
 
 ### SQLite Schema Changes
 
-Add sync fields via a **new migration** — do NOT modify any existing migration files:
+Add sync fields via a **new migration** - do NOT modify any existing migration files:
 
 ```sql
 -- migrations/YYYYMMDDHHMMSS_add_sync_fields.sql
@@ -264,7 +264,7 @@ CREATE TABLE wf_patient_status_history (
 CREATE INDEX idx_wf_patient_status_history_hn_effective_date
     ON wf_patient_status_history (hn, effective_date DESC, sync_id DESC);
 
--- RLS: allow anon key full access (internal hospital tool — no user isolation needed)
+-- RLS: allow anon key full access (internal hospital tool - no user isolation needed)
 ALTER TABLE wf_patients                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wf_visits                  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wf_dose_history           ENABLE ROW LEVEL SECURITY;
@@ -288,14 +288,14 @@ CREATE POLICY "anon_all" ON wf_patient_status_history FOR ALL TO anon USING (tru
 
 ```text
 src-tauri/src/
-├── encrypt.rs                # 📝 EXTEND — add encrypt_value/decrypt_value with machine_id-derived key
+├── encrypt.rs                # 📝 EXTEND - add encrypt_value/decrypt_value with machine_id-derived key
 ├── commands/
 │   ├── mod.rs                # 📝 add `pub mod sync;` export
-│   ├── sync.rs               # 🆕 new — all 5 sync commands
+│   ├── sync.rs               # 🆕 new - all 5 sync commands
 │   └── ...existing...
 ├── models/
 │   ├── mod.rs                # 📝 add `pub mod sync;` export
-│   └── sync.rs               # 🆕 new — WfPatientSync + 4 equivalents + SyncResult + SyncStatus
+│   └── sync.rs               # 🆕 new - WfPatientSync + 4 equivalents + SyncResult + SyncStatus
 ├── dose/
 │   └── ...existing...
 ├── db/
@@ -305,10 +305,10 @@ src-tauri/src/
 src/
 ├── stores/
 │   ├── mod.ts                # 📝 add `export * from './sync'` if needed
-│   └── sync.ts               # 🆕 new — useSyncStore
+│   └── sync.ts               # 🆕 new - useSyncStore
 ├── components/
 │   └── settings/
-│       └── SyncPanel.vue     # 🆕 new — config form + manual controls
+│       └── SyncPanel.vue     # 🆕 new - config form + manual controls
 ├── views/
 │   └── SettingsView.vue     # 📝 add Sync tab (new tabbed section)
 ├── router/
@@ -428,7 +428,7 @@ mod sync_tests {
 use serde::{Deserialize, Serialize};
 
 /// Sync-safe projection of wf_patients.
-/// Contains only columns that exist in Supabase — the local INTEGER `id` is excluded.
+/// Contains only columns that exist in Supabase - the local INTEGER `id` is excluded.
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct WfPatientSync {
     pub sync_id:         Option<String>,
@@ -1104,7 +1104,7 @@ pub async fn pull_from_supabase(
         if affected > 0 {
             result.pulled += 1;
         } else {
-            result.conflicts += 1; // local version was newer — correctly skipped
+            result.conflicts += 1; // local version was newer - correctly skipped
         }
     }
 
@@ -1400,7 +1400,7 @@ export const useSyncStore = defineStore('sync', () => {
     }
   }
 
-  /** Push first, then pull — ensures local writes reach the cloud before
+  /** Push first, then pull - ensures local writes reach the cloud before
    *  remote changes are applied to avoid unnecessary conflicts. */
   async function sync(): Promise<void> {
     await push()
@@ -1431,7 +1431,7 @@ export const useSyncStore = defineStore('sync', () => {
 
 ---
 
-### Settings UI — Sync Tab (SyncPanel.vue layout spec)
+### Settings UI - Sync Tab (SyncPanel.vue layout spec)
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -1440,7 +1440,7 @@ export const useSyncStore = defineStore('sync', () => {
 │  Project URL                                         │
 │  [https://xxxxxxxxxxxx.supabase.co              ]    │
 │                                                      │
-│  Anon Key  (encrypted on disk — write-only)          │
+│  Anon Key  (encrypted on disk - write-only)          │
 │  [••••••••••••••••••••••••••••••••          👁]     │
 │                                                      │
 │  [ Test Connection ]   ✅ Connected                  │
@@ -1448,7 +1448,7 @@ export const useSyncStore = defineStore('sync', () => {
 ├──────────────────────────────────────────────────────┤
 │  Sync Status                                         │
 │   Pending upload  : 4 records                      │
-│   Last sync       : 14:32 — 8 May 2026            │
+│   Last sync       : 14:32 - 8 May 2026            │
 │   Machine ID      : a3f7…c2d1  (this device)       │
 │                                                      │
 │  [ ⬆ Push to Cloud ]     [ ⬇ Pull from Cloud ]      │
@@ -1458,7 +1458,7 @@ export const useSyncStore = defineStore('sync', () => {
 ```
 
 The anon key field uses `type="password"` with a toggle eye icon.
-**Once saved, the frontend never receives the raw key back** — the Rust command
+**Once saved, the frontend never receives the raw key back** - the Rust command
 returns only a boolean. On subsequent Settings loads the input shows a fixed
 masked placeholder (`••••••••••••••••••••••`) to indicate a key is stored.
 
@@ -1467,14 +1467,14 @@ masked placeholder (`•••••••••••••••••••�
 ### Register in `lib.rs`
 
 ```rust
-// In .setup() — generate machine_id on first launch (before any command runs)
+// In .setup() - generate machine_id on first launch (before any command runs)
 let store = app.handle().store("config.json")?;
 if store.get("machine_id").is_none() {
     store.set("machine_id", uuid::Uuid::new_v4().to_string());
     store.save()?;
 }
 
-// In .invoke_handler() — add alongside existing commands
+// In .invoke_handler() - add alongside existing commands
 tauri::generate_handler![
     // ...existing commands...
     commands::sync::save_supabase_config,
@@ -1487,22 +1487,22 @@ tauri::generate_handler![
 
 ---
 
-### Business Rules — Cloud Sync
+### Business Rules - Cloud Sync
 
-1. **HosXP MySQL data is never synced** to Supabase — only SQLite clinical records.
+1. **HosXP MySQL data is never synced** to Supabase - only SQLite clinical records.
 2. **`sync_id` (UUID v4) is the cross-machine merge key.** The local INTEGER `id` is never sent to Supabase. Generated by Rust (uuid crate) on INSERT if NULL.
 3. **Soft delete only.** Set `deleted_at` to a timestamp; never issue a hard `DELETE` on either SQLite or Supabase.
 4. **Sync includes soft-deleted records.** When pushing, records with `deleted_at IS NOT NULL` are also sent so other machines apply the deletion.
 5. **Conflict resolution: Last Write Wins** based on `updated_at`. The side with the newer timestamp wins; ties keep the local version.
 6. **Incremental pull.** Fetch only records where `updated_at > last_pull_at` to keep payloads small.
 7. **Supabase anon key is encrypted at rest** with AES-256-GCM. The encryption key is derived from `machine_id` + static app salt. The plain-text key is never written to disk or emitted to the frontend after the initial save.
-8. **Supabase URL is stored as plain text** — it is not a secret and encryption adds no security benefit.
+8. **Supabase URL is stored as plain text** - it is not a secret and encryption adds no security benefit.
 9. **`machine_id`** is a UUID v4 generated once at first launch, stored plain-text. It identifies the source machine and is used as AES key derivation input.
 10. **Offline-first.** The application is fully functional without an internet connection. Sync is a non-blocking, optional feature and must never prevent the app from launching or recording visits.
 11. **Auto-sync order: push first, then pull.** This ensures local writes reach the cloud before remote changes are applied, minimising spurious conflicts.
 12. **Anon key is write-only from the UI.** Once saved, the Settings panel shows only a masked placeholder. The raw key is decrypted solely inside the Rust backend at the moment a sync command executes.
 13. **`synced_at` is a local-only column** and is never included in the Supabase schema or in any JSON payload sent to the API.
-14. **`dose_detail`, `new_dose_detail`, `side_effects` stored as TEXT** (JSON string) in both SQLite and Supabase — not JSONB, matching AGENTS.md schema.
+14. **`dose_detail`, `new_dose_detail`, `side_effects` stored as TEXT** (JSON string) in both SQLite and Supabase - not JSONB, matching AGENTS.md schema.
 15. **`dose_changed` is INTEGER** (0 or 1), matching AGENTS.md `INTEGER DEFAULT 0`.
 
 ---
@@ -1515,13 +1515,13 @@ Complete steps in this exact order:
 - [ ] 2. **EXTEND** `src-tauri/src/encrypt.rs` with `encrypt_value` / `decrypt_value` (machine_id-derived key) + `sync_tests` module
 - [ ] 2a. Add `pub mod sync;` to `src-tauri/src/models/mod.rs`
 - [ ] 2b. Add `pub mod sync;` to `src-tauri/src/commands/mod.rs`
-- [ ] 3. Add SQLite migration `migrations/YYYYMMDDHHMMSS_add_sync_fields.sql` — includes `sync_id`, `machine_id`, `synced_at`, `deleted_at`, `updated_at` for all five tables
-- [ ] 4. Create `src-tauri/src/models/sync.rs` — `WfPatientSync` + `WfVisitSync` + `WfDoseHistorySync` + `WfAppointmentSync` + `WfOutcomeSync` + `SyncResult` + `SyncStatus`
-- [ ] 5. Create `src-tauri/src/commands/sync.rs` — all five commands (`save_supabase_config`, `test_supabase_connection`, `push_to_supabase`, `pull_from_supabase`, `get_sync_status`)
+- [ ] 3. Add SQLite migration `migrations/YYYYMMDDHHMMSS_add_sync_fields.sql` - includes `sync_id`, `machine_id`, `synced_at`, `deleted_at`, `updated_at` for all five tables
+- [ ] 4. Create `src-tauri/src/models/sync.rs` - `WfPatientSync` + `WfVisitSync` + `WfDoseHistorySync` + `WfAppointmentSync` + `WfOutcomeSync` + `SyncResult` + `SyncStatus`
+- [ ] 5. Create `src-tauri/src/commands/sync.rs` - all five commands (`save_supabase_config`, `test_supabase_connection`, `push_to_supabase`, `pull_from_supabase`, `get_sync_status`)
 - [ ] 6. Register sync commands and machine_id init block in `lib.rs` (`.setup()` + `.invoke_handler()`)
-- [ ] 7. Create `scripts/supabase_schema.sql` — run once in Supabase SQL Editor
-- [ ] 8. Create `src/stores/sync.ts` — `useSyncStore` with `saveConfig`, `testConnection`, `push`, `pull`, `sync`, `refreshStatus`, `startAutoSync`
-- [ ] 9. Create `src/components/settings/SyncPanel.vue` — config form + manual controls
-- [ ] 10. Add Sync tab to `src/views/SettingsView.vue` — integrate SyncPanel
+- [ ] 7. Create `scripts/supabase_schema.sql` - run once in Supabase SQL Editor
+- [ ] 8. Create `src/stores/sync.ts` - `useSyncStore` with `saveConfig`, `testConnection`, `push`, `pull`, `sync`, `refreshStatus`, `startAutoSync`
+- [ ] 9. Create `src/components/settings/SyncPanel.vue` - config form + manual controls
+- [ ] 10. Add Sync tab to `src/views/SettingsView.vue` - integrate SyncPanel
 - [ ] 11. Import and call `syncStore.refreshStatus()` and `syncStore.startAutoSync(10)` in `src/App.vue` `onMounted`
 - [ ] 12. Show pending-count badge on the Settings icon in `src/components/layout/AppSidebar.vue` when `syncStore.info.pending_count > 0`

@@ -1,7 +1,7 @@
 [package]
 name = "warfarin-care"
 version = "2.3.0"
-description = "Warfarin Care — Clinic Management System"
+description = "Warfarin Care - Clinic Management System"
 authors = ["Suradet Pratomsak"]
 edition = "2024"
 license = "MIT"
@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# Workspace crates — pure logic + data access. Tauri coupling stays in this
+# Workspace crates - pure logic + data access. Tauri coupling stays in this
 # crate only; never add `tauri` as a dependency of `crates/*`.
 warfarin-core = { path = "../crates/warfarin-core" }
 warfarin-db = { path = "../crates/warfarin-db" }

@@ -138,7 +138,7 @@ pub fn hash_password(plaintext: &str) -> Result<String, String> {
 /// Verifies a plaintext password against a stored PHC-formatted Argon2id hash.
 ///
 /// Returns `Ok(true)` on a match, `Ok(false)` on a clean mismatch, and an
-/// `Err` only when the stored hash is malformed (treat as a hard failure — do
+/// `Err` only when the stored hash is malformed (treat as a hard failure - do
 /// not silently accept).
 ///
 /// # Errors

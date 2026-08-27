@@ -259,7 +259,7 @@ pub async fn get_patient_drug_interactions(
 /// interaction rules and returns matching interactions sorted by severity.
 ///
 /// Uses the pure `check()` function from `warfarin-core`. The core never
-/// touches the database — this command loads the rules from `SQLite` and
+/// touches the database - this command loads the rules from `SQLite` and
 /// the patient's medications from `MySQL`, then passes both to the checker.
 #[tauri::command]
 pub async fn check_patient_interactions(

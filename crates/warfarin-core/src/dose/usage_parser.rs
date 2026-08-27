@@ -278,7 +278,7 @@ fn normalize_usage_text(input: &str) -> String {
 
   text = text
     .replace([',', ';', '(', ')', '\n', '\t'], " ")
-    .replace(['-', '–', '—'], " - ")
+    .replace(['-', '-', '-'], " - ")
     .replace("ถึง", " ถึง ")
     .replace("to", " to ")
     .replace("thru", " thru ")

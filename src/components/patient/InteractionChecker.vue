@@ -113,7 +113,7 @@ onMounted(() => {
         aria-live="assertive"
       >
         <ShieldX :size="20" />
-        <span class="body-sm-medium">มียาที่ห้ามใช้ร่วมกับ Warfarin — ตรวจสอบก่อนบันทึก</span>
+        <span class="body-sm-medium">มียาที่ห้ามใช้ร่วมกับ Warfarin - ตรวจสอบก่อนบันทึก</span>
       </div>
 
       <div class="interaction-list">

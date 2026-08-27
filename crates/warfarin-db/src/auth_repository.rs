@@ -42,7 +42,7 @@ pub async fn user_count(pool: &SqlitePool) -> Result<i64> {
 }
 
 /// Looks up a user by username (case-insensitive via `COLLATE NOCASE` on the
-/// column's `UNIQUE` index is not enforced — we trim/normalize at the service
+/// column's `UNIQUE` index is not enforced - we trim/normalize at the service
 /// layer and rely on the `UNIQUE` constraint to catch duplicates on insert).
 pub async fn find_by_username(pool: &SqlitePool, username: &str) -> Result<Option<User>> {
   let row = sqlx::query(
