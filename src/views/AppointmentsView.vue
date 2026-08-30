@@ -123,9 +123,11 @@ const stats = computed(() => ({
 const NO_PHONE_LABEL = 'ไม่มีเบอร์โทรในระบบ';
 const HAS_DIGIT = /\d/;
 
-function phoneDisplay(phone?: string | null): string {
-  const value = phone?.trim() ?? '';
-  return HAS_DIGIT.test(value) ? value : NO_PHONE_LABEL;
+function phoneDisplay(phone?: string | null, informTel?: string | null): string {
+  const values = [phone, informTel]
+    .map((value) => value?.trim() ?? '')
+    .filter((value) => HAS_DIGIT.test(value));
+  return values.length > 0 ? values.join(', ') : NO_PHONE_LABEL;
 }
 
 const reportRows = computed<AppointmentDayRow[]>(() =>
@@ -136,7 +138,7 @@ const reportRows = computed<AppointmentDayRow[]>(() =>
       hn: appointment.hn,
       statusText: appointmentTimingText(appointment.apptDate),
       lastVisitDate: summary?.lastVisitDate ? formatThaiDate(summary.lastVisitDate) : '-',
-      phone: phoneDisplay(summary?.hosxpInfo.phone),
+      phone: phoneDisplay(summary?.hosxpInfo.phone, summary?.hosxpInfo.informTel),
       notes: appointment.notes?.trim() || '-',
     };
   }),
@@ -309,7 +311,7 @@ onMounted(() => {
                   }}</span>
                 </td>
                 <td><span class="body-sm">{{ appointmentTimingText(appointment.apptDate) }}</span></td>
-                <td><span class="body-sm">{{ phoneDisplay(patientMap.get(appointment.hn)?.hosxpInfo.phone) }}</span></td>
+                <td><span class="body-sm">{{ phoneDisplay(patientMap.get(appointment.hn)?.hosxpInfo.phone, patientMap.get(appointment.hn)?.hosxpInfo.informTel) }}</span></td>
                 <td><span class="caption section-meta">{{ appointment.notes || '-' }}</span></td>
               </tr>
             </tbody>
