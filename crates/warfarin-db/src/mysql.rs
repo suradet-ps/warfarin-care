@@ -281,7 +281,7 @@ fn build_screening_query<'a>(
 pub async fn get_hosxp_patient(config: &DbConfig, hn: &str) -> Result<Option<HosxpPatient>> {
   let pool = create_pool(config).await?;
   let row = sqlx::query(
-    "SELECT hn, pname, fname, lname, birthday, sex, informaddr, hometel FROM patient WHERE hn = ? LIMIT 1",
+    "SELECT hn, pname, fname, lname, birthday, sex, informaddr, hometel, informtel FROM patient WHERE hn = ? LIMIT 1",
   )
   .bind(hn)
   .fetch_optional(&pool)
@@ -297,6 +297,7 @@ pub async fn get_hosxp_patient(config: &DbConfig, hn: &str) -> Result<Option<Hos
     sex: r.try_get("sex").unwrap_or_else(|_| "U".to_string()),
     addrpart: r.try_get("informaddr").ok(),
     phone: r.try_get("hometel").ok(),
+    inform_tel: r.try_get("informtel").ok(),
   }))
 }
 
@@ -309,7 +310,7 @@ async fn get_hosxp_patients_by_hns_with_pool(
   }
 
   let mut query = QueryBuilder::<MySql>::new(
-    "SELECT hn, pname, fname, lname, birthday, sex, informaddr, hometel FROM patient WHERE hn IN (",
+    "SELECT hn, pname, fname, lname, birthday, sex, informaddr, hometel, informtel FROM patient WHERE hn IN (",
   );
   {
     let mut separated = query.separated(", ");
@@ -338,6 +339,7 @@ async fn get_hosxp_patients_by_hns_with_pool(
           sex: r.try_get("sex").unwrap_or_else(|_| "U".to_string()),
           addrpart: r.try_get("informaddr").ok(),
           phone: r.try_get("hometel").ok(),
+          inform_tel: r.try_get("informtel").ok(),
         };
         (patient.hn.clone(), patient)
       })

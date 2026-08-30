@@ -14,8 +14,9 @@ use warfarin_db::{
   mysql::{get_dispensing_history, get_hosxp_patient},
   sqlite::{
     AppState, enroll_patient as db_enroll, get_active_patients as db_get_active,
-    get_inr_from_visits, get_latest_visit_dose_by_hns, get_patient_by_hn, get_pending_appointments,
-    get_visit_history, update_patient_status as db_update_status,
+    get_inr_from_visits, get_latest_visit_dates_by_hns, get_latest_visit_dose_by_hns,
+    get_patient_by_hn, get_pending_appointments, get_visit_history,
+    update_patient_status as db_update_status,
   },
 };
 
@@ -60,6 +61,9 @@ pub async fn get_active_patient_summaries(
   let latest_dose_by_hn = get_latest_visit_dose_by_hns(&state.pool, &hns)
     .await
     .unwrap_or_default();
+  let latest_visit_date_by_hn = get_latest_visit_dates_by_hns(&state.pool, &hns)
+    .await
+    .unwrap_or_default();
   let today = Utc::now().date_naive().format("%Y-%m-%d").to_string();
 
   let mut summaries = Vec::with_capacity(patients.len());
@@ -83,6 +87,7 @@ pub async fn get_active_patient_summaries(
     );
     let current_dose_mgday = latest_dose_by_hn.get(&patient.hn).copied().flatten();
     let next_appointment = find_next_appointment(&appointments, &patient.hn, &today);
+    let last_visit_date = latest_visit_date_by_hn.get(&patient.hn).cloned();
 
     summaries.push(ActivePatientSummary {
       hosxp_info: hosxp_map
@@ -97,12 +102,14 @@ pub async fn get_active_patient_summaries(
           sex: "U".to_string(),
           addrpart: None,
           phone: None,
+          inform_tel: None,
         }),
       patient,
       latest_inr,
       current_dose_mgday,
       ttr6months,
       next_appointment,
+      last_visit_date,
     });
   }
 
@@ -226,6 +233,7 @@ async fn try_get_hosxp_patient(state: &AppState, hn: &str) -> HosxpPatient {
     sex: "U".to_string(),
     addrpart: None,
     phone: None,
+    inform_tel: None,
   }
 }
 

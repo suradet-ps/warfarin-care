@@ -29,6 +29,8 @@ pub struct HosxpPatient {
   pub sex: String,
   pub addrpart: Option<String>,
   pub phone: Option<String>,
+  /// Secondary contact number from `HOSxP` `patient.informtel`.
+  pub inform_tel: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,6 +85,8 @@ pub struct ActivePatientSummary {
   pub current_dose_mgday: Option<f64>,
   pub ttr6months: Option<f64>,
   pub next_appointment: Option<String>,
+  /// Most recent clinic visit date from `wf_visits`, if any.
+  pub last_visit_date: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

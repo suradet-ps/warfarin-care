@@ -27,6 +27,7 @@ export interface HosxpPatient {
   sex: string;
   addrpart?: string;
   phone?: string;
+  informTel?: string;
 }
 
 export interface PatientDrugRecord {
@@ -76,4 +77,5 @@ export interface ActivePatientSummary {
   currentDoseMgday?: number;
   ttr6months?: number | null;
   nextAppointment?: string;
+  lastVisitDate?: string;
 }
