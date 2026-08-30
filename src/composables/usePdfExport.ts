@@ -114,35 +114,89 @@ interface ImageSlice {
   heightPx: number;
 }
 
+const CLEAN_ROW_RGB_THRESHOLD = 240;
+const CLEAN_ROW_MAX_NON_WHITE_RATIO = 0.005;
+const CLEAN_ROW_SAMPLE_STEP = 4;
+const BOUNDARY_SNAP_CAP_PX = 160;
+const RGBA_BYTES_PER_PIXEL = 4;
+const MIN_CUT_GAP_PX = 1;
+
+/**
+ * Scans upward from the ideal page cut for the nearest scanline that is
+ * background-only (falls inside the padding band between table rows). Placing
+ * the cut there keeps table rows intact across PDF pages.
+ */
+function findCleanSliceBoundary(
+  context: CanvasRenderingContext2D,
+  imageWidth: number,
+  idealY: number,
+): number {
+  const minScanY = Math.max(0, idealY - BOUNDARY_SNAP_CAP_PX);
+  for (let y = idealY - 1; y >= minScanY; y -= 1) {
+    const { data } = context.getImageData(0, y, imageWidth, 1);
+    let nonWhite = 0;
+    let samples = 0;
+    for (let x = 0; x < data.length; x += CLEAN_ROW_SAMPLE_STEP * RGBA_BYTES_PER_PIXEL) {
+      samples += 1;
+      const isNonWhite =
+        data[x] < CLEAN_ROW_RGB_THRESHOLD ||
+        data[x + 1] < CLEAN_ROW_RGB_THRESHOLD ||
+        data[x + 2] < CLEAN_ROW_RGB_THRESHOLD;
+      if (isNonWhite) {
+        nonWhite += 1;
+      }
+    }
+    if (samples > 0 && nonWhite / samples <= CLEAN_ROW_MAX_NON_WHITE_RATIO) {
+      return y;
+    }
+  }
+  return idealY;
+}
+
 function sliceImage(image: HTMLImageElement, pageCount: number): ImageSlice[] {
-  const sliceHeight = image.naturalHeight / pageCount;
-  const canvas = document.createElement('canvas');
-  canvas.width = image.naturalWidth;
-  const context = canvas.getContext('2d');
-  if (!context) {
+  const fullCanvas = document.createElement('canvas');
+  fullCanvas.width = image.naturalWidth;
+  fullCanvas.height = image.naturalHeight;
+  const fullContext = fullCanvas.getContext('2d');
+  if (!fullContext) {
     throw new Error('canvas 2d context unavailable');
   }
+  fullContext.drawImage(image, 0, 0);
 
-  const slices: ImageSlice[] = [];
-  for (let page = 0; page < pageCount; page += 1) {
-    const sourceY = Math.round(page * sliceHeight);
-    const currentSliceHeight = Math.min(Math.round(sliceHeight), image.naturalHeight - sourceY);
-    // Resizing the canvas clears it, so only the current slice is drawn.
-    canvas.height = currentSliceHeight;
+  // Start from equal-height cuts, then snap each cut upward to the nearest
+  // background-only scanline so table rows are never split across pages.
+  const cuts: number[] = [];
+  for (let page = 1; page < pageCount; page += 1) {
+    const idealY = Math.round((image.naturalHeight * page) / pageCount);
+    const previous = cuts.at(-1) ?? 0;
+    const snapped = findCleanSliceBoundary(fullContext, image.naturalWidth, idealY);
+    cuts.push(Math.max(snapped, previous + MIN_CUT_GAP_PX));
+  }
+
+  const starts = [0, ...cuts];
+  const ends = [...cuts, image.naturalHeight];
+  return starts.map((start, index) => {
+    const heightPx = ends[index] - start;
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = heightPx;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('canvas 2d context unavailable');
+    }
     context.drawImage(
       image,
       0,
-      sourceY,
+      start,
       image.naturalWidth,
-      currentSliceHeight,
+      heightPx,
       0,
       0,
       image.naturalWidth,
-      currentSliceHeight,
+      heightPx,
     );
-    slices.push({ dataUrl: canvas.toDataURL('image/png'), heightPx: currentSliceHeight });
-  }
-  return slices;
+    return { dataUrl: canvas.toDataURL('image/png'), heightPx };
+  });
 }
 
 /**
