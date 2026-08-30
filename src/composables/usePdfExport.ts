@@ -32,6 +32,14 @@ function captureElementImage(element: HTMLElement): Promise<string> {
     pixelRatio: Math.max(window.devicePixelRatio, 2),
     width: Math.round(rect.width),
     height: Math.round(rect.height),
+    // The capture target is parked off-screen (position: fixed;
+    // left: -9999px) so it stays out of the visible layout. html-to-image
+    // clones the element at its computed position, so without this override
+    // the content renders outside the canvas and the PDF comes out blank.
+    style: {
+      left: '0',
+      top: '0',
+    },
   });
 }
 
