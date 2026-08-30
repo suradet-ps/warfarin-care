@@ -143,7 +143,11 @@ const reportRows = computed<AppointmentDayRow[]>(() =>
 );
 
 const reportCapture = ref<HTMLElement | null>(null);
-const { exporting: exportingPdf, error: pdfError, exportPdf } = usePdfExport(reportCapture);
+const {
+  exporting: exportingPdf,
+  error: pdfError,
+  exportPdf,
+} = usePdfExport(reportCapture, '.report-page');
 
 const canExportPdf = computed(() => reportRows.value.length > 0 && Boolean(reportCapture.value));
 
