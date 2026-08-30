@@ -1,6 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { toPng } from 'html-to-image';
+
+type CaptureOptions = Parameters<typeof toPng>[1];
+
 import jsPDF from 'jspdf';
 import { nextTick, type Ref, ref } from 'vue';
 import { getCssVar } from '#/utils/clinic.ts';
@@ -26,12 +29,32 @@ async function waitForStableCapture(): Promise<void> {
 async function captureElementImage(element: HTMLElement): Promise<string> {
   const backgroundColor = getCssVar('--color-canvas') || 'white';
   const rect = element.getBoundingClientRect();
+  const options: CaptureOptions = {
+    backgroundColor,
+    cacheBust: true,
+    pixelRatio: Math.max(window.devicePixelRatio, 2),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+    // The capture target is parked off-screen (position: fixed;
+    // left: -9999px) so it stays out of the visible layout. html-to-image
+    // clones the element at its computed position, so place the clone at
+    // the canvas origin; keeping the copied `position: fixed` renders the
+    // content outside the canvas and the PDF comes out blank.
+    style: {
+      position: 'absolute',
+      left: '0',
+      top: '0',
+      margin: '0',
+    },
+  };
 
-  // The capture target is parked off-screen (position: fixed; left: -9999px)
-  // so it stays out of the visible layout. html-to-image clones the element
-  // at its computed position, so an off-screen element is drawn outside the
-  // canvas and the exported PDF comes out blank. Park the element at the
-  // viewport origin for the duration of the capture, then restore it.
+  const imageData = await toPng(element, options);
+  if (!(await isBlankImage(imageData))) {
+    return imageData;
+  }
+
+  // Fallback for engines where the off-screen clone still renders blank:
+  // park the element at the viewport origin for one retry, then restore it.
   const previous = {
     position: element.style.position,
     left: element.style.left,
@@ -42,24 +65,8 @@ async function captureElementImage(element: HTMLElement): Promise<string> {
   element.style.left = '0';
   element.style.top = '0';
   element.style.zIndex = '9999';
-
   try {
-    return await toPng(element, {
-      backgroundColor,
-      cacheBust: true,
-      pixelRatio: Math.max(window.devicePixelRatio, 2),
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
-      // Position the cloned node at the canvas origin too: the copied
-      // computed style keeps `position: fixed`, which can mis-render
-      // inside the SVG foreignObject.
-      style: {
-        position: 'absolute',
-        left: '0',
-        top: '0',
-        margin: '0',
-      },
-    });
+    return await toPng(element, options);
   } finally {
     element.style.position = previous.position;
     element.style.left = previous.left;
