@@ -2,7 +2,6 @@
 export interface AppointmentDayRow {
   patientName: string;
   hn: string;
-  apptTypeLabel: string;
   statusText: string;
   lastVisitDate: string;
   phone: string;
@@ -64,7 +63,6 @@ const generatedAt = new Date().toLocaleString('th-TH', {
           <th class="col-index">ลำดับ</th>
           <th>ผู้ป่วย</th>
           <th>มาโรงพยาบาลล่าสุด</th>
-          <th>ประเภท</th>
           <th>สถานะวันนัด</th>
           <th>เบอร์โทรศัพท์</th>
           <th>หมายเหตุ</th>
@@ -80,7 +78,6 @@ const generatedAt = new Date().toLocaleString('th-TH', {
             </div>
           </td>
           <td>{{ row.lastVisitDate }}</td>
-          <td>{{ row.apptTypeLabel }}</td>
           <td>{{ row.statusText }}</td>
           <td>{{ row.phone }}</td>
           <td>{{ row.notes }}</td>

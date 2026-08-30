@@ -126,7 +126,6 @@ const reportRows = computed<AppointmentDayRow[]>(() =>
     return {
       patientName: summary ? patientFullName(summary.hosxpInfo) : appointment.hn,
       hn: appointment.hn,
-      apptTypeLabel: appointmentTypeLabel(appointment.apptType),
       statusText: appointmentTimingText(appointment.apptDate),
       lastVisitDate: summary?.lastVisitDate ? formatThaiDate(summary.lastVisitDate) : '-',
       phone: summary?.hosxpInfo.phone?.trim() || '-',
@@ -165,26 +164,6 @@ async function loadAppointments() {
   } finally {
     loading.value = false;
   }
-}
-
-function appointmentTypeLabel(apptType?: string) {
-  if (apptType === 'urgent') {
-    return 'เร่งด่วน';
-  }
-  if (apptType === 'inr_check') {
-    return 'ตรวจ INR';
-  }
-  return 'ตรวจคลินิก';
-}
-
-function appointmentTypeClass(apptType?: string) {
-  if (apptType === 'urgent') {
-    return 'badge-danger';
-  }
-  if (apptType === 'inr_check') {
-    return 'badge-warning';
-  }
-  return 'badge-info';
 }
 
 function appointmentTimingText(apptDate: string) {
@@ -297,7 +276,6 @@ onMounted(() => {
               <tr>
                 <th>ผู้ป่วย</th>
                 <th>มาโรงพยาบาลล่าสุด</th>
-                <th>ประเภท</th>
                 <th>สถานะวันนัด</th>
                 <th>เบอร์โทรศัพท์</th>
                 <th>หมายเหตุ</th>
@@ -317,9 +295,6 @@ onMounted(() => {
                       ? formatThaiDate(patientMap.get(appointment.hn)?.lastVisitDate)
                       : '-'
                   }}</span>
-                </td>
-                <td>
-                  <span class="badge" :class="appointmentTypeClass(appointment.apptType)">{{ appointmentTypeLabel(appointment.apptType) }}</span>
                 </td>
                 <td><span class="body-sm">{{ appointmentTimingText(appointment.apptDate) }}</span></td>
                 <td><span class="body-sm">{{ patientMap.get(appointment.hn)?.hosxpInfo.phone?.trim() || '-' }}</span></td>
