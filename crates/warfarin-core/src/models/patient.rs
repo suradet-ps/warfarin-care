@@ -29,6 +29,8 @@ pub struct HosxpPatient {
   pub sex: String,
   pub addrpart: Option<String>,
   pub phone: Option<String>,
+  /// Secondary contact number from `HOSxP` `patient.informtel`.
+  pub inform_tel: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

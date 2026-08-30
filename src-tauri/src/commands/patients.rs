@@ -102,6 +102,7 @@ pub async fn get_active_patient_summaries(
           sex: "U".to_string(),
           addrpart: None,
           phone: None,
+          inform_tel: None,
         }),
       patient,
       latest_inr,
@@ -232,6 +233,7 @@ async fn try_get_hosxp_patient(state: &AppState, hn: &str) -> HosxpPatient {
     sex: "U".to_string(),
     addrpart: None,
     phone: None,
+    inform_tel: None,
   }
 }
 

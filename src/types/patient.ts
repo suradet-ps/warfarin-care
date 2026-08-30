@@ -27,6 +27,7 @@ export interface HosxpPatient {
   sex: string;
   addrpart?: string;
   phone?: string;
+  informTel?: string;
 }
 
 export interface PatientDrugRecord {
