@@ -129,8 +129,7 @@ async function loadAppointments() {
     summaries.value = activeSummaries;
     if (!selectedDate.value) {
       selectedDate.value =
-        pendingAppointments.find((appointment) => appointment.apptDate >= today())?.apptDate ??
-        '';
+        pendingAppointments.find((appointment) => appointment.apptDate >= today())?.apptDate ?? '';
     }
   } catch (invokeError) {
     error.value = String(invokeError);
@@ -255,8 +254,10 @@ onMounted(() => {
             <thead>
               <tr>
                 <th>ผู้ป่วย</th>
+                <th>มาโรงพยาบาลล่าสุด</th>
                 <th>ประเภท</th>
                 <th>สถานะวันนัด</th>
+                <th>เบอร์โทรศัพท์</th>
                 <th>หมายเหตุ</th>
               </tr>
             </thead>
@@ -269,9 +270,17 @@ onMounted(() => {
                   </div>
                 </td>
                 <td>
+                  <span class="body-sm">{{
+                    patientMap.get(appointment.hn)?.lastVisitDate
+                      ? formatThaiDate(patientMap.get(appointment.hn)?.lastVisitDate)
+                      : '-'
+                  }}</span>
+                </td>
+                <td>
                   <span class="badge" :class="appointmentTypeClass(appointment.apptType)">{{ appointmentTypeLabel(appointment.apptType) }}</span>
                 </td>
                 <td><span class="body-sm">{{ appointmentTimingText(appointment.apptDate) }}</span></td>
+                <td><span class="body-sm">{{ patientMap.get(appointment.hn)?.hosxpInfo.phone?.trim() || '-' }}</span></td>
                 <td><span class="caption section-meta">{{ appointment.notes || '-' }}</span></td>
               </tr>
             </tbody>
