@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
-import { CalendarDays, CalendarRange, Clock3, Users } from 'lucide-vue-next';
+import { CalendarDays, CalendarRange, Clock3, Download, Users } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
+import AppointmentDayReport, {
+  type AppointmentDayRow,
+} from '#/components/appointments/AppointmentDayReport.vue';
 import SearchBox from '#/components/shared/SearchBox.vue';
+import { usePdfExport } from '#/composables/usePdfExport.ts';
 import type { WfAppointment } from '#/types/appointment.ts';
 import type { ActivePatientSummary } from '#/types/patient.ts';
 import { daysUntil, formatThaiDate, patientFullName } from '#/utils/clinic.ts';
@@ -115,6 +119,31 @@ const stats = computed(() => ({
     appointments.value.filter((appointment) => appointment.isOverdue === true).map((a) => a.hn),
   ).size,
 }));
+
+const reportRows = computed<AppointmentDayRow[]>(() =>
+  filteredAppointments.value.map((appointment) => {
+    const summary = patientMap.value.get(appointment.hn);
+    return {
+      patientName: summary ? patientFullName(summary.hosxpInfo) : appointment.hn,
+      hn: appointment.hn,
+      apptTypeLabel: appointmentTypeLabel(appointment.apptType),
+      statusText: appointmentTimingText(appointment.apptDate),
+      lastVisitDate: summary?.lastVisitDate ? formatThaiDate(summary.lastVisitDate) : '-',
+      phone: summary?.hosxpInfo.phone?.trim() || '-',
+      notes: appointment.notes?.trim() || '-',
+    };
+  }),
+);
+
+const reportCapture = ref<HTMLElement | null>(null);
+const { exporting: exportingPdf, error: pdfError, exportPdf } = usePdfExport(reportCapture);
+
+const canExportPdf = computed(() => reportRows.value.length > 0 && Boolean(reportCapture.value));
+
+const defaultPdfFileName = computed(() => {
+  const date = selectedBucket.value?.date ?? today();
+  return `appointments-${date}.pdf`;
+});
 
 async function loadAppointments() {
   loading.value = true;
@@ -243,8 +272,21 @@ onMounted(() => {
               {{ selectedBucket ? `${formatThaiDate(selectedBucket.date)} · ${selectedBucket.count} คน` : 'ยังไม่ได้เลือกวัน' }}
             </p>
           </div>
-          <SearchBox v-model="searchQuery" placeholder="ค้นหา HN หรือชื่อ" aria-label="ค้นหาผู้ป่วย" />
+          <div class="panel-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              :disabled="!canExportPdf || exportingPdf"
+              @click="exportPdf(defaultPdfFileName)"
+            >
+              <Download :size="16" />
+              {{ exportingPdf ? 'กำลังสร้าง PDF...' : 'ส่งออก PDF' }}
+            </button>
+            <SearchBox v-model="searchQuery" placeholder="ค้นหา HN หรือชื่อ" aria-label="ค้นหาผู้ป่วย" />
+          </div>
         </div>
+
+        <div v-if="pdfError" class="badge badge-danger error-box">{{ pdfError }}</div>
 
         <div v-if="loading" class="empty-state body-sm">กำลังโหลด...</div>
         <div v-else-if="error" class="empty-state body-sm">โหลดข้อมูลไม่สำเร็จ</div>
@@ -287,6 +329,15 @@ onMounted(() => {
           </table>
         </div>
       </section>
+    </div>
+
+    <div class="report-capture" aria-hidden="true">
+      <AppointmentDayReport
+        v-if="selectedBucket && reportRows.length"
+        ref="reportCapture"
+        :date="selectedBucket.date"
+        :rows="reportRows"
+      />
     </div>
   </div>
 </template>
@@ -352,6 +403,22 @@ onMounted(() => {
   align-items: center;
 }
 
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* The printable report is rendered off-screen and captured to PDF via
+   html-to-image; it must stay out of the visual layout but keep layout. */
+.report-capture {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  pointer-events: none;
+  width: 210mm;
+}
+
 .date-bucket-list {
   display: flex;
   flex-direction: column;
@@ -415,6 +482,10 @@ onMounted(() => {
   .panel-header-inline {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .panel-actions {
+    flex-wrap: wrap;
   }
 }
 </style>
