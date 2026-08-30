@@ -331,10 +331,9 @@ onMounted(() => {
       </section>
     </div>
 
-    <div class="report-capture" aria-hidden="true">
+    <div ref="reportCapture" class="report-capture" aria-hidden="true">
       <AppointmentDayReport
         v-if="selectedBucket && reportRows.length"
-        ref="reportCapture"
         :date="selectedBucket.date"
         :rows="reportRows"
       />
