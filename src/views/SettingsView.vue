@@ -20,6 +20,9 @@ const testing = ref(false);
 const saving = ref(false);
 const saveResult = ref<'success' | 'error' | null>(null);
 const saveError = ref<string | null>(null);
+const savingHospital = ref(false);
+const hospitalSaveResult = ref<'success' | 'error' | null>(null);
+const hospitalSaveError = ref<string | null>(null);
 
 const activeSection = ref<'connection' | 'hospital' | 'interactions' | 'sync'>('connection');
 
@@ -58,6 +61,21 @@ async function handleSaveConnection() {
     saveError.value = e instanceof Error ? e.message : String(e);
   } finally {
     saving.value = false;
+  }
+}
+
+async function handleSaveHospital() {
+  savingHospital.value = true;
+  hospitalSaveResult.value = null;
+  hospitalSaveError.value = null;
+  try {
+    await store.saveHospitalName();
+    hospitalSaveResult.value = 'success';
+  } catch (e) {
+    hospitalSaveResult.value = 'error';
+    hospitalSaveError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    savingHospital.value = false;
   }
 }
 
@@ -224,8 +242,18 @@ function severityConfig(severity: string) {
       <h3 class="h4" style="margin-bottom: var(--spacing-xl)">ข้อมูลโรงพยาบาล</h3>
       <label class="form-field">
         <span class="caption" style="color:var(--color-slate)">ชื่อโรงพยาบาล</span>
-        <input class="input" v-model="store.hospitalName" />
+        <input class="input" v-model="store.hospitalName" placeholder="Warfarin Care" />
       </label>
+      <div class="settings-actions">
+        <button class="btn btn-primary" @click="handleSaveHospital" :disabled="savingHospital">
+          {{ savingHospital ? 'กำลังบันทึก...' : 'บันทึกชื่อโรงพยาบาล' }}
+        </button>
+        <span v-if="hospitalSaveResult === 'success'" class="badge badge-success">✓ บันทึกแล้ว</span>
+        <span v-else-if="hospitalSaveResult === 'error'" class="badge badge-danger">✗ บันทึกไม่สำเร็จ</span>
+      </div>
+      <p v-if="hospitalSaveError" class="caption" style="color: var(--color-brand-red); margin-top: var(--spacing-xs)">
+        {{ hospitalSaveError }}
+      </p>
     </div>
 
     <!-- Sync -->

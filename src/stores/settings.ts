@@ -111,6 +111,10 @@ export const useSettingsStore = defineStore('settings', () => {
     } catch {}
   }
 
+  async function saveHospitalName() {
+    await invoke('save_setting', { key: 'hospital_name', value: hospitalName.value });
+  }
+
   async function loadDrugInteractions() {
     try {
       drugInteractions.value = await invoke<DrugInteraction[]>('get_all_drug_interactions');
@@ -154,6 +158,7 @@ export const useSettingsStore = defineStore('settings', () => {
     testConnection,
     saveMysqlConfig,
     loadSettings,
+    saveHospitalName,
     loadDrugInteractions,
     addDrugInteraction,
     deleteDrugInteraction,
