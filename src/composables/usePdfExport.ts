@@ -23,24 +23,81 @@ async function waitForStableCapture(): Promise<void> {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-function captureElementImage(element: HTMLElement): Promise<string> {
+async function captureElementImage(element: HTMLElement): Promise<string> {
   const backgroundColor = getCssVar('--color-canvas') || 'white';
   const rect = element.getBoundingClientRect();
-  return toPng(element, {
-    backgroundColor,
-    cacheBust: true,
-    pixelRatio: Math.max(window.devicePixelRatio, 2),
-    width: Math.round(rect.width),
-    height: Math.round(rect.height),
-    // The capture target is parked off-screen (position: fixed;
-    // left: -9999px) so it stays out of the visible layout. html-to-image
-    // clones the element at its computed position, so without this override
-    // the content renders outside the canvas and the PDF comes out blank.
-    style: {
-      left: '0',
-      top: '0',
-    },
-  });
+
+  // The capture target is parked off-screen (position: fixed; left: -9999px)
+  // so it stays out of the visible layout. html-to-image clones the element
+  // at its computed position, so an off-screen element is drawn outside the
+  // canvas and the exported PDF comes out blank. Park the element at the
+  // viewport origin for the duration of the capture, then restore it.
+  const previous = {
+    position: element.style.position,
+    left: element.style.left,
+    top: element.style.top,
+    zIndex: element.style.zIndex,
+  };
+  element.style.position = 'fixed';
+  element.style.left = '0';
+  element.style.top = '0';
+  element.style.zIndex = '9999';
+
+  try {
+    return await toPng(element, {
+      backgroundColor,
+      cacheBust: true,
+      pixelRatio: Math.max(window.devicePixelRatio, 2),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      // Position the cloned node at the canvas origin too: the copied
+      // computed style keeps `position: fixed`, which can mis-render
+      // inside the SVG foreignObject.
+      style: {
+        position: 'absolute',
+        left: '0',
+        top: '0',
+        margin: '0',
+      },
+    });
+  } finally {
+    element.style.position = previous.position;
+    element.style.left = previous.left;
+    element.style.top = previous.top;
+    element.style.zIndex = previous.zIndex;
+  }
+}
+
+/**
+ * Detects a fully-background capture (e.g. a render failure inside
+ * html-to-image) so a blank PDF is never silently written to disk.
+ */
+const MAX_RGB_CHANNEL = 255;
+const ALPHA_CHANNEL_OFFSET = 3;
+const BLANK_SAMPLE_STRIDE_BYTES = 64;
+
+async function isBlankImage(imageData: string): Promise<boolean> {
+  const image = await loadImage(imageData);
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return false;
+  }
+  context.drawImage(image, 0, 0);
+  const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+  for (let offset = 0; offset < data.length; offset += BLANK_SAMPLE_STRIDE_BYTES) {
+    const alpha = data[offset + ALPHA_CHANNEL_OFFSET];
+    const isNonWhite =
+      data[offset] !== MAX_RGB_CHANNEL ||
+      data[offset + 1] !== MAX_RGB_CHANNEL ||
+      data[offset + 2] !== MAX_RGB_CHANNEL;
+    if (alpha !== 0 && isNonWhite) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function loadImage(imageData: string): Promise<HTMLImageElement> {
@@ -165,6 +222,9 @@ export function usePdfExport(captureElement: Ref<HTMLElement | null>) {
       }
 
       const imageData = await captureElementImage(element);
+      if (await isBlankImage(imageData)) {
+        throw new Error('ไม่สามารถสร้างภาพรายงานได้ (ภาพว่างเปล่า)');
+      }
       const rect = element.getBoundingClientRect();
       const pdf = await buildMultiPagePdf(imageData, rect.width, rect.height);
 
