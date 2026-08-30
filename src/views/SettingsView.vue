@@ -240,11 +240,11 @@ function severityConfig(severity: string) {
     <!-- Hospital -->
     <div v-else-if="activeSection === 'hospital'" class="settings-section card">
       <h3 class="h4" style="margin-bottom: var(--spacing-xl)">ข้อมูลโรงพยาบาล</h3>
-      <label class="form-field">
+      <label class="form-field" style="margin-bottom: var(--spacing-lg)">
         <span class="caption" style="color:var(--color-slate)">ชื่อโรงพยาบาล</span>
         <input class="input" v-model="store.hospitalName" placeholder="Warfarin Care" />
       </label>
-      <div class="settings-actions">
+      <div class="settings-actions" style="margin-top: var(--spacing-sm)">
         <button class="btn btn-primary" @click="handleSaveHospital" :disabled="savingHospital">
           {{ savingHospital ? 'กำลังบันทึก...' : 'บันทึกชื่อโรงพยาบาล' }}
         </button>
