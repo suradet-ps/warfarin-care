@@ -76,4 +76,5 @@ export interface ActivePatientSummary {
   currentDoseMgday?: number;
   ttr6months?: number | null;
   nextAppointment?: string;
+  lastVisitDate?: string;
 }
