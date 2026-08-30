@@ -640,6 +640,47 @@ pub async fn get_latest_visit_dose_by_hns(
   )
 }
 
+pub async fn get_latest_visit_dates_by_hns(
+  pool: &SqlitePool,
+  hns: &[String],
+) -> Result<std::collections::HashMap<String, String>> {
+  if hns.is_empty() {
+    return Ok(std::collections::HashMap::new());
+  }
+
+  let mut builder = QueryBuilder::<Sqlite>::new(
+    "SELECT hn, visit_date FROM (\
+       SELECT hn, visit_date, \
+              ROW_NUMBER() OVER (PARTITION BY hn ORDER BY visit_date DESC, id DESC) AS row_num \
+         FROM wf_visits \
+        WHERE deleted_at IS NULL AND hn IN (",
+  );
+  {
+    let mut separated = builder.separated(", ");
+    for hn in hns {
+      separated.push_bind(hn);
+    }
+  }
+  builder.push(") ) ranked WHERE row_num = 1");
+
+  let rows = builder
+    .build()
+    .fetch_all(pool)
+    .await
+    .context("failed to query latest visit date by HN")?;
+
+  Ok(
+    rows
+      .into_iter()
+      .map(|row| {
+        let hn: String = row.get("hn");
+        let visit_date: String = row.get("visit_date");
+        (hn, visit_date)
+      })
+      .collect(),
+  )
+}
+
 /// Returns INR values recorded via the clinic visit form (fallback).
 pub async fn get_inr_from_visits(pool: &SqlitePool, hn: &str) -> Result<Vec<InrRecord>> {
   let rows = sqlx::query(
