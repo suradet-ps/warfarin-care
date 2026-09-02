@@ -27,5 +27,5 @@ regex = "1"
 encryptman = "0.2"
 
 # Argon2id password hashing for the local-auth subsystem.
-argon2 = { version = "0.5", features = ["std"] }
+argon2 = { version = "0.6", features = ["std"] }
 password-hash = "0.6"
