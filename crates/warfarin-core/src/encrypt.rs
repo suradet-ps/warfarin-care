@@ -26,10 +26,14 @@ fn bytes_to_master_key(key: &[u8; KEY_SIZE]) -> MasterKey {
 }
 
 /// Generate a random 32-byte key suitable for storage in the OS keychain.
-#[must_use]
-pub fn generate_key() -> [u8; KEY_SIZE] {
-  let master = encryptman::generate_master_key();
-  *master.as_bytes()
+///
+/// # Errors
+///
+/// Returns an error string if the operating system's random number generator
+/// is unavailable.
+pub fn generate_key() -> Result<[u8; KEY_SIZE], String> {
+  let master = encryptman::generate_master_key().map_err(|e| e.to_string())?;
+  Ok(*master.as_bytes())
 }
 
 /// Encrypts `plaintext` with `key` and returns the encryptman-encoded
@@ -111,7 +115,7 @@ mod tests {
 
   #[test]
   fn test_encrypt_decrypt() -> Result<(), String> {
-    let key = generate_key();
+    let key = generate_key()?;
     let plaintext = "my_secret_password";
 
     let encrypted = encrypt(plaintext, &key)?;
@@ -129,7 +133,7 @@ mod tests {
       password: String,
     }
 
-    let key = generate_key();
+    let key = generate_key()?;
     let config = Config {
       host: "localhost".to_string(),
       password: "secret123".to_string(),
