@@ -9,17 +9,6 @@ feature-depth = 1
 
 [advisories]
 ignore = [
-  # GTK3 bindings unmaintained (transitive deps of tauri on Linux)
-  "RUSTSEC-2024-0411",
-  "RUSTSEC-2024-0412",
-  "RUSTSEC-2024-0413",
-  "RUSTSEC-2024-0414",
-  "RUSTSEC-2024-0415",
-  "RUSTSEC-2024-0416",
-  "RUSTSEC-2024-0417",
-  "RUSTSEC-2024-0418",
-  "RUSTSEC-2024-0419",
-  "RUSTSEC-2024-0420",
   # proc-macro-error unmaintained (transitive dep of glib/gtk)
   "RUSTSEC-2024-0370",
   # quick-xml vulnerabilities (pinned by plist in tauri, no upgrade available)
