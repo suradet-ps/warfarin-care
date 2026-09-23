@@ -151,9 +151,9 @@ requires a human confirmation. The tool suggests; the clinician decides.
    (Phase 2.)
    **Status: PARTIALLY RESOLVED.** Local multi-user auth shipped with
    four roles and enforced permissions, account lockout, server-side actor
-   stamping on every clinical mutation, and a `security.md` model document.
-   Remaining Phase 2 items: user management UI, persistent sessions,
-   Supabase user sync, `clinic_id`.
+   stamping on every clinical mutation, admin user management, and a
+   `security.md` model document. Remaining Phase 2 items: persistent
+   sessions, Supabase user sync, `clinic_id`.
 
 4. **No batch operations.** A warfarin clinic reviews 20-50 patients per
    weekly session. Today, each patient requires opening their detail page,
@@ -257,9 +257,10 @@ clinician must be accountable for their own actions.
 
 > **Status: PARTIAL.** Local multi-user auth is shipped (migrations 0011 and
 > 0014): first-run setup, Argon2id hashing, account lockout, auth audit log,
-> four roles with backend-enforced permissions, and actor stamping on every
-> clinical mutation. Remaining items below: session management, user
-> management UI, Supabase user sync, and `clinic_id`.
+> four roles with backend-enforced permissions, actor stamping on every
+> clinical mutation, and admin user management (create, reset password,
+> change role, suspend). Remaining items below: session management,
+> Supabase user sync, and `clinic_id`.
 
 - [x] **Role-based authentication.** The `users.role` column uses
   `Admin`, `Pharmacist`, `Clinician`, or `Viewer`. The permission matrix
@@ -277,9 +278,11 @@ clinician must be accountable for their own actions.
   `insert_audit_log` ignores any client-supplied actor. The appointment
   and status-history actor columns are local-only until the cloud schema
   gains the same columns.
-- [ ] **User management UI.** A `/users` admin page (visible only to admin
-  role) for creating accounts, resetting passwords, and changing roles.
-  Default role for new accounts is `Pharmacist`.
+- [x] **User management UI.** The Settings page gains a "ผู้ใช้งาน" tab,
+  visible only with `manage_users`. Admins can create accounts (default role
+  `Pharmacist`), reset passwords, change roles, and suspend or reactivate
+  accounts. The service refuses self role changes, self suspension, and
+  demoting or disabling the last enabled admin; every action is audited.
 - [ ] **Supabase user sync.** Cloud-synced user records so that multi-machine
   deployments share the same user roster. Conflict resolution: LWW on
   `updated_at` (same pattern as existing sync).
