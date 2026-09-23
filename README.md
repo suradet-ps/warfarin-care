@@ -44,7 +44,7 @@ One runtime, one command.
 ⟫ git clone https://github.com/suradet-ps/warfarin-care.git
 ⟫ cd warfarin-care
 ⟫ bun install
-⟫ bun run tauri dev
+⟫ bun run tauri:dev
 ```
 
 The release artifact: `⟫ bun run tauri build`
@@ -60,6 +60,11 @@ The release artifact: `⟫ bun run tauri build`
 
 First run: create the local admin account, configure the HOSxP
 connection in Settings, then screen and enroll.
+
+`bun run tauri:dev` merges `src-tauri/tauri.dev.conf.json` and runs the
+app under the `warfarin-care.dev` identifier, so development keeps its
+own database, settings store, and credential vault. See
+`docs/CONTRIBUTING.md` for the full separation.
 
 </details>
 

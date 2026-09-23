@@ -12,8 +12,8 @@ cd warfarin-care
 # Install dependencies
 bun install
 
-# Start development server
-bun run tauri dev
+# Start development server (isolated dev data, see below)
+bun run tauri:dev
 ```
 
 ## Development Workflow
@@ -23,6 +23,32 @@ bun run tauri dev
 3. **Run type-check**: `bun run type-check`
 4. **Test your changes**: Ensure the app builds successfully
 5. **Submit a pull request**: Describe your changes clearly
+
+## Development vs Production Data
+
+Every piece of runtime state is keyed by the Tauri identifier, and
+development uses its own identifier, so a real clinic database is never
+opened by accident:
+
+| State | Production (`warfarin-care`) | Development (`warfarin-care.dev`) |
+|-------|------------------------------|-----------------------------------|
+| SQLite database | app data dir `warfarin.db` | separate app data dir |
+| Supabase config and machine id | production plugin store | dev plugin store |
+| Credential vault | `warfarin-care` keyring service | `warfarin-care.dev` keyring service |
+
+Rules:
+
+- Start the desktop app with `bun run tauri:dev`. It merges
+  `src-tauri/tauri.dev.conf.json`. A debug build that resolves the
+  production identifier refuses to start; the
+  `WARFARIN_ALLOW_PRODUCTION_DATA=1` escape hatch exists only for
+  inspecting production data in place.
+- Never point a development build at the production Supabase project.
+  Use a separate project, or leave sync unconfigured in dev.
+- Before applying pending migrations, the SQLite layer writes an
+  automatic snapshot next to the database
+  (`warfarin.db.bak-<timestamp>`, latest five kept). A failed snapshot
+  aborts startup.
 
 ## Code Style
 

@@ -21,6 +21,7 @@
 
 pub mod auth_repository;
 pub mod auth_service;
+pub mod backup;
 pub mod mysql;
 pub mod sqlite;
 pub mod sync_models;

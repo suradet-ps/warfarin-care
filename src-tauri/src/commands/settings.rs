@@ -12,6 +12,12 @@ use warfarin_db::{
 };
 
 const MYSQL_CONFIG_KEY: &str = "mysql_config";
+
+/// Keyring service used by the credential vault. Debug builds use a separate
+/// service so development never reads or overwrites production secrets.
+#[cfg(debug_assertions)]
+const VAULT_SERVICE: &str = "warfarin-care.dev";
+#[cfg(not(debug_assertions))]
 const VAULT_SERVICE: &str = "warfarin-care";
 
 /// In-process cache for the [`Vault`]. The macOS Keychain (and other OS

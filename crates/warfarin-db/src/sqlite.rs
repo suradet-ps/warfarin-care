@@ -36,13 +36,32 @@ struct VisitAppointmentLinkContext {
 // Pool initialisation
 
 /// Opens (or creates) the `SQLite` database and runs embedded migrations.
+///
+/// If the database already holds data and migrations are pending, a snapshot
+/// is written next to the database before any schema change; see
+/// [`crate::backup`].
 pub async fn init_pool(db_path: PathBuf) -> Result<SqlitePool> {
+  let migrator = sqlx::migrate!("./migrations");
+  let had_data = std::fs::metadata(&db_path).is_ok_and(|meta| meta.len() > 0);
+
   let url = format!("sqlite://{}?mode=rwc", db_path.display());
   let pool = SqlitePoolOptions::new()
     .max_connections(5)
     .connect(&url)
     .await
     .with_context(|| format!("failed to open SQLite database at {}", db_path.display()))?;
+
+  // Snapshot before any schema write, including the idempotent column patch
+  // below. A clinic database with pending migrations and no snapshot is a
+  // data-loss risk if the migration fails halfway.
+  if let Some(backup) =
+    crate::backup::backup_before_migration(&pool, &db_path, &migrator, had_data).await?
+  {
+    eprintln!(
+      "[warfarin] pre-migration backup written to {}",
+      backup.display()
+    );
+  }
 
   // Idempotent pre-migration: add columns to wf_drug_interactions if missing.
   // SQLite has no ADD COLUMN IF NOT EXISTS, so we check via pragma_table_info
@@ -52,7 +71,7 @@ pub async fn init_pool(db_path: PathBuf) -> Result<SqlitePool> {
     eprintln!("[warfarin] ensure_interaction_columns warning: {e}");
   }
 
-  sqlx::migrate!("./migrations")
+  migrator
     .run(&pool)
     .await
     .context("failed to run SQLite migrations")?;
@@ -66,10 +85,22 @@ pub async fn init_pool(db_path: PathBuf) -> Result<SqlitePool> {
 /// migration 0013 was recorded as complete but only partially applied.
 async fn ensure_interaction_columns(pool: &SqlitePool) -> Result<()> {
   let columns_to_add = [
-    ("severity", "ALTER TABLE wf_drug_interactions ADD COLUMN severity TEXT NOT NULL DEFAULT 'moderate'"),
-    ("clinical_effect", "ALTER TABLE wf_drug_interactions ADD COLUMN clinical_effect TEXT"),
-    ("management", "ALTER TABLE wf_drug_interactions ADD COLUMN management TEXT"),
-    ("evidence_level", "ALTER TABLE wf_drug_interactions ADD COLUMN evidence_level TEXT"),
+    (
+      "severity",
+      "ALTER TABLE wf_drug_interactions ADD COLUMN severity TEXT NOT NULL DEFAULT 'moderate'",
+    ),
+    (
+      "clinical_effect",
+      "ALTER TABLE wf_drug_interactions ADD COLUMN clinical_effect TEXT",
+    ),
+    (
+      "management",
+      "ALTER TABLE wf_drug_interactions ADD COLUMN management TEXT",
+    ),
+    (
+      "evidence_level",
+      "ALTER TABLE wf_drug_interactions ADD COLUMN evidence_level TEXT",
+    ),
   ];
 
   for (col_name, ddl) in &columns_to_add {

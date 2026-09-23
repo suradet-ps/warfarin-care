@@ -63,7 +63,37 @@ use sqlx::mysql::MySqlPoolOptions;
 use tauri::{App, Emitter, Manager};
 use warfarin_db::sqlite::{AppState, init_pool};
 
+/// Refuses to start a debug build against the production app data directory.
+///
+/// `tauri dev` without `--config` resolves the same identifier as the
+/// installed app, which would open the clinic's real SQLite database, plugin
+/// store, and machine id. Debug builds must use `bun run tauri:dev`; the
+/// `WARFARIN_ALLOW_PRODUCTION_DATA` escape hatch exists for the rare case
+/// where a developer explicitly needs to inspect the production data in place.
+fn ensure_isolated_data_dir(app: &App) -> Result<()> {
+  #[cfg(not(debug_assertions))]
+  let _ = app;
+
+  #[cfg(debug_assertions)]
+  {
+    const PRODUCTION_IDENTIFIER: &str = "warfarin-care";
+    const OVERRIDE_ENV: &str = "WARFARIN_ALLOW_PRODUCTION_DATA";
+    if app.config().identifier == PRODUCTION_IDENTIFIER && std::env::var_os(OVERRIDE_ENV).is_none()
+    {
+      anyhow::bail!(
+        "debug build refused to open the production app data directory \
+         (identifier '{PRODUCTION_IDENTIFIER}'). Start the dev app with \
+         `bun run tauri:dev`, or set {OVERRIDE_ENV}=1 to override."
+      );
+    }
+  }
+
+  Ok(())
+}
+
 fn initialise_app_state(app: &mut App) -> Result<()> {
+  ensure_isolated_data_dir(app)?;
+
   let app_handle = app.handle().clone();
   let machine_id =
     commands::sync::get_or_create_machine_id(&app_handle).map_err(anyhow::Error::msg)?;
