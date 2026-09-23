@@ -156,6 +156,127 @@ pub async fn count_active_admins(pool: &SqlitePool) -> Result<i64> {
   Ok(row.get("cnt"))
 }
 
+// auth_sessions
+
+/// Durable session row backing a persisted login.
+#[derive(Debug, Clone)]
+pub struct SessionRow {
+  pub id: i64,
+  pub user_id: i64,
+  pub created_at: String,
+  pub last_seen_at: String,
+  pub expires_at: String,
+}
+
+/// Inserts a session row for a freshly issued token hash.
+pub async fn insert_session(
+  pool: &SqlitePool,
+  token_hash: &str,
+  user_id: i64,
+  machine_id: &str,
+  created_at: &str,
+  last_seen_at: &str,
+  expires_at: &str,
+) -> Result<()> {
+  sqlx::query(
+    "INSERT INTO auth_sessions \
+        (token_hash, user_id, machine_id, created_at, last_seen_at, expires_at) \
+        VALUES (?, ?, ?, ?, ?, ?)",
+  )
+  .bind(token_hash)
+  .bind(user_id)
+  .bind(machine_id)
+  .bind(created_at)
+  .bind(last_seen_at)
+  .bind(expires_at)
+  .execute(pool)
+  .await
+  .context("failed to insert session")?;
+  Ok(())
+}
+
+/// Looks up a non-revoked session by token hash.
+pub async fn find_active_session(
+  pool: &SqlitePool,
+  token_hash: &str,
+) -> Result<Option<SessionRow>> {
+  let row = sqlx::query(
+    "SELECT id, user_id, created_at, last_seen_at, expires_at \
+       FROM auth_sessions \
+      WHERE token_hash = ? AND revoked_at IS NULL",
+  )
+  .bind(token_hash)
+  .fetch_optional(pool)
+  .await
+  .context("failed to query session")?;
+  Ok(row.map(|r| SessionRow {
+    id: r.get("id"),
+    user_id: r.get("user_id"),
+    created_at: r.get("created_at"),
+    last_seen_at: r.get("last_seen_at"),
+    expires_at: r.get("expires_at"),
+  }))
+}
+
+/// Refreshes `last_seen_at` for a session.
+pub async fn touch_session(pool: &SqlitePool, token_hash: &str, last_seen_at: &str) -> Result<()> {
+  sqlx::query(
+    "UPDATE auth_sessions SET last_seen_at = ? WHERE token_hash = ? AND revoked_at IS NULL",
+  )
+  .bind(last_seen_at)
+  .bind(token_hash)
+  .execute(pool)
+  .await
+  .context("failed to touch session")?;
+  Ok(())
+}
+
+/// Marks a session revoked. Unknown hashes are ignored.
+pub async fn revoke_session(pool: &SqlitePool, token_hash: &str, revoked_at: &str) -> Result<()> {
+  sqlx::query(
+    "UPDATE auth_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL",
+  )
+  .bind(revoked_at)
+  .bind(token_hash)
+  .execute(pool)
+  .await
+  .context("failed to revoke session")?;
+  Ok(())
+}
+
+/// Deletes revoked and expired session rows. Returns the number removed.
+pub async fn prune_sessions(pool: &SqlitePool, now: &str) -> Result<u64> {
+  let result =
+    sqlx::query("DELETE FROM auth_sessions WHERE revoked_at IS NOT NULL OR expires_at < ?")
+      .bind(now)
+      .execute(pool)
+      .await
+      .context("failed to prune sessions")?;
+  Ok(result.rows_affected())
+}
+
+/// Records the timestamp of a successful login on the user row.
+pub async fn set_last_login(pool: &SqlitePool, user_id: i64, at: &str) -> Result<()> {
+  sqlx::query("UPDATE users SET last_login_at = ? WHERE id = ?")
+    .bind(at)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .context("failed to set last_login_at")?;
+  Ok(())
+}
+
+/// Returns the most recent successful login across all accounts, for the
+/// login screen. Deliberately machine-wide so it cannot be used to probe
+/// whether a specific username exists.
+pub async fn last_login_hint(pool: &SqlitePool) -> Result<Option<String>> {
+  let row = sqlx::query("SELECT MAX(last_login_at) AS last_login FROM users")
+    .fetch_one(pool)
+    .await
+    .context("failed to read last login hint")?;
+  Ok(row.try_get("last_login").ok().flatten())
+}
+
 /// Inserts a new user. Returns the new row ID.
 ///
 /// # Errors

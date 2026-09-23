@@ -30,8 +30,9 @@ pub async fn setup_admin(
   input: SetupAdminInput,
   state: State<'_, AppState>,
 ) -> Result<PublicUser, String> {
-  auth_service::setup_admin(&state.pool, &state.auth_session, input)
+  auth_service::setup_admin(&state.pool, &state.auth_session, &state.machine_id, input)
     .await
+    .map(|auth| auth.user)
     .map_err(map_auth_error)
 }
 
@@ -42,8 +43,9 @@ pub async fn setup_admin(
 /// frontend never learns whether the username exists.
 #[tauri::command]
 pub async fn login(input: LoginInput, state: State<'_, AppState>) -> Result<PublicUser, String> {
-  auth_service::login(&state.pool, &state.auth_session, input)
+  auth_service::login(&state.pool, &state.auth_session, &state.machine_id, input)
     .await
+    .map(|auth| auth.user)
     .map_err(map_auth_error)
 }
 

@@ -4,6 +4,7 @@
 //! boundary (service ↔ repository) live here. Internal `User` rows with the
 //! `password_hash` are kept out of the public DTOs.
 
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -172,13 +173,22 @@ impl From<&User> for PublicUser {
   }
 }
 
-/// In-memory session record. Never persisted; lives only in `AppState`.
+/// In-memory session record. Lives in `AppState`; the durable copy is a
+/// hashed token row in `auth_sessions`.
 #[derive(Debug, Clone)]
 pub struct AuthSession {
   pub user_id: i64,
   pub username: String,
   pub role: UserRole,
   pub started_at: String,
+  /// Last command that used the session; refreshed on access.
+  pub last_seen_at: DateTime<Utc>,
+  /// Hard stop regardless of activity.
+  pub absolute_expires_at: DateTime<Utc>,
+  /// Idle timeout in minutes; a longer gap ends the session.
+  pub idle_timeout_min: u32,
+  /// SHA-256 of the persisted token, used to touch or revoke the row.
+  pub token_hash: Option<String>,
 }
 
 impl AuthSession {
@@ -192,6 +202,27 @@ impl AuthSession {
       created_at: self.started_at.clone(),
     }
   }
+
+  /// Returns `true` when the idle or absolute limit has passed.
+  #[must_use]
+  pub fn is_expired(&self, now: DateTime<Utc>) -> bool {
+    now >= self.absolute_expires_at
+      || now.signed_duration_since(self.last_seen_at)
+        >= Duration::minutes(i64::from(self.idle_timeout_min))
+  }
+
+  /// Moves the idle window forward.
+  pub fn touch(&mut self, now: DateTime<Utc>) {
+    self.last_seen_at = now;
+  }
+}
+
+/// Result of a successful `login` / `setup_admin`: the public user plus the
+/// raw session token the command layer stores in the OS keychain.
+#[derive(Debug, Clone)]
+pub struct AuthenticatedSession {
+  pub user: PublicUser,
+  pub token: String,
 }
 
 /// Login form payload (frontend → `login` command).
@@ -433,5 +464,43 @@ mod tests {
       );
       seen.push(event.as_str());
     }
+  }
+
+  fn session_at(now: DateTime<Utc>) -> AuthSession {
+    AuthSession {
+      user_id: 1,
+      username: "admin1".to_string(),
+      role: UserRole::Admin,
+      started_at: now.to_rfc3339(),
+      last_seen_at: now,
+      absolute_expires_at: now + Duration::hours(8),
+      idle_timeout_min: 30,
+      token_hash: Some("hash".to_string()),
+    }
+  }
+
+  #[test]
+  fn session_expires_after_the_idle_window() {
+    let now = Utc::now();
+    let session = session_at(now);
+    assert!(!session.is_expired(now + Duration::minutes(29)));
+    assert!(session.is_expired(now + Duration::minutes(30)));
+  }
+
+  #[test]
+  fn session_expires_at_the_absolute_limit_even_when_active() {
+    let now = Utc::now();
+    let session = session_at(now);
+    assert!(session.is_expired(now + Duration::hours(8)));
+  }
+
+  #[test]
+  fn touching_a_session_moves_the_idle_window() {
+    let now = Utc::now();
+    let mut session = session_at(now);
+    let later = now + Duration::minutes(20);
+    session.touch(later);
+    assert!(!session.is_expired(later + Duration::minutes(29)));
+    assert!(session.is_expired(later + Duration::minutes(30)));
   }
 }

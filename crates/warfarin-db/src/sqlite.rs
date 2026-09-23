@@ -1672,6 +1672,7 @@ pub async fn get_merged_audit_log(
 // AppState
 
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::Mutex;
 
 use crate::auth_service::AuthSessionSlot;
@@ -1686,10 +1687,12 @@ pub struct AppState {
   pub pool: SqlitePool,
   /// Stable identifier for the current machine, used for sync metadata.
   pub machine_id: String,
-  /// In-memory authentication session slot. Always `None` after process start;
-  /// populated only by a successful `login` / `setup_admin` command, cleared
-  /// by `logout` or process exit.
+  /// In-memory authentication session slot. Restored from the keychain token
+  /// at startup and cleared by `logout`, expiry, or process exit.
   pub auth_session: AuthSessionSlot,
+  /// When the session row was last touched, used to throttle `last_seen_at`
+  /// writes to at most one per minute.
+  session_touch: Arc<Mutex<Option<Instant>>>,
 }
 
 impl AppState {
@@ -1700,32 +1703,64 @@ impl AppState {
       pool,
       machine_id,
       auth_session: Arc::new(Mutex::new(None)),
+      session_touch: Arc::new(Mutex::new(None)),
     }
   }
 
-  /// Returns `true` if a session is currently in memory.
+  /// Returns `true` if a live (non-expired) session is present.
   pub async fn is_authenticated(&self) -> bool {
-    self.auth_session.lock().await.is_some()
+    self.current_user().await.is_some()
   }
 
   /// Returns the public view of the logged-in user, or `None` when no
-  /// session is active.
+  /// session is active or the idle or absolute timeout has passed.
   pub async fn current_user(&self) -> Option<PublicUser> {
-    self
-      .auth_session
-      .lock()
-      .await
-      .as_ref()
-      .map(warfarin_core::models::auth::AuthSession::public_user)
+    let mut guard = self.auth_session.lock().await;
+    let session = guard.as_mut()?;
+    let now = Utc::now();
+    if session.is_expired(now) {
+      *guard = None;
+      return None;
+    }
+    session.touch(now);
+    Some(session.public_user())
+  }
+
+  /// Persists `last_seen_at` at most once per minute, so a crash loses at
+  /// most that much idle-timeout progress without writing on every command.
+  async fn persist_session_touch(&self) {
+    const TOUCH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(60);
+    {
+      let mut guard = self.session_touch.lock().await;
+      let due = guard.is_none_or(|last| last.elapsed() >= TOUCH_INTERVAL);
+      if !due {
+        return;
+      }
+      *guard = Some(Instant::now());
+    }
+    let touch = {
+      let guard = self.auth_session.lock().await;
+      guard.as_ref().and_then(|session| {
+        session
+          .token_hash
+          .as_ref()
+          .map(|hash| (hash.clone(), session.last_seen_at.to_rfc3339()))
+      })
+    };
+    if let Some((token_hash, last_seen_at)) = touch {
+      let _ = crate::auth_repository::touch_session(&self.pool, &token_hash, &last_seen_at).await;
+    }
   }
 
   /// Returns the public user view or a generic `NOT_AUTHENTICATED` error
   /// suitable for surfacing from a Tauri command.
   pub async fn require_auth(&self) -> Result<PublicUser, String> {
-    self
+    let user = self
       .current_user()
       .await
-      .ok_or_else(|| "NOT_AUTHENTICATED".to_string())
+      .ok_or_else(|| "NOT_AUTHENTICATED".to_string())?;
+    self.persist_session_touch().await;
+    Ok(user)
   }
 
   /// Returns the session user, or a Thai authorization error when the user's
