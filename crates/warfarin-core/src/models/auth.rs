@@ -479,9 +479,15 @@ mod tests {
     }
   }
 
+  /// Fixed timestamp so the tests never read the system clock, which Miri
+  /// blocks under isolation.
+  fn fixed_now() -> DateTime<Utc> {
+    DateTime::from_timestamp(1_700_000_000, 0).expect("valid fixed timestamp")
+  }
+
   #[test]
   fn session_expires_after_the_idle_window() {
-    let now = Utc::now();
+    let now = fixed_now();
     let session = session_at(now);
     assert!(!session.is_expired(now + Duration::minutes(29)));
     assert!(session.is_expired(now + Duration::minutes(30)));
@@ -489,14 +495,14 @@ mod tests {
 
   #[test]
   fn session_expires_at_the_absolute_limit_even_when_active() {
-    let now = Utc::now();
+    let now = fixed_now();
     let session = session_at(now);
     assert!(session.is_expired(now + Duration::hours(8)));
   }
 
   #[test]
   fn touching_a_session_moves_the_idle_window() {
-    let now = Utc::now();
+    let now = fixed_now();
     let mut session = session_at(now);
     let later = now + Duration::minutes(20);
     session.touch(later);
