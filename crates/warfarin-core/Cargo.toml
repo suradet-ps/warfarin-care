@@ -28,4 +28,3 @@ encryptman = "0.4"
 
 # Argon2id password hashing for the local-auth subsystem.
 argon2 = { version = "0.5", features = ["std"] }
-password-hash = "0.6"
