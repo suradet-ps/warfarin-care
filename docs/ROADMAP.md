@@ -91,7 +91,7 @@ requires a human confirmation. The tool suggests; the clinician decides.
   dispensing, and lab results. Local SQLite (read-write) for clinic enrollment,
   visits, dose history, appointments, adverse events, drug interactions, and
   settings. Cloud sync to Supabase PostgreSQL with AES-256-GCM encrypted
-  credentials. 15 SQLite migrations.
+  credentials. 16 SQLite migrations.
 - **Security model**: Argon2id password hashing with account lockout.
   Local multi-user auth with four roles (`Admin` / `Pharmacist` / `Clinician`
   / `Viewer`), permissions enforced at the command boundary and mirrored to
@@ -108,7 +108,7 @@ requires a human confirmation. The tool suggests; the clinician decides.
   checker. 96 unit tests. Fully isolated from I/O -- no Tauri, no sqlx.
 - **Data layer** (`crates/warfarin-db`): SQLx queries for HosXP (read-only)
   and SQLite (CRUD). Auth service with lockout logic. Cloud sync models.
-  15 embedded migrations.
+  16 embedded migrations.
 - **Backend** (`src-tauri`): 62 Tauri commands across 14 modules (screening,
   patients, visits, INR, appointments, alerts, reports, settings, outcomes,
   interaction, sync, slip, audit, auth). Thin wrappers over core + db.
@@ -153,8 +153,8 @@ requires a human confirmation. The tool suggests; the clinician decides.
    **Status: PARTIALLY RESOLVED.** Local multi-user auth shipped with
    four roles and enforced permissions, account lockout, server-side actor
    stamping on every clinical mutation, admin user management, persistent
-   sessions, and a `security.md` model document. Remaining Phase 2 items:
-   Supabase user sync, `clinic_id`.
+   sessions, `clinic_id`, and a `security.md` model document. Remaining
+   Phase 2 item: Supabase user sync.
 
 4. **No batch operations.** A warfarin clinic reviews 20-50 patients per
    weekly session. Today, each patient requires opening their detail page,
@@ -257,11 +257,11 @@ A clinic tool used by one login for all pharmacists is a liability. Each
 clinician must be accountable for their own actions.
 
 > **Status: PARTIAL.** Local multi-user auth is shipped (migrations 0011,
-> 0014, and 0015): first-run setup, Argon2id hashing, account lockout, auth
-> audit log, four roles with backend-enforced permissions, actor stamping on
-> every clinical mutation, admin user management, and persistent sessions
-> with keychain tokens and configurable timeouts. Remaining items below:
-> Supabase user sync and `clinic_id`.
+> 0014, 0015, and 0016): first-run setup, Argon2id hashing, account lockout,
+> auth audit log, four roles with backend-enforced permissions, actor
+> stamping on every clinical mutation, admin user management, persistent
+> sessions with keychain tokens and configurable timeouts, and `clinic_id`
+> groundwork. Remaining item below: Supabase user sync.
 
 - [x] **Role-based authentication.** The `users.role` column uses
   `Admin`, `Pharmacist`, `Clinician`, or `Viewer`. The permission matrix
@@ -290,10 +290,12 @@ clinician must be accountable for their own actions.
 - [ ] **Supabase user sync.** Cloud-synced user records so that multi-machine
   deployments share the same user roster. Conflict resolution: LWW on
   `updated_at` (same pattern as existing sync).
-- [ ] **Clinic-level configuration.** Hospital name, logo, default INR ranges,
-  staff list -- already in `wf_settings`. Add a `clinic_id` column to
-  `wf_patients` and `wf_visits` for future multi-clinic support (even if
-  only one clinic uses it today, the schema should not preclude two).
+- [x] **Clinic-level configuration.** `ensure_clinic_id` generates a UUID on
+  first run, stores it in `wf_settings`, and backfills `wf_patients` and
+  `wf_visits` so a single-clinic database has one consistent identity. New
+  enrollments and visits are stamped from the setting, and the Hospital tab
+  shows the id read-only. The column is local-only until a coordinated cloud
+  schema change; the sync payloads are unchanged.
 
 **Acceptance:** two users can log in with different roles; a pharmacist's
 dose change shows their name in the audit trail; an admin can create a new

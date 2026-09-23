@@ -57,6 +57,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const drugInteractions = ref<DrugInteraction[]>([]);
   const sessionIdleTimeoutMin = ref(DEFAULT_SESSION_IDLE_TIMEOUT_MIN);
   const sessionAbsoluteTimeoutHours = ref(DEFAULT_SESSION_ABSOLUTE_TIMEOUT_HOURS);
+  const clinicId = ref('');
 
   async function loadMysqlConfig() {
     try {
@@ -119,6 +120,9 @@ export const useSettingsStore = defineStore('settings', () => {
       if (settings.session_absolute_timeout_hours) {
         sessionAbsoluteTimeoutHours.value = Number(settings.session_absolute_timeout_hours);
       }
+      if (settings.clinic_id) {
+        clinicId.value = settings.clinic_id;
+      }
     } catch {}
   }
 
@@ -178,6 +182,7 @@ export const useSettingsStore = defineStore('settings', () => {
     drugInteractions,
     sessionIdleTimeoutMin,
     sessionAbsoluteTimeoutHours,
+    clinicId,
     loadMysqlConfig,
     testConnection,
     saveMysqlConfig,

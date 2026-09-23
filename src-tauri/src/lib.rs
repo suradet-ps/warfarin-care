@@ -124,6 +124,10 @@ fn initialise_app_state(app: &mut App) -> Result<()> {
     );
   });
 
+  if let Err(e) = tauri::async_runtime::block_on(warfarin_db::sqlite::ensure_clinic_id(&pool)) {
+    eprintln!("[warfarin] clinic id init failed: {e:#}");
+  }
+
   let state = AppState::new(pool.clone(), machine_id);
 
   // Restore a persisted session from the keychain. A token that fails to

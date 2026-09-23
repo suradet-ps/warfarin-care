@@ -284,6 +284,12 @@ function severityConfig(severity: string) {
         <span class="caption" style="color:var(--color-slate)">ชื่อโรงพยาบาล</span>
         <input class="input" v-model="store.hospitalName" placeholder="Warfarin Care" />
       </label>
+      <label class="form-field" style="margin-bottom: var(--spacing-lg)">
+        <span class="caption" style="color:var(--color-slate)">
+          Clinic ID (รหัสคลินิกสำหรับรองรับหลายสาขาในอนาคต)
+        </span>
+        <input class="input" :value="store.clinicId" readonly />
+      </label>
       <div class="settings-actions" style="margin-top: var(--spacing-sm)">
         <button class="btn btn-primary" @click="handleSaveHospital" :disabled="savingHospital">
           {{ savingHospital ? 'กำลังบันทึก...' : 'บันทึกชื่อโรงพยาบาล' }}

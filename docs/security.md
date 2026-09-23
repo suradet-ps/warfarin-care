@@ -135,7 +135,8 @@ Debug builds refuse to open the production app data directory, run under the
 
 ## Known Gaps
 
-- `clinic_id` scoping for future multi-clinic deployments.
 - Actor columns for appointments and status history are not yet synced to
   Supabase.
 - Supabase row-level security policy review for the clinic deployment.
+- `clinic_id` is stored locally on patients and visits but not yet synced to
+  the cloud schema.
