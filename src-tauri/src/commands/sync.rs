@@ -8,6 +8,7 @@ use tauri_plugin_store::StoreExt;
 use uuid::Uuid;
 
 use warfarin_core::encrypt::{decrypt_value, encrypt_value};
+use warfarin_core::models::auth::Permission;
 use warfarin_db::sqlite::AppState;
 use warfarin_db::sync_models::{
   ConnectionTestResult, PulledRow, SyncResult, SyncStatus, SyncSummary, WfAppointmentSync,
@@ -398,7 +399,7 @@ pub async fn save_supabase_config(
   anon_key: String,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
-  state.require_auth().await?;
+  state.require_permission(Permission::ManageSettings).await?;
   let normalized_url = url.trim().trim_end_matches('/').to_string();
   if normalized_url.is_empty() {
     return Err("Supabase URL is required".to_string());
@@ -421,7 +422,7 @@ pub async fn test_supabase_connection(
   anon_key: String,
   state: State<'_, AppState>,
 ) -> Result<ConnectionTestResult, String> {
-  state.require_auth().await?;
+  state.require_permission(Permission::ManageSettings).await?;
   let trimmed_url = url.trim().trim_end_matches('/').to_string();
   if trimmed_url.is_empty() {
     return Err("กรุณากรอก Supabase URL".to_string());
@@ -522,7 +523,7 @@ pub async fn push_to_supabase(
   app: AppHandle,
   state: State<'_, AppState>,
 ) -> Result<SyncResult, String> {
-  state.require_auth().await?;
+  state.require_permission(Permission::ManageSettings).await?;
   let (url, anon_key) = get_supabase_config(&app)?;
   let machine_id = get_or_create_machine_id(&app)?;
   let client = supabase_client();
@@ -767,7 +768,7 @@ pub async fn pull_from_supabase(
   app: AppHandle,
   state: State<'_, AppState>,
 ) -> Result<SyncResult, String> {
-  state.require_auth().await?;
+  state.require_permission(Permission::ManageSettings).await?;
   let (url, anon_key) = get_supabase_config(&app)?;
   let machine_id = get_or_create_machine_id(&app)?;
   let client = supabase_client();

@@ -4,7 +4,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::{MySql, QueryBuilder, Row};
 use std::collections::BTreeMap;
 use tauri::State;
-use warfarin_core::models::interaction::{DrugInteraction, DrugInteractionInput};
+use warfarin_core::models::{
+  auth::Permission,
+  interaction::{DrugInteraction, DrugInteractionInput},
+};
 use warfarin_db::mysql;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,7 +52,9 @@ pub async fn add_drug_interaction(
   state: State<'_, warfarin_db::sqlite::AppState>,
   input: DrugInteractionInput,
 ) -> Result<i64, String> {
-  state.require_auth().await?;
+  state
+    .require_permission(Permission::ManageInteractions)
+    .await?;
   warfarin_db::sqlite::add_drug_interaction(&state.pool, &input)
     .await
     .map_err(|e| e.to_string())
@@ -60,7 +65,9 @@ pub async fn delete_drug_interaction(
   state: State<'_, warfarin_db::sqlite::AppState>,
   id: i64,
 ) -> Result<(), String> {
-  state.require_auth().await?;
+  state
+    .require_permission(Permission::ManageInteractions)
+    .await?;
   warfarin_db::sqlite::delete_drug_interaction(&state.pool, id)
     .await
     .map_err(|e| e.to_string())

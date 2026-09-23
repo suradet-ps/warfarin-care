@@ -1675,7 +1675,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::auth_service::AuthSessionSlot;
-use warfarin_core::models::auth::PublicUser;
+use warfarin_core::models::auth::{Permission, PublicUser};
 
 /// Application state managed by Tauri, wrapping the `SQLite` connection pool.
 ///
@@ -1726,6 +1726,20 @@ impl AppState {
       .current_user()
       .await
       .ok_or_else(|| "NOT_AUTHENTICATED".to_string())
+  }
+
+  /// Returns the session user, or a Thai authorization error when the user's
+  /// role does not hold `permission`.
+  ///
+  /// This is the single enforcement point at the command boundary; the UI
+  /// gate mirrors the same matrix through `PublicUser::permissions`.
+  pub async fn require_permission(&self, permission: Permission) -> Result<PublicUser, String> {
+    let user = self.require_auth().await?;
+    if user.role.allows(permission) {
+      Ok(user)
+    } else {
+      Err("คุณไม่มีสิทธิ์ดำเนินการนี้".to_string())
+    }
   }
 }
 

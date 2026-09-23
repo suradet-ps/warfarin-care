@@ -2,7 +2,10 @@
 
 use tauri::State;
 
-use warfarin_core::models::appointment::{AppointmentDayLoad, AppointmentInput, WfAppointment};
+use warfarin_core::models::{
+  appointment::{AppointmentDayLoad, AppointmentInput, WfAppointment},
+  auth::Permission,
+};
 use warfarin_db::sqlite::{
   AppState, get_appointment_day_load as db_get_appointment_day_load,
   get_appointments as db_get_appointments, get_pending_appointments as db_get_pending_appointments,
@@ -25,7 +28,7 @@ pub async fn schedule_appointment(
   appt: AppointmentInput,
   state: State<'_, AppState>,
 ) -> Result<i64, String> {
-  let user = state.require_auth().await?;
+  let user = state.require_permission(Permission::WriteAppointment).await?;
   db_schedule(&state.pool, &appt, Some(user.username.as_str()), &state.machine_id)
     .await
     .map_err(|e| e.to_string())
