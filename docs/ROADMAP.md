@@ -633,14 +633,34 @@ Phase 2 (Multi-User + Accountability)       -- builds on Phase 1's audit trail
 Phase 10 (Clinical Validation)             -- needs all clinical features complete
         |
         v
-    v1.0.0
+    v3.0.0
 ```
 
 Phase 1 comes first on purpose: the drug interaction gap is a patient safety
 issue, not a feature request. Phase 2 comes next because multi-user
 accountability is a deployment prerequisite. Everything after deepens the
-clinical workflow that Phases 1-2 enable. Phase 10 is the gate before v1.0.0:
+clinical workflow that Phases 1-2 enable. Phase 10 is the gate before v3.0.0:
 the tool must be validated against real clinical decisions before it ships.
+
+### Version mapping
+
+Each phase lands as its own minor release; the major bump is reserved for the
+clinical-validation gate. Patch releases (v2.x.y) are bug fixes between
+phases. Phase 7 (frontend testing) is a parallel track and lands alongside
+whichever phase it accompanies.
+
+| Version | Milestone | Phase |
+|---------|-----------|-------|
+| v2.3.0 | Current release -- baseline for this roadmap | -- |
+| v2.4.0 | Multi-user + accountability complete | Phase 2 |
+| v2.5.0 | Batch operations + clinic workflow | Phase 3 |
+| v2.6.0 | Pharmacogenomics (CPIC genotype dosing) | Phase 4 |
+| v2.7.0 | INR prediction: trend extrapolation, then validated PK model once MAE < 0.5 is met | Phase 5A / 5B |
+| v2.8.0 | Patient communication + adherence | Phase 6 |
+| v2.9.0 | Reports + quality indicators (HA) | Phase 8 |
+| v2.10.0 | Performance + reliability hardening | Phase 9 |
+| any v2.x | Frontend tests + accessibility audit (parallel) | Phase 7 |
+| **v3.0.0** | **Clinical validation gate: retrospective + pilot + sign-off** | Phase 10 |
 
 ---
 
@@ -648,7 +668,7 @@ the tool must be validated against real clinical decisions before it ships.
 
 Software unit tests prove the code does what it says. Clinical validation
 proves what it says is clinically correct. This phase is the gate before
-v1.0.0: the tool must be validated against real clinical decisions before
+v3.0.0: the tool must be validated against real clinical decisions before
 it ships to clinics.
 
 ### Retrospective Validation
@@ -744,7 +764,7 @@ focused on clinical decision support:
   a cost/privacy surface that a clinical tool should not carry. Rule-based
   logic and PK modeling only.
 - **Patient-facing mobile app** -- The dose card (Phase 6) is the patient
-  story. A separate patient app is post-1.0 at the earliest.
+  story. A separate patient app is post-3.0 at the earliest.
 - **Real-time vital sign integration** -- Requires HL7/FHIR interfaces with
   hospital monitors; out of scope for a desktop clinic tool.
 - **Insurance/billing integration** -- Not a billing tool.
@@ -781,7 +801,7 @@ should grow with the project:
 | `clinical-validation-report.md` | Full validation results, sign-off | Phase 10 |
 | `known-limitations.md` | What the tool does NOT do well | Phase 10 |
 
-## Future / Ecosystem (post-1.0, if they stay focused)
+## Future / Ecosystem (post-3.0, if they stay focused)
 
 - **Genomic data import** from hospital lab systems (HL7/FHIR) instead of
   manual entry.
