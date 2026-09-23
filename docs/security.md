@@ -88,10 +88,22 @@ coordinated change.
 
 ## Session Model
 
-Sessions are in-memory only (`AuthSessionSlot` in `AppState`), populated by
-`login`/`setup_admin` and cleared by `logout` or process exit. There is no
-persisted session token today; persistent sessions with an idle and absolute
-timeout are the next Phase 2 item.
+A successful `login` or `setup_admin` issues a 256-bit random token. The raw
+token is stored in the OS keychain (service `warfarin-care`, or
+`warfarin-care.dev` for debug builds); the database stores only its SHA-256
+hash in `auth_sessions` along with the issuing machine id and the absolute
+expiry. `AppState` keeps the live session in memory.
+
+- Idle timeout and absolute lifetime come from `wf_settings`
+  (`session_idle_timeout_min`, default 30; `session_absolute_timeout_hours`,
+  default 8) and are configurable in Settings under Security.
+- On startup the app resumes the keychain session when the token is live,
+  the user is still active, and neither timeout has passed. A token that
+  fails any check is revoked and removed from the keychain.
+- `logout` revokes the row and clears the keychain. Revoked and expired rows
+  are pruned on the next login.
+- The login screen shows the most recent successful login on the machine,
+  never per-username, so it cannot be used to probe accounts.
 
 ## Secrets and Encryption
 
@@ -123,7 +135,6 @@ Debug builds refuse to open the production app data directory, run under the
 
 ## Known Gaps
 
-- Persistent sessions with configurable timeout.
 - `clinic_id` scoping for future multi-clinic deployments.
 - Actor columns for appointments and status history are not yet synced to
   Supabase.
