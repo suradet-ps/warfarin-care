@@ -27,7 +27,7 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: () => import('#/views/SettingsView.vue'),
-      meta: { anyPermission: ['manage_settings', 'manage_interactions'] },
+      meta: { anyPermission: ['manage_settings', 'manage_interactions', 'manage_users'] },
     },
     { path: '/audit', name: 'audit', component: () => import('#/views/AuditView.vue') },
   ],

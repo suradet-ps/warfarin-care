@@ -19,6 +19,22 @@ export interface PublicUser {
   createdAt: string;
 }
 
+/** Admin list row: account state without the password hash. */
+export interface ManagedUser {
+  id: number;
+  username: string;
+  role: UserRole;
+  active: boolean;
+  lockedUntil: string | null;
+  createdAt: string;
+}
+
+export interface CreateUserInput {
+  username: string;
+  password: string;
+  role: UserRole;
+}
+
 export const ROLE_LABELS: Record<UserRole, string> = {
   Admin: 'ผู้ดูแลระบบ',
   Pharmacist: 'เภสัชกร',

@@ -36,7 +36,8 @@ const navItems = computed(() =>
     (item) =>
       item.name !== 'settings' ||
       authStore.can('manage_settings') ||
-      authStore.can('manage_interactions'),
+      authStore.can('manage_interactions') ||
+      authStore.can('manage_users'),
   ),
 );
 
