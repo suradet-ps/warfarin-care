@@ -91,13 +91,14 @@ requires a human confirmation. The tool suggests; the clinician decides.
   dispensing, and lab results. Local SQLite (read-write) for clinic enrollment,
   visits, dose history, appointments, adverse events, drug interactions, and
   settings. Cloud sync to Supabase PostgreSQL with AES-256-GCM encrypted
-  credentials. 14 SQLite migrations.
+  credentials. 15 SQLite migrations.
 - **Security model**: Argon2id password hashing with account lockout.
   Local multi-user auth with four roles (`Admin` / `Pharmacist` / `Clinician`
   / `Viewer`), permissions enforced at the command boundary and mirrored to
   the UI, server-side actor stamping on clinical mutations, first-run setup
   screen, and an auth audit log. AES-256-GCM encryption for stored
-  credentials. OS keychain for encryption keys. In-memory session.
+  credentials. OS keychain for encryption keys. Persistent sessions with a
+  keychain token and configurable idle and absolute timeouts.
   `#![deny(unsafe_code)]` at crate level. `cargo-deny` for
   advisory/license checking. Pinned GitHub Actions SHAs.
 - **Clinical logic** (`crates/warfarin-core`): Pure Rust dose calculator
@@ -107,8 +108,8 @@ requires a human confirmation. The tool suggests; the clinician decides.
   checker. 96 unit tests. Fully isolated from I/O -- no Tauri, no sqlx.
 - **Data layer** (`crates/warfarin-db`): SQLx queries for HosXP (read-only)
   and SQLite (CRUD). Auth service with lockout logic. Cloud sync models.
-  14 embedded migrations.
-- **Backend** (`src-tauri`): 56 Tauri commands across 14 modules (screening,
+  15 embedded migrations.
+- **Backend** (`src-tauri`): 62 Tauri commands across 14 modules (screening,
   patients, visits, INR, appointments, alerts, reports, settings, outcomes,
   interaction, sync, slip, audit, auth). Thin wrappers over core + db.
   Actor tracking (`user.username`) on clinical mutations.
@@ -151,9 +152,9 @@ requires a human confirmation. The tool suggests; the clinician decides.
    (Phase 2.)
    **Status: PARTIALLY RESOLVED.** Local multi-user auth shipped with
    four roles and enforced permissions, account lockout, server-side actor
-   stamping on every clinical mutation, admin user management, and a
-   `security.md` model document. Remaining Phase 2 items: persistent
-   sessions, Supabase user sync, `clinic_id`.
+   stamping on every clinical mutation, admin user management, persistent
+   sessions, and a `security.md` model document. Remaining Phase 2 items:
+   Supabase user sync, `clinic_id`.
 
 4. **No batch operations.** A warfarin clinic reviews 20-50 patients per
    weekly session. Today, each patient requires opening their detail page,
@@ -255,12 +256,12 @@ tests in `warfarin-core`.
 A clinic tool used by one login for all pharmacists is a liability. Each
 clinician must be accountable for their own actions.
 
-> **Status: PARTIAL.** Local multi-user auth is shipped (migrations 0011 and
-> 0014): first-run setup, Argon2id hashing, account lockout, auth audit log,
-> four roles with backend-enforced permissions, actor stamping on every
-> clinical mutation, and admin user management (create, reset password,
-> change role, suspend). Remaining items below: session management,
-> Supabase user sync, and `clinic_id`.
+> **Status: PARTIAL.** Local multi-user auth is shipped (migrations 0011,
+> 0014, and 0015): first-run setup, Argon2id hashing, account lockout, auth
+> audit log, four roles with backend-enforced permissions, actor stamping on
+> every clinical mutation, admin user management, and persistent sessions
+> with keychain tokens and configurable timeouts. Remaining items below:
+> Supabase user sync and `clinic_id`.
 
 - [x] **Role-based authentication.** The `users.role` column uses
   `Admin`, `Pharmacist`, `Clinician`, or `Viewer`. The permission matrix
@@ -269,9 +270,12 @@ clinician must be accountable for their own actions.
   through `PublicUser.permissions`. `Viewer` is read-only, `Clinician`
   and `Pharmacist` record care, and only `Admin` manages interactions,
   settings, and users. See `docs/security.md`.
-- [ ] **Per-user session management.** Persistent sessions (not just
-  in-memory) with configurable timeout. Login screen shows last-login
-  timestamp. Account lockout policy remains (5 attempts / 15 min).
+- [x] **Per-user session management.** Sessions persist as a hashed token in
+  `auth_sessions`, with the raw token in the OS keychain and the issuing
+  machine id on the row. Idle timeout (default 30 minutes) and absolute
+  lifetime (default 8 hours) are configurable in Settings, the login screen
+  shows the last successful login, and logout revokes the row. Account
+  lockout policy remains (5 attempts / 15 min).
 - [x] **Actor tracking on all mutations.** `save_visit`, `update_visit`,
   `update_patient_status`, `record_adverse_event`, and
   `schedule_appointment` stamp the session username server-side, and

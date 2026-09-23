@@ -5542,6 +5542,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "encryptman-keyring",
+ "keyring",
  "reqwest",
  "serde",
  "serde_json",
@@ -5567,6 +5568,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "thiserror 2.0.20",
 ]
 

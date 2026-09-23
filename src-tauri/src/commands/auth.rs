@@ -14,6 +14,8 @@ use warfarin_core::models::auth::{
 use warfarin_db::auth_service;
 use warfarin_db::sqlite::AppState;
 
+use crate::session_store;
+
 /// Returns `true` when at least one user exists in the `users` table.
 ///
 /// Used by the frontend to decide between the first-time setup screen and
@@ -23,6 +25,14 @@ pub async fn has_users(state: State<'_, AppState>) -> Result<bool, String> {
   Ok(auth_service::has_users(&state.pool).await)
 }
 
+/// Returns the most recent successful login on this machine, or `None`.
+///
+/// Machine-wide on purpose: it never reveals whether a given username exists.
+#[tauri::command]
+pub async fn get_last_login_hint(state: State<'_, AppState>) -> Result<Option<String>, String> {
+  Ok(auth_service::last_login_hint(&state.pool).await)
+}
+
 /// Creates the first administrator account. Refuses to run when any user
 /// already exists (the frontend also gates the setup screen on `has_users`).
 #[tauri::command]
@@ -30,9 +40,11 @@ pub async fn setup_admin(
   input: SetupAdminInput,
   state: State<'_, AppState>,
 ) -> Result<PublicUser, String> {
-  auth_service::setup_admin(&state.pool, &state.auth_session, input)
+  let auth = auth_service::setup_admin(&state.pool, &state.auth_session, &state.machine_id, input)
     .await
-    .map_err(map_auth_error)
+    .map_err(map_auth_error)?;
+  persist_token(&auth.token);
+  Ok(auth.user)
 }
 
 /// Authenticates `username`/`password` against the `users` table and
@@ -42,16 +54,28 @@ pub async fn setup_admin(
 /// frontend never learns whether the username exists.
 #[tauri::command]
 pub async fn login(input: LoginInput, state: State<'_, AppState>) -> Result<PublicUser, String> {
-  auth_service::login(&state.pool, &state.auth_session, input)
+  let auth = auth_service::login(&state.pool, &state.auth_session, &state.machine_id, input)
     .await
-    .map_err(map_auth_error)
+    .map_err(map_auth_error)?;
+  persist_token(&auth.token);
+  Ok(auth.user)
 }
 
-/// Clears the in-memory session. Always succeeds; safe to call repeatedly.
+/// Clears the in-memory session and its keychain token. Always succeeds;
+/// safe to call repeatedly.
 #[tauri::command]
 pub async fn logout(state: State<'_, AppState>) -> Result<(), String> {
   auth_service::logout(&state.pool, &state.auth_session).await;
+  session_store::clear_token();
   Ok(())
+}
+
+/// Stores the token best-effort: a machine without a usable keychain still
+/// gets a working in-memory session, it just will not survive a restart.
+fn persist_token(token: &str) {
+  if let Err(e) = session_store::store_token(token) {
+    eprintln!("[auth] session token not persisted: {e}");
+  }
 }
 
 /// Returns `true` when a session is currently held in memory.

@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core';
 import { LogIn } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '#/stores/auth.ts';
+import { formatThaiDateTime } from '#/utils/clinic.ts';
 
 const router = useRouter();
 const route = useRoute();
@@ -12,12 +14,19 @@ const username = ref('');
 const password = ref('');
 const submitting = ref(false);
 const localError = ref<string | null>(null);
+const lastLogin = ref<string | null>(null);
 
-onMounted(() => {
+onMounted(async () => {
   // If the user lands here already authenticated (e.g. after a hot reload),
   // bounce them back to the original target.
   if (store.currentUser) {
     void router.replace((route.query.redirect as string) || '/');
+    return;
+  }
+  try {
+    lastLogin.value = await invoke<string | null>('get_last_login_hint');
+  } catch {
+    lastLogin.value = null;
   }
 });
 
@@ -90,6 +99,10 @@ async function handleSubmit() {
       <div v-if="localError" class="auth-error" role="alert">
         {{ localError }}
       </div>
+
+      <p v-if="lastLogin" class="auth-hint">
+        เข้าสู่ระบบล่าสุด: {{ formatThaiDateTime(lastLogin) }}
+      </p>
 
       <button type="submit" class="auth-submit" :disabled="submitting">
         <LogIn :size="18" />
@@ -180,6 +193,12 @@ async function handleSubmit() {
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--typography-body-sm-medium-size);
   font-weight: var(--typography-body-sm-medium-weight);
+}
+.auth-hint {
+  margin: 0;
+  text-align: center;
+  font-size: var(--typography-caption-size);
+  color: var(--color-slate);
 }
 .auth-submit {
   display: inline-flex;

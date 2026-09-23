@@ -23,6 +23,8 @@ tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 tauri-plugin-store = "2"
 encryptman-keyring = "0.1"
+# OS keychain entry holding the raw session token between app launches.
+keyring = "4"
 sqlx = { version = "0.9", features = ["mysql", "sqlite", "runtime-tokio", "chrono", "macros"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }

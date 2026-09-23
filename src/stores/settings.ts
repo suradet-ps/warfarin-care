@@ -39,6 +39,9 @@ export interface MysqlConfigStatus {
   username: string;
 }
 
+const DEFAULT_SESSION_IDLE_TIMEOUT_MIN = 30;
+const DEFAULT_SESSION_ABSOLUTE_TIMEOUT_HOURS = 8;
+
 export const useSettingsStore = defineStore('settings', () => {
   const mysqlConfig = ref<MysqlConfig>({
     host: 'localhost',
@@ -52,6 +55,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const staffList = ref<string[]>([]);
   const isConnected = ref(false);
   const drugInteractions = ref<DrugInteraction[]>([]);
+  const sessionIdleTimeoutMin = ref(DEFAULT_SESSION_IDLE_TIMEOUT_MIN);
+  const sessionAbsoluteTimeoutHours = ref(DEFAULT_SESSION_ABSOLUTE_TIMEOUT_HOURS);
 
   async function loadMysqlConfig() {
     try {
@@ -108,11 +113,28 @@ export const useSettingsStore = defineStore('settings', () => {
       if (settings.staff_list) {
         staffList.value = JSON.parse(settings.staff_list);
       }
+      if (settings.session_idle_timeout_min) {
+        sessionIdleTimeoutMin.value = Number(settings.session_idle_timeout_min);
+      }
+      if (settings.session_absolute_timeout_hours) {
+        sessionAbsoluteTimeoutHours.value = Number(settings.session_absolute_timeout_hours);
+      }
     } catch {}
   }
 
   async function saveHospitalName() {
     await invoke('save_setting', { key: 'hospital_name', value: hospitalName.value });
+  }
+
+  async function saveSessionTimeouts() {
+    await invoke('save_setting', {
+      key: 'session_idle_timeout_min',
+      value: String(sessionIdleTimeoutMin.value),
+    });
+    await invoke('save_setting', {
+      key: 'session_absolute_timeout_hours',
+      value: String(sessionAbsoluteTimeoutHours.value),
+    });
   }
 
   async function loadDrugInteractions() {
@@ -154,11 +176,14 @@ export const useSettingsStore = defineStore('settings', () => {
     staffList,
     isConnected,
     drugInteractions,
+    sessionIdleTimeoutMin,
+    sessionAbsoluteTimeoutHours,
     loadMysqlConfig,
     testConnection,
     saveMysqlConfig,
     loadSettings,
     saveHospitalName,
+    saveSessionTimeouts,
     loadDrugInteractions,
     addDrugInteraction,
     deleteDrugInteraction,

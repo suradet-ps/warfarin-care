@@ -25,3 +25,34 @@ pub mod backup;
 pub mod mysql;
 pub mod sqlite;
 pub mod sync_models;
+
+#[cfg(test)]
+mod migration_tests {
+  use std::fs;
+
+  /// sqlx checksums migration files over their raw bytes at compile time, so
+  /// a line-ending flip breaks every existing database. `.gitattributes`
+  /// pins SQL to CRLF; this test catches a file created with bare LF before
+  /// it can be applied anywhere.
+  #[test]
+  fn migration_files_use_crlf_line_endings() {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/migrations");
+    let entries = fs::read_dir(dir).expect("migrations directory must exist");
+    for entry in entries.flatten() {
+      let path = entry.path();
+      if path.extension().and_then(|ext| ext.to_str()) != Some("sql") {
+        continue;
+      }
+      let bytes = fs::read(&path).expect("migration must be readable");
+      let mut previous_was_cr = false;
+      for &byte in &bytes {
+        assert!(
+          !(byte == b'\n' && !previous_was_cr),
+          "{} uses a bare LF; sqlx checksums require CRLF (see .gitattributes)",
+          path.display()
+        );
+        previous_was_cr = byte == b'\r';
+      }
+    }
+  }
+}

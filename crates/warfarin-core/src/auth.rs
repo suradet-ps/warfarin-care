@@ -9,8 +9,12 @@
 use argon2::{Algorithm, Params, Version};
 use argon2::{
   Argon2,
-  password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
+  password_hash::{
+    PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng,
+    rand_core::RngCore,
+  },
 };
+use sha2::{Digest, Sha256};
 
 /// Minimum length for a username.
 pub const MIN_USERNAME_LEN: usize = 3;
@@ -24,6 +28,38 @@ pub const MAX_PASSWORD_LEN: usize = 128;
 pub const MAX_FAILED_ATTEMPTS: u32 = 5;
 /// How long a locked account remains locked, in minutes.
 pub const LOCKOUT_DURATION_MIN: u32 = 15;
+/// Random bytes behind a session token (256 bits of entropy).
+pub const SESSION_TOKEN_BYTES: usize = 32;
+
+/// Generates a 256-bit session token as a lowercase hex string.
+///
+/// The raw token goes to the OS keychain only; the database stores
+/// [`hash_session_token`] of it.
+#[must_use]
+pub fn generate_session_token() -> String {
+  let mut bytes = [0u8; SESSION_TOKEN_BYTES];
+  OsRng.fill_bytes(&mut bytes);
+  to_hex(&bytes)
+}
+
+/// Returns the SHA-256 digest of a session token as lowercase hex.
+///
+/// Tokens are high-entropy random values, so a plain digest (no salt or
+/// stretching) is the right tool; this is not password storage.
+#[must_use]
+pub fn hash_session_token(token: &str) -> String {
+  let digest = Sha256::digest(token.as_bytes());
+  to_hex(&digest)
+}
+
+fn to_hex(bytes: &[u8]) -> String {
+  use std::fmt::Write as _;
+  let mut out = String::with_capacity(bytes.len() * 2);
+  for byte in bytes {
+    let _ = write!(out, "{byte:02x}");
+  }
+  out
+}
 
 /// Returns the lockout expiry as `now + LOCKOUT_DURATION_MIN` in RFC 3339 UTC.
 ///
@@ -239,5 +275,31 @@ mod tests {
     let parsed = chrono::DateTime::parse_from_rfc3339(&s).unwrap();
     let now = chrono::Utc::now();
     assert!(parsed.with_timezone(&chrono::Utc) > now);
+  }
+
+  #[test]
+  fn session_tokens_are_256_bits_of_hex_and_unique() {
+    let a = generate_session_token();
+    let b = generate_session_token();
+    assert_eq!(a.len(), SESSION_TOKEN_BYTES * 2);
+    assert!(a.chars().all(|c| c.is_ascii_hexdigit()));
+    assert_ne!(a, b, "two generated tokens must differ");
+  }
+
+  #[test]
+  fn session_token_hash_is_stable_and_does_not_contain_the_token() {
+    let token = "0123456789abcdef0123456789abcdef";
+    let hash = hash_session_token(token);
+    assert_eq!(hash.len(), 64);
+    assert_eq!(hash, hash_session_token(token));
+    assert!(!hash.contains(token));
+  }
+
+  #[test]
+  fn session_token_hash_matches_known_sha256_vector() {
+    assert_eq!(
+      hash_session_token(""),
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    );
   }
 }
