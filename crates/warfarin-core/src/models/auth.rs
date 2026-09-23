@@ -72,11 +72,10 @@ impl std::str::FromStr for UserRole {
     match value {
       "Admin" => Ok(Self::Admin),
       "Pharmacist" => Ok(Self::Pharmacist),
-      "Clinician" => Ok(Self::Clinician),
+      // Legacy "User" was written by migration 0011. Migration 0014 rewrites
+      // the rows, but the alias keeps a not-yet-migrated database readable.
+      "Clinician" | "User" => Ok(Self::Clinician),
       "Viewer" => Ok(Self::Viewer),
-      // Legacy value written by migration 0011. Migration 0014 rewrites the
-      // rows, but the alias keeps a not-yet-migrated database readable.
-      "User" => Ok(Self::Clinician),
       other => Err(format!("unknown role: {other}")),
     }
   }
@@ -332,6 +331,9 @@ mod tests {
       updated_at: "2026-01-01T00:00:00Z".to_string(),
     };
     let public = PublicUser::from(&user);
-    assert_eq!(public.permissions, UserRole::Pharmacist.permissions().to_vec());
+    assert_eq!(
+      public.permissions,
+      UserRole::Pharmacist.permissions().to_vec()
+    );
   }
 }

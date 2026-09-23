@@ -1805,12 +1805,11 @@ mod actor_tests {
     .await
     .expect("update status");
 
-    let changed_by: Option<String> = sqlx::query_scalar(
-      "SELECT changed_by FROM wf_patient_status_history WHERE hn = 'HN0002'",
-    )
-    .fetch_one(&pool)
-    .await
-    .expect("read changed_by");
+    let changed_by: Option<String> =
+      sqlx::query_scalar("SELECT changed_by FROM wf_patient_status_history WHERE hn = 'HN0002'")
+        .fetch_one(&pool)
+        .await
+        .expect("read changed_by");
     assert_eq!(changed_by.as_deref(), Some("nurse1"));
   }
 }

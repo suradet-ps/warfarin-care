@@ -28,10 +28,17 @@ pub async fn schedule_appointment(
   appt: AppointmentInput,
   state: State<'_, AppState>,
 ) -> Result<i64, String> {
-  let user = state.require_permission(Permission::WriteAppointment).await?;
-  db_schedule(&state.pool, &appt, Some(user.username.as_str()), &state.machine_id)
-    .await
-    .map_err(|e| e.to_string())
+  let user = state
+    .require_permission(Permission::WriteAppointment)
+    .await?;
+  db_schedule(
+    &state.pool,
+    &appt,
+    Some(user.username.as_str()),
+    &state.machine_id,
+  )
+  .await
+  .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

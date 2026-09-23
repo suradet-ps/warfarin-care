@@ -197,7 +197,9 @@ pub async fn update_patient_status(
   effective_date: Option<String>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
-  let user = state.require_permission(Permission::WritePatientStatus).await?;
+  let user = state
+    .require_permission(Permission::WritePatientStatus)
+    .await?;
   db_update_status(
     &state.pool,
     &hn,
