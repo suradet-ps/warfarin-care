@@ -27,13 +27,14 @@ const savingHospital = ref(false);
 const hospitalSaveResult = ref<'success' | 'error' | null>(null);
 const hospitalSaveError = ref<string | null>(null);
 
-const activeSection = ref<'connection' | 'hospital' | 'interactions' | 'sync' | 'users'>(
-  'connection',
-);
+const activeSection = ref<
+  'connection' | 'hospital' | 'security' | 'interactions' | 'sync' | 'users'
+>('connection');
 
 const sections = [
   { key: 'connection', label: 'การเชื่อมต่อ', permission: 'manage_settings' },
   { key: 'hospital', label: 'ข้อมูลโรงพยาบาล', permission: 'manage_settings' },
+  { key: 'security', label: 'ความปลอดภัย', permission: 'manage_settings' },
   { key: 'sync', label: 'Cloud Sync', permission: 'manage_settings' },
   { key: 'interactions', label: 'Drug interaction', permission: 'manage_interactions' },
   { key: 'users', label: 'ผู้ใช้งาน', permission: 'manage_users' },
@@ -96,6 +97,25 @@ async function handleSaveHospital() {
     hospitalSaveError.value = e instanceof Error ? e.message : String(e);
   } finally {
     savingHospital.value = false;
+  }
+}
+
+const savingSecurity = ref(false);
+const securitySaveResult = ref<'success' | 'error' | null>(null);
+const securitySaveError = ref<string | null>(null);
+
+async function handleSaveSecurity() {
+  savingSecurity.value = true;
+  securitySaveResult.value = null;
+  securitySaveError.value = null;
+  try {
+    await store.saveSessionTimeouts();
+    securitySaveResult.value = 'success';
+  } catch (e) {
+    securitySaveResult.value = 'error';
+    securitySaveError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    savingSecurity.value = false;
   }
 }
 
@@ -273,6 +293,44 @@ function severityConfig(severity: string) {
       </div>
       <p v-if="hospitalSaveError" class="caption" style="color: var(--color-brand-red); margin-top: var(--spacing-xs)">
         {{ hospitalSaveError }}
+      </p>
+    </div>
+
+    <!-- Security -->
+    <div v-else-if="activeSection === 'security'" class="settings-section card">
+      <h3 class="h4" style="margin-bottom: var(--spacing-sm)">ความปลอดภัยของเซสชัน</h3>
+      <p class="caption" style="color: var(--color-slate); margin-bottom: var(--spacing-xl)">
+        เซสชันจะถูกเก็บไว้ใน keychain ของเครื่อง และหมดอายุตามค่าด้านล่าง
+      </p>
+      <label class="form-field" style="margin-bottom: var(--spacing-lg)">
+        <span class="caption" style="color:var(--color-slate)">หมดอายุเมื่อไม่ใช้งาน (นาที)</span>
+        <input
+          class="input"
+          type="number"
+          min="1"
+          max="720"
+          v-model.number="store.sessionIdleTimeoutMin"
+        />
+      </label>
+      <label class="form-field" style="margin-bottom: var(--spacing-lg)">
+        <span class="caption" style="color:var(--color-slate)">อายุสูงสุดของเซสชัน (ชั่วโมง)</span>
+        <input
+          class="input"
+          type="number"
+          min="1"
+          max="168"
+          v-model.number="store.sessionAbsoluteTimeoutHours"
+        />
+      </label>
+      <div class="settings-actions" style="margin-top: var(--spacing-sm)">
+        <button class="btn btn-primary" @click="handleSaveSecurity" :disabled="savingSecurity">
+          {{ savingSecurity ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่าเซสชัน' }}
+        </button>
+        <span v-if="securitySaveResult === 'success'" class="badge badge-success">✓ บันทึกแล้ว</span>
+        <span v-else-if="securitySaveResult === 'error'" class="badge badge-danger">✗ บันทึกไม่สำเร็จ</span>
+      </div>
+      <p v-if="securitySaveError" class="caption" style="color: var(--color-brand-red); margin-top: var(--spacing-xs)">
+        {{ securitySaveError }}
       </p>
     </div>
 

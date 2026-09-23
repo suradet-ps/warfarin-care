@@ -84,6 +84,19 @@ export function formatThaiDate(value?: string | null): string {
   return `${day}/${month}/${year}`;
 }
 
+export function formatThaiDateTime(value?: string | null): string {
+  if (!value) {
+    return '-';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  const hours = `${date.getHours()}`.padStart(2, '0');
+  const minutes = `${date.getMinutes()}`.padStart(2, '0');
+  return `${formatThaiDate(value)} ${hours}:${minutes}`;
+}
+
 function formatDateInput(date: Date): string {
   const year = `${date.getFullYear()}`;
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
