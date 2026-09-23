@@ -91,9 +91,11 @@ requires a human confirmation. The tool suggests; the clinician decides.
   dispensing, and lab results. Local SQLite (read-write) for clinic enrollment,
   visits, dose history, appointments, adverse events, drug interactions, and
   settings. Cloud sync to Supabase PostgreSQL with AES-256-GCM encrypted
-  credentials. 13 SQLite migrations.
+  credentials. 14 SQLite migrations.
 - **Security model**: Argon2id password hashing with account lockout.
-  Local multi-user auth with roles (`Admin` / `User`), first-run setup
+  Local multi-user auth with four roles (`Admin` / `Pharmacist` / `Clinician`
+  / `Viewer`), permissions enforced at the command boundary and mirrored to
+  the UI, server-side actor stamping on clinical mutations, first-run setup
   screen, and an auth audit log. AES-256-GCM encryption for stored
   credentials. OS keychain for encryption keys. In-memory session.
   `#![deny(unsafe_code)]` at crate level. `cargo-deny` for
@@ -102,10 +104,10 @@ requires a human confirmation. The tool suggests; the clinician decides.
   (`suggest_dose`) with target-range-aware decision tree, TTR calculation
   (Rosendaal linear interpolation), pill decomposition, usage text parser,
   AES encryption, password hashing, search normalization, interaction
-  checker. 54 unit tests. Fully isolated from I/O -- no Tauri, no sqlx.
+  checker. 96 unit tests. Fully isolated from I/O -- no Tauri, no sqlx.
 - **Data layer** (`crates/warfarin-db`): SQLx queries for HosXP (read-only)
   and SQLite (CRUD). Auth service with lockout logic. Cloud sync models.
-  13 embedded migrations.
+  14 embedded migrations.
 - **Backend** (`src-tauri`): 56 Tauri commands across 14 modules (screening,
   patients, visits, INR, appointments, alerts, reports, settings, outcomes,
   interaction, sync, slip, audit, auth). Thin wrappers over core + db.
@@ -148,9 +150,10 @@ requires a human confirmation. The tool suggests; the clinician decides.
    no per-clinician audit trail, no role separation, no accountability.
    (Phase 2.)
    **Status: PARTIALLY RESOLVED.** Local multi-user auth shipped with
-   roles (`Admin` / `User`), account lockout, and actor tracking on
-   clinical mutations. Remaining Phase 2 items: user management UI,
-   persistent sessions, `viewer` role, Supabase user sync, `clinic_id`.
+   four roles and enforced permissions, account lockout, server-side actor
+   stamping on every clinical mutation, and a `security.md` model document.
+   Remaining Phase 2 items: user management UI, persistent sessions,
+   Supabase user sync, `clinic_id`.
 
 4. **No batch operations.** A warfarin clinic reviews 20-50 patients per
    weekly session. Today, each patient requires opening their detail page,
@@ -252,26 +255,31 @@ tests in `warfarin-core`.
 A clinic tool used by one login for all pharmacists is a liability. Each
 clinician must be accountable for their own actions.
 
-> **Status: PARTIAL.** Local multi-user auth with `Admin` / `User` roles is
-> already shipped (migration 0011): first-run setup screen, Argon2id hashing,
-> account lockout, auth audit log, and actor tracking on `save_visit`. The
-> items below extend that foundation.
+> **Status: PARTIAL.** Local multi-user auth is shipped (migrations 0011 and
+> 0014): first-run setup, Argon2id hashing, account lockout, auth audit log,
+> four roles with backend-enforced permissions, and actor stamping on every
+> clinical mutation. Remaining items below: session management, user
+> management UI, Supabase user sync, and `clinic_id`.
 
-- [ ] **Role-based authentication.** Extend the `users` table with a `role`
-  column: `admin`, `clinician`, `pharmacist`, `viewer`. Admin manages users;
-  clinicians/pharmacists record visits and change doses; viewers read-only.
-  *(Partially done: `role` column exists with `Admin` / `User`; the
-  `clinician` / `pharmacist` / `viewer` split and enforced permissions are
-  not.)*
+- [x] **Role-based authentication.** The `users.role` column uses
+  `Admin`, `Pharmacist`, `Clinician`, or `Viewer`. The permission matrix
+  lives in `UserRole::permissions` (warfarin-core); every write command
+  calls `AppState::require_permission`, and the UI mirrors the same list
+  through `PublicUser.permissions`. `Viewer` is read-only, `Clinician`
+  and `Pharmacist` record care, and only `Admin` manages interactions,
+  settings, and users. See `docs/security.md`.
 - [ ] **Per-user session management.** Persistent sessions (not just
   in-memory) with configurable timeout. Login screen shows last-login
   timestamp. Account lockout policy remains (5 attempts / 15 min).
-- [ ] **Actor tracking on all mutations.** Every `save_visit`, `update_status`,
-  `record_adverse_event`, and `schedule_appointment` command records the
-  current user's ID in the `created_by` / `changed_by` field. The audit
-  trail from Phase 1 now shows real clinician names, not "system".
+- [x] **Actor tracking on all mutations.** `save_visit`, `update_visit`,
+  `update_patient_status`, `record_adverse_event`, and
+  `schedule_appointment` stamp the session username server-side, and
+  `insert_audit_log` ignores any client-supplied actor. The appointment
+  and status-history actor columns are local-only until the cloud schema
+  gains the same columns.
 - [ ] **User management UI.** A `/users` admin page (visible only to admin
   role) for creating accounts, resetting passwords, and changing roles.
+  Default role for new accounts is `Pharmacist`.
 - [ ] **Supabase user sync.** Cloud-synced user records so that multi-machine
   deployments share the same user roster. Conflict resolution: LWW on
   `updated_at` (same pattern as existing sync).
@@ -790,7 +798,7 @@ should grow with the project:
 | `CLOUD-SYNC.md` | Cloud sync architecture + implementation | Already exists |
 | `ROADMAP.md` | This document | Now |
 | `architecture.md` | Detailed architecture diagrams, data flow, module dependencies | Phase 1 |
-| `security.md` | Threat model, auth model, encryption, RLS posture | Phase 2 |
+| `security.md` | Threat model, auth model, encryption, RLS posture | Already exists |
 | `clinical-algorithms.md` | Dose calculator logic, TTR method, interaction engine, genotype rules | Phase 4 |
 | `database.md` | Schema reference, migration history, query patterns | Phase 1 |
 | `validation.md` | Clinical validation protocol, concordance metrics, pilot design | Phase 10 |
