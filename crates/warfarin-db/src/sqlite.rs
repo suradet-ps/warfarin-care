@@ -156,11 +156,12 @@ pub async fn enroll_patient(
   machine_id: &str,
 ) -> Result<i64> {
   let now = Utc::now().to_rfc3339();
+  let clinic_id = current_clinic_id(pool).await?;
   let id = sqlx::query(
     "INSERT INTO wf_patients \
          (hn, enrolled_at, enrolled_by, status, indication, \
-          target_inr_low, target_inr_high, notes, created_at, updated_at, sync_id, machine_id) \
-         VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?)",
+          target_inr_low, target_inr_high, notes, created_at, updated_at, sync_id, machine_id, clinic_id) \
+         VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   )
   .bind(&input.hn)
   .bind(&input.enrolled_at)
@@ -173,6 +174,7 @@ pub async fn enroll_patient(
   .bind(&now)
   .bind(new_sync_id())
   .bind(machine_id)
+  .bind(&clinic_id)
   .execute(pool)
   .await
   .context("failed to enroll patient")?
@@ -383,6 +385,7 @@ pub async fn save_visit(pool: &SqlitePool, input: &VisitInput, machine_id: &str)
     .map(|option| serde_json::to_string(option).unwrap_or_default());
   let dose_changed = i32::from(input.dose_changed);
   let visit_sync_id = new_sync_id();
+  let clinic_id = current_clinic_id(pool).await?;
 
   let mut tx = pool
     .begin()
@@ -394,8 +397,8 @@ pub async fn save_visit(pool: &SqlitePool, input: &VisitInput, machine_id: &str)
          (hn, visit_date, inr_value, inr_source, \
            current_dose_mgday, dose_detail, new_dose_mgday, new_dose_detail, new_dose_description, selected_dose_option, \
            dose_changed, next_appointment, next_inr_due, \
-           physician, notes, side_effects, adherence, created_by, created_at, updated_at, sync_id, machine_id) \
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+           physician, notes, side_effects, adherence, created_by, created_at, updated_at, sync_id, machine_id, clinic_id) \
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   )
   .bind(&input.hn)
   .bind(&input.visit_date)
@@ -419,6 +422,7 @@ pub async fn save_visit(pool: &SqlitePool, input: &VisitInput, machine_id: &str)
   .bind(&now)
   .bind(&visit_sync_id)
   .bind(machine_id)
+  .bind(&clinic_id)
   .execute(&mut *tx)
   .await
   .context("failed to save visit")?
@@ -1237,6 +1241,46 @@ pub async fn get_setting(pool: &SqlitePool, key: &str) -> Result<Option<String>>
   Ok(row.map(|r| r.get("value")))
 }
 
+/// Settings key holding the generated clinic identity.
+pub const CLINIC_ID_KEY: &str = "clinic_id";
+
+/// Returns the clinic id, generating and backfilling it on first use.
+///
+/// Every row created before the setting existed is stamped with the new id,
+/// so a single-clinic database has one consistent identity from the moment
+/// this runs. Safe to call on every startup.
+pub async fn ensure_clinic_id(pool: &SqlitePool) -> Result<String> {
+  if let Some(existing) = current_clinic_id(pool).await? {
+    return Ok(existing);
+  }
+
+  let clinic_id = Uuid::new_v4().to_string();
+  set_setting(pool, CLINIC_ID_KEY, &clinic_id).await?;
+
+  sqlx::query("UPDATE wf_patients SET clinic_id = ? WHERE clinic_id IS NULL")
+    .bind(&clinic_id)
+    .execute(pool)
+    .await
+    .context("failed to backfill clinic_id on wf_patients")?;
+  sqlx::query("UPDATE wf_visits SET clinic_id = ? WHERE clinic_id IS NULL")
+    .bind(&clinic_id)
+    .execute(pool)
+    .await
+    .context("failed to backfill clinic_id on wf_visits")?;
+
+  Ok(clinic_id)
+}
+
+/// Returns the configured clinic id, or `None` when it has not been set.
+async fn current_clinic_id(pool: &SqlitePool) -> Result<Option<String>> {
+  Ok(
+    get_setting(pool, CLINIC_ID_KEY)
+      .await?
+      .map(|value| value.trim().to_string())
+      .filter(|value| !value.is_empty()),
+  )
+}
+
 // wf_drug_interactions
 
 /// Fetches all drug interactions configured in the system.
@@ -1846,5 +1890,103 @@ mod actor_tests {
         .await
         .expect("read changed_by");
     assert_eq!(changed_by.as_deref(), Some("nurse1"));
+  }
+}
+
+#[cfg(test)]
+mod clinic_tests {
+  use super::*;
+
+  async fn test_pool() -> SqlitePool {
+    let pool = SqlitePoolOptions::new()
+      .max_connections(1)
+      .connect("sqlite::memory:")
+      .await
+      .unwrap();
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+    pool
+  }
+
+  #[tokio::test]
+  async fn clinic_id_is_stable_and_backfills_existing_rows() {
+    let pool = test_pool().await;
+    sqlx::query(
+      "INSERT INTO wf_patients \
+         (hn, enrolled_at, status, target_inr_low, target_inr_high, created_at, updated_at) \
+         VALUES ('HN1000', '2026-01-01T00:00:00Z', 'active', 2.0, 3.0, \
+                 '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+    )
+    .execute(&pool)
+    .await
+    .expect("insert patient");
+
+    let clinic_id = ensure_clinic_id(&pool).await.expect("ensure clinic id");
+    assert_eq!(clinic_id.len(), 36);
+    assert_eq!(
+      ensure_clinic_id(&pool).await.expect("ensure again"),
+      clinic_id
+    );
+
+    let backfilled: Option<String> =
+      sqlx::query_scalar("SELECT clinic_id FROM wf_patients WHERE hn = 'HN1000'")
+        .fetch_one(&pool)
+        .await
+        .expect("read backfilled clinic_id");
+    assert_eq!(backfilled.as_deref(), Some(clinic_id.as_str()));
+
+    let enrollment = EnrollmentInput {
+      hn: "HN1001".to_string(),
+      indication: "AF".to_string(),
+      target_inr_low: 2.0,
+      target_inr_high: 3.0,
+      enrolled_at: "2026-10-01".to_string(),
+      enrolled_by: "pharm1".to_string(),
+      notes: None,
+    };
+    enroll_patient(&pool, &enrollment, "machine-1")
+      .await
+      .expect("enroll patient");
+    let enrolled: Option<String> =
+      sqlx::query_scalar("SELECT clinic_id FROM wf_patients WHERE hn = 'HN1001'")
+        .fetch_one(&pool)
+        .await
+        .expect("read enrolled clinic_id");
+    assert_eq!(enrolled.as_deref(), Some(clinic_id.as_str()));
+  }
+
+  #[tokio::test]
+  async fn visits_are_stamped_with_the_clinic_id() {
+    let pool = test_pool().await;
+    let clinic_id = ensure_clinic_id(&pool).await.expect("ensure clinic id");
+    let visit = VisitInput {
+      hn: "HN2000".to_string(),
+      visit_date: "2026-10-01".to_string(),
+      inr_value: Some(2.5),
+      inr_source: Some("manual".to_string()),
+      current_dose_mgday: Some(5.0),
+      dose_detail: None,
+      new_dose_mgday: Some(5.0),
+      new_dose_detail: None,
+      new_dose_description: None,
+      dose_changed: false,
+      next_appointment: Some("2026-11-01".to_string()),
+      next_inr_due: None,
+      physician: None,
+      notes: None,
+      side_effects: None,
+      adherence: None,
+      created_by: Some("pharm1".to_string()),
+      selected_dose_option: None,
+    };
+    save_visit(&pool, &visit, "machine-1")
+      .await
+      .expect("save visit");
+
+    let stored: Option<String> =
+      sqlx::query_scalar("SELECT clinic_id FROM wf_visits WHERE hn = 'HN2000'")
+        .fetch_one(&pool)
+        .await
+        .expect("read visit clinic_id");
+    assert_eq!(stored.as_deref(), Some(clinic_id.as_str()));
   }
 }
