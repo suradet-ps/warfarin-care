@@ -45,12 +45,27 @@ calls `AppState::require_permission`, so the two cannot drift apart.
 | `enroll_patient` | yes | yes | yes | - |
 | `manage_interactions` | yes | yes | - | - |
 | `manage_settings` | yes | - | - | - |
-| `manage_users` (reserved for the user-management UI) | yes | - | - | - |
+| `manage_users` | yes | - | - | - |
 
 Reads, the printable slip, and report exports are open to every
 authenticated role, so a `Viewer` can review the clinic but cannot mutate
 data. A missing or expired session returns `NOT_AUTHENTICATED`; a denied
 permission returns a Thai authorization error.
+
+## User Administration
+
+Only `Admin` accounts reach the user management commands. The service enforces
+three accountability rules on top of the permission check:
+
+- An administrator cannot change their own role or disable their own account.
+- The last enabled administrator cannot be demoted or disabled, so the clinic
+  can never lock itself out.
+- Password resets reuse the same strength policy as account creation and
+  clear any lockout state.
+
+Every create, role change, password reset, activation, and deactivation writes
+an `auth_audit_log` row naming the acting administrator. New accounts default
+to the `Pharmacist` role in the UI.
 
 ## Actor Accountability
 
@@ -108,7 +123,6 @@ Debug builds refuse to open the production app data directory, run under the
 
 ## Known Gaps
 
-- User management UI, password reset, and role changes (next Phase 2 work).
 - Persistent sessions with configurable timeout.
 - `clinic_id` scoping for future multi-clinic deployments.
 - Actor columns for appointments and status history are not yet synced to

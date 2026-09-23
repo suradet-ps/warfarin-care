@@ -57,6 +57,105 @@ pub async fn find_by_username(pool: &SqlitePool, username: &str) -> Result<Optio
   row.map(|r| parse_user_row(&r)).transpose()
 }
 
+/// Looks up a user by primary key.
+pub async fn find_by_id(pool: &SqlitePool, user_id: i64) -> Result<Option<User>> {
+  let row = sqlx::query(
+    "SELECT id, username, password_hash, role, active, failed_attempts, \
+            locked_until, created_at, updated_at \
+       FROM users WHERE id = ?",
+  )
+  .bind(user_id)
+  .fetch_optional(pool)
+  .await
+  .context("failed to query user by id")?;
+  row.map(|r| parse_user_row(&r)).transpose()
+}
+
+/// Lists every user ordered by username (case-insensitive).
+pub async fn list_users(pool: &SqlitePool) -> Result<Vec<User>> {
+  let rows = sqlx::query(
+    "SELECT id, username, password_hash, role, active, failed_attempts, \
+            locked_until, created_at, updated_at \
+       FROM users ORDER BY username COLLATE NOCASE",
+  )
+  .fetch_all(pool)
+  .await
+  .context("failed to list users")?;
+  rows.iter().map(parse_user_row).collect()
+}
+
+/// Updates a user's role.
+pub async fn set_role(pool: &SqlitePool, user_id: i64, role: UserRole) -> Result<()> {
+  let now = now_rfc3339();
+  let updated = sqlx::query("UPDATE users SET role = ?, updated_at = ? WHERE id = ?")
+    .bind(role.as_str())
+    .bind(&now)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .context("failed to update user role")?;
+  if updated.rows_affected() == 0 {
+    anyhow::bail!("user not found: {user_id}");
+  }
+  Ok(())
+}
+
+/// Enables or disables an account. Enabling clears the lockout state so the
+/// user can log in immediately; disabling leaves lockout bookkeeping alone.
+pub async fn set_active(pool: &SqlitePool, user_id: i64, active: bool) -> Result<()> {
+  let now = now_rfc3339();
+  let flag = i64::from(active);
+  let updated = sqlx::query(
+    "UPDATE users \
+        SET active = ?, \
+            failed_attempts = CASE WHEN ? THEN 0 ELSE failed_attempts END, \
+            locked_until = CASE WHEN ? THEN NULL ELSE locked_until END, \
+            updated_at = ? \
+      WHERE id = ?",
+  )
+  .bind(flag)
+  .bind(flag)
+  .bind(flag)
+  .bind(&now)
+  .bind(user_id)
+  .execute(pool)
+  .await
+  .context("failed to update user active flag")?;
+  if updated.rows_affected() == 0 {
+    anyhow::bail!("user not found: {user_id}");
+  }
+  Ok(())
+}
+
+/// Replaces a user's password hash and clears lockout state.
+pub async fn update_password(pool: &SqlitePool, user_id: i64, password_hash: &str) -> Result<()> {
+  let now = now_rfc3339();
+  let updated = sqlx::query(
+    "UPDATE users \
+        SET password_hash = ?, failed_attempts = 0, locked_until = NULL, updated_at = ? \
+      WHERE id = ?",
+  )
+  .bind(password_hash)
+  .bind(&now)
+  .bind(user_id)
+  .execute(pool)
+  .await
+  .context("failed to update password hash")?;
+  if updated.rows_affected() == 0 {
+    anyhow::bail!("user not found: {user_id}");
+  }
+  Ok(())
+}
+
+/// Counts enabled administrator accounts, used for the last-admin guard.
+pub async fn count_active_admins(pool: &SqlitePool) -> Result<i64> {
+  let row = sqlx::query("SELECT COUNT(*) AS cnt FROM users WHERE role = 'Admin' AND active = 1")
+    .fetch_one(pool)
+    .await
+    .context("failed to count active admins")?;
+  Ok(row.get("cnt"))
+}
+
 /// Inserts a new user. Returns the new row ID.
 ///
 /// # Errors

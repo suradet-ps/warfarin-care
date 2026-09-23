@@ -1,14 +1,16 @@
 //! Local-auth Tauri commands.
 //!
-//! These are the only IPC entry points the Vue frontend has for the auth
-//! subsystem. Six commands, all in the public surface (no `require_auth`
-//! call): `has_users`, `setup_admin`, `login`, `logout`, `is_logged_in`,
-//! `current_user`. Every other command in the app calls
-//! `state.require_auth().await?` first.
+//! The public surface (no `require_auth` call): `has_users`, `setup_admin`,
+//! `login`, `logout`, `is_logged_in`, `current_user`. Every other command in
+//! the app calls `state.require_auth().await?` first, and user administration
+//! additionally requires `Permission::ManageUsers`.
 
 use tauri::State;
 
-use warfarin_core::models::auth::{AuthError, LoginInput, PublicUser, SetupAdminInput};
+use warfarin_core::models::auth::{
+  AuthError, CreateUserInput, LoginInput, ManagedUser, Permission, PublicUser, SetupAdminInput,
+  UserRole,
+};
 use warfarin_db::auth_service;
 use warfarin_db::sqlite::AppState;
 
@@ -64,6 +66,66 @@ pub async fn current_user(state: State<'_, AppState>) -> Result<Option<PublicUse
   Ok(state.current_user().await)
 }
 
+/// Lists every account for the admin user management screen.
+#[tauri::command]
+pub async fn list_users(state: State<'_, AppState>) -> Result<Vec<ManagedUser>, String> {
+  state.require_permission(Permission::ManageUsers).await?;
+  auth_service::list_users(&state.pool)
+    .await
+    .map_err(map_auth_error)
+}
+
+/// Creates a staff account with an explicit role.
+#[tauri::command]
+pub async fn create_user(
+  input: CreateUserInput,
+  state: State<'_, AppState>,
+) -> Result<ManagedUser, String> {
+  let actor = state.require_permission(Permission::ManageUsers).await?;
+  auth_service::create_user(&state.pool, &actor, input)
+    .await
+    .map_err(map_auth_error)
+}
+
+/// Replaces a user's password and clears their lockout state.
+#[tauri::command]
+pub async fn reset_user_password(
+  user_id: i64,
+  new_password: String,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  let actor = state.require_permission(Permission::ManageUsers).await?;
+  auth_service::reset_password(&state.pool, &actor, user_id, &new_password)
+    .await
+    .map_err(map_auth_error)
+}
+
+/// Changes another user's role.
+#[tauri::command]
+pub async fn set_user_role(
+  user_id: i64,
+  role: UserRole,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  let actor = state.require_permission(Permission::ManageUsers).await?;
+  auth_service::set_role(&state.pool, &actor, user_id, role)
+    .await
+    .map_err(map_auth_error)
+}
+
+/// Enables or disables an account.
+#[tauri::command]
+pub async fn set_user_active(
+  user_id: i64,
+  active: bool,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  let actor = state.require_permission(Permission::ManageUsers).await?;
+  auth_service::set_active(&state.pool, &actor, user_id, active)
+    .await
+    .map_err(map_auth_error)
+}
+
 fn map_auth_error(e: AuthError) -> String {
   match e {
     AuthError::InvalidCredentials => "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง".to_string(),
@@ -71,6 +133,9 @@ fn map_auth_error(e: AuthError) -> String {
     AuthError::AccountInactive => "บัญชีนี้ถูกระงับการใช้งาน".to_string(),
     AuthError::SetupUnavailable => "ไม่สามารถสร้างผู้ดูแลระบบเพิ่มได้ ระบบมีผู้ใช้งานอยู่แล้ว".to_string(),
     AuthError::UsernameTaken => "ชื่อผู้ใช้นี้ถูกใช้แล้ว".to_string(),
+    AuthError::UserNotFound => "ไม่พบผู้ใช้ที่ระบุ".to_string(),
+    AuthError::LastAdmin => "ต้องมีผู้ดูแลระบบที่ใช้งานอยู่อย่างน้อย 1 คน".to_string(),
+    AuthError::SelfModification => "ไม่สามารถแก้ไขบัญชีของตนเองในหน้านี้ได้".to_string(),
     AuthError::Validation(msg) => msg,
     AuthError::Database(msg) => {
       eprintln!("[auth] database error surfaced to UI: {msg}");

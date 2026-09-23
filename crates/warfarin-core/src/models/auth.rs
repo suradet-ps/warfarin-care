@@ -210,6 +210,43 @@ pub struct SetupAdminInput {
   pub password: String,
 }
 
+/// Admin-created account (frontend → `create_user` command).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateUserInput {
+  pub username: String,
+  pub password: String,
+  pub role: UserRole,
+}
+
+/// Admin list row for the user management screen.
+///
+/// Unlike [`PublicUser`] this carries account state (active flag, lockout)
+/// that an administrator needs to see. It still never contains the hash.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedUser {
+  pub id: i64,
+  pub username: String,
+  pub role: UserRole,
+  pub active: bool,
+  pub locked_until: Option<String>,
+  pub created_at: String,
+}
+
+impl From<&User> for ManagedUser {
+  fn from(u: &User) -> Self {
+    Self {
+      id: u.id,
+      username: u.username.clone(),
+      role: u.role,
+      active: u.active,
+      locked_until: u.locked_until.clone(),
+      created_at: u.created_at.clone(),
+    }
+  }
+}
+
 /// Audit-log event types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthEventType {
@@ -219,6 +256,10 @@ pub enum AuthEventType {
   Logout,
   UserCreated,
   SetupCompleted,
+  PasswordReset,
+  RoleChanged,
+  UserActivated,
+  UserDeactivated,
 }
 
 impl AuthEventType {
@@ -231,6 +272,10 @@ impl AuthEventType {
       Self::Logout => "logout",
       Self::UserCreated => "user_created",
       Self::SetupCompleted => "setup_completed",
+      Self::PasswordReset => "password_reset",
+      Self::RoleChanged => "role_changed",
+      Self::UserActivated => "user_activated",
+      Self::UserDeactivated => "user_deactivated",
     }
   }
 }
@@ -251,6 +296,12 @@ pub enum AuthError {
   SetupUnavailable,
   #[error("username already exists")]
   UsernameTaken,
+  #[error("user not found")]
+  UserNotFound,
+  #[error("the last active administrator cannot be demoted or disabled")]
+  LastAdmin,
+  #[error("an administrator cannot modify their own account here")]
+  SelfModification,
   #[error("{0}")]
   Validation(String),
   #[error("database error: {0}")]
@@ -335,5 +386,52 @@ mod tests {
       public.permissions,
       UserRole::Pharmacist.permissions().to_vec()
     );
+  }
+
+  #[test]
+  fn managed_user_exposes_account_state_without_the_hash() {
+    let user = User {
+      id: 7,
+      username: "somsri".to_string(),
+      password_hash: "top-secret-hash".to_string(),
+      role: UserRole::Viewer,
+      active: false,
+      failed_attempts: 3,
+      locked_until: Some("2026-01-01T00:15:00Z".to_string()),
+      created_at: "2026-01-01T00:00:00Z".to_string(),
+      updated_at: "2026-01-01T00:00:00Z".to_string(),
+    };
+    let managed = ManagedUser::from(&user);
+    assert_eq!(managed.id, 7);
+    assert_eq!(managed.role, UserRole::Viewer);
+    assert!(!managed.active);
+    assert_eq!(
+      managed.locked_until.as_deref(),
+      Some("2026-01-01T00:15:00Z")
+    );
+  }
+
+  #[test]
+  fn audit_event_strings_are_unique() {
+    let mut seen = Vec::new();
+    for event in [
+      AuthEventType::LoginSuccess,
+      AuthEventType::LoginFailed,
+      AuthEventType::AccountLocked,
+      AuthEventType::Logout,
+      AuthEventType::UserCreated,
+      AuthEventType::SetupCompleted,
+      AuthEventType::PasswordReset,
+      AuthEventType::RoleChanged,
+      AuthEventType::UserActivated,
+      AuthEventType::UserDeactivated,
+    ] {
+      assert!(
+        !seen.contains(&event.as_str()),
+        "duplicate {}",
+        event.as_str()
+      );
+      seen.push(event.as_str());
+    }
   }
 }

@@ -11,6 +11,7 @@ import {
 } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import SyncPanel from '#/components/settings/SyncPanel.vue';
+import UserManagementPanel from '#/components/settings/UserManagementPanel.vue';
 import SearchBox from '#/components/shared/SearchBox.vue';
 import { useAuthStore } from '#/stores/auth.ts';
 import { useSettingsStore } from '#/stores/settings.ts';
@@ -26,13 +27,16 @@ const savingHospital = ref(false);
 const hospitalSaveResult = ref<'success' | 'error' | null>(null);
 const hospitalSaveError = ref<string | null>(null);
 
-const activeSection = ref<'connection' | 'hospital' | 'interactions' | 'sync'>('connection');
+const activeSection = ref<'connection' | 'hospital' | 'interactions' | 'sync' | 'users'>(
+  'connection',
+);
 
 const sections = [
   { key: 'connection', label: 'การเชื่อมต่อ', permission: 'manage_settings' },
   { key: 'hospital', label: 'ข้อมูลโรงพยาบาล', permission: 'manage_settings' },
   { key: 'sync', label: 'Cloud Sync', permission: 'manage_settings' },
   { key: 'interactions', label: 'Drug interaction', permission: 'manage_interactions' },
+  { key: 'users', label: 'ผู้ใช้งาน', permission: 'manage_users' },
 ] as const;
 
 // Admins see every tab; a pharmacist sees only the interaction rules. The
@@ -275,6 +279,11 @@ function severityConfig(severity: string) {
     <!-- Sync -->
     <div v-else-if="activeSection === 'sync'" class="settings-section">
       <SyncPanel />
+    </div>
+
+    <!-- Users -->
+    <div v-else-if="activeSection === 'users'" class="settings-section">
+      <UserManagementPanel />
     </div>
 
     <!-- Drug Interactions -->
