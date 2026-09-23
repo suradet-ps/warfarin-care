@@ -325,7 +325,11 @@ pub async fn set_role(
     .ok_or(AuthError::UserNotFound)?;
 
   let loses_admin = target.role == UserRole::Admin && role != UserRole::Admin;
-  if loses_admin && auth_repository::count_active_admins(pool).await.map_err(|e| map_repo_err(&e))? <= 1
+  if loses_admin
+    && auth_repository::count_active_admins(pool)
+      .await
+      .map_err(|e| map_repo_err(&e))?
+      <= 1
   {
     return Err(AuthError::LastAdmin);
   }
@@ -367,7 +371,11 @@ pub async fn set_active(
     .ok_or(AuthError::UserNotFound)?;
 
   let loses_admin = target.active && !active && target.role == UserRole::Admin;
-  if loses_admin && auth_repository::count_active_admins(pool).await.map_err(|e| map_repo_err(&e))? <= 1
+  if loses_admin
+    && auth_repository::count_active_admins(pool)
+      .await
+      .map_err(|e| map_repo_err(&e))?
+      <= 1
   {
     return Err(AuthError::LastAdmin);
   }
@@ -701,7 +709,11 @@ mod tests {
 
     // Adding a second active admin unlocks both operations.
     let second = seed_user(&pool, "admin2", UserRole::Admin).await;
-    assert!(set_role(&pool, &admin, second, UserRole::Viewer).await.is_ok());
+    assert!(
+      set_role(&pool, &admin, second, UserRole::Viewer)
+        .await
+        .is_ok()
+    );
   }
 
   #[tokio::test]

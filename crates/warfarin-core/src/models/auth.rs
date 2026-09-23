@@ -382,7 +382,10 @@ mod tests {
       updated_at: "2026-01-01T00:00:00Z".to_string(),
     };
     let public = PublicUser::from(&user);
-    assert_eq!(public.permissions, UserRole::Pharmacist.permissions().to_vec());
+    assert_eq!(
+      public.permissions,
+      UserRole::Pharmacist.permissions().to_vec()
+    );
   }
 
   #[test]
@@ -402,7 +405,10 @@ mod tests {
     assert_eq!(managed.id, 7);
     assert_eq!(managed.role, UserRole::Viewer);
     assert!(!managed.active);
-    assert_eq!(managed.locked_until.as_deref(), Some("2026-01-01T00:15:00Z"));
+    assert_eq!(
+      managed.locked_until.as_deref(),
+      Some("2026-01-01T00:15:00Z")
+    );
   }
 
   #[test]
@@ -420,7 +426,11 @@ mod tests {
       AuthEventType::UserActivated,
       AuthEventType::UserDeactivated,
     ] {
-      assert!(!seen.contains(&event.as_str()), "duplicate {}", event.as_str());
+      assert!(
+        !seen.contains(&event.as_str()),
+        "duplicate {}",
+        event.as_str()
+      );
       seen.push(event.as_str());
     }
   }
