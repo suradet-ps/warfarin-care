@@ -25,8 +25,8 @@ pub async fn schedule_appointment(
   appt: AppointmentInput,
   state: State<'_, AppState>,
 ) -> Result<i64, String> {
-  state.require_auth().await?;
-  db_schedule(&state.pool, &appt, &state.machine_id)
+  let user = state.require_auth().await?;
+  db_schedule(&state.pool, &appt, Some(user.username.as_str()), &state.machine_id)
     .await
     .map_err(|e| e.to_string())
 }

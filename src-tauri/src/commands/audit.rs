@@ -11,10 +11,13 @@ use warfarin_db::sqlite::{
 
 #[tauri::command]
 pub async fn insert_audit_log(
-  input: AuditLogInput,
+  mut input: AuditLogInput,
   state: State<'_, AppState>,
 ) -> Result<i64, String> {
-  state.require_auth().await?;
+  let user = state.require_auth().await?;
+  // The actor is always the session user; a client-supplied value is ignored
+  // so the audit trail cannot be forged from the frontend.
+  input.actor = user.username;
   db_insert_audit_log(&state.pool, &input)
     .await
     .map_err(|e| e.to_string())

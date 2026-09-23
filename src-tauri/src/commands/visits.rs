@@ -37,8 +37,9 @@ pub async fn get_visit_by_id(visit_id: i64, state: State<'_, AppState>) -> Resul
 }
 
 #[tauri::command]
-pub async fn save_visit(visit: VisitInput, state: State<'_, AppState>) -> Result<i64, String> {
+pub async fn save_visit(mut visit: VisitInput, state: State<'_, AppState>) -> Result<i64, String> {
   let user = state.require_auth().await?;
+  visit.created_by = Some(user.username.clone());
   let visit_id = db_save(&state.pool, &visit, &state.machine_id)
     .await
     .map_err(|e| e.to_string())?;
@@ -67,10 +68,11 @@ pub async fn save_visit(visit: VisitInput, state: State<'_, AppState>) -> Result
 #[tauri::command]
 pub async fn update_visit(
   visit_id: i64,
-  visit: VisitInput,
+  mut visit: VisitInput,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
   let user = state.require_auth().await?;
+  visit.created_by = Some(user.username.clone());
   db_update_visit(&state.pool, visit_id, &visit, &state.machine_id)
     .await
     .map_err(|e| e.to_string())?;
@@ -137,13 +139,9 @@ pub async fn get_pending_review_count(state: State<'_, AppState>) -> Result<i64,
 }
 
 #[tauri::command]
-pub async fn approve_visit(
-  visit_id: i64,
-  reviewer: String,
-  state: State<'_, AppState>,
-) -> Result<(), String> {
-  state.require_auth().await?;
-  db_approve_visit(&state.pool, visit_id, &reviewer, &state.machine_id)
+pub async fn approve_visit(visit_id: i64, state: State<'_, AppState>) -> Result<(), String> {
+  let user = state.require_auth().await?;
+  db_approve_visit(&state.pool, visit_id, &user.username, &state.machine_id)
     .await
     .map_err(|e| e.to_string())
 }

@@ -18,10 +18,11 @@ pub async fn get_outcomes(
 
 #[tauri::command]
 pub async fn record_adverse_event(
-  event: OutcomeInput,
+  mut event: OutcomeInput,
   state: State<'_, AppState>,
 ) -> Result<i64, String> {
-  state.require_auth().await?;
+  let user = state.require_auth().await?;
+  event.created_by = Some(user.username.clone());
   db_record_outcome(&state.pool, &event, &state.machine_id)
     .await
     .map_err(|e| e.to_string())

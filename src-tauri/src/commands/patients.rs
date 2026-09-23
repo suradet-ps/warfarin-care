@@ -195,13 +195,14 @@ pub async fn update_patient_status(
   effective_date: Option<String>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
-  state.require_auth().await?;
+  let user = state.require_auth().await?;
   db_update_status(
     &state.pool,
     &hn,
     &status,
     Some(reason.as_str()),
     effective_date.as_deref(),
+    Some(user.username.as_str()),
     &state.machine_id,
   )
   .await
