@@ -6,6 +6,7 @@ use tauri::State;
 use warfarin_core::{
   dose::calculator::calculate_ttr,
   models::{
+    auth::Permission,
     inr::InrRecord,
     patient::{ActivePatientSummary, EnrollmentInput, HosxpPatient, PatientDetail, WfPatient},
   },
@@ -118,10 +119,11 @@ pub async fn get_active_patient_summaries(
 
 #[tauri::command]
 pub async fn enroll_patient(
-  input: EnrollmentInput,
+  mut input: EnrollmentInput,
   state: State<'_, AppState>,
 ) -> Result<i64, String> {
-  state.require_auth().await?;
+  let user = state.require_permission(Permission::EnrollPatient).await?;
+  input.enrolled_by = user.username;
   db_enroll(&state.pool, &input, &state.machine_id)
     .await
     .map_err(|e| e.to_string())
@@ -195,13 +197,16 @@ pub async fn update_patient_status(
   effective_date: Option<String>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
-  state.require_auth().await?;
+  let user = state
+    .require_permission(Permission::WritePatientStatus)
+    .await?;
   db_update_status(
     &state.pool,
     &hn,
     &status,
     Some(reason.as_str()),
     effective_date.as_deref(),
+    Some(user.username.as_str()),
     &state.machine_id,
   )
   .await

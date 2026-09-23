@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useAuthStore } from '#/stores/auth.ts';
 import type { PatientDrugRecord } from '#/types/patient.ts';
 import { calculateAge, formatThaiDate } from '#/utils/clinic.ts';
 
@@ -13,6 +14,8 @@ const emit = defineEmits<{
   enroll: [hn: string];
   pageChange: [page: number];
 }>();
+
+const authStore = useAuthStore();
 
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)));
 const rangeStart = computed(() => (props.total === 0 ? 0 : (props.page - 1) * props.pageSize + 1));
@@ -93,7 +96,7 @@ function goToPage(page: number) {
             <span v-else class="badge badge-muted">ยังไม่ลงทะเบียน</span>
           </td>
           <td>
-            <button v-if="!r.isEnrolled" class="btn btn-primary" style="padding: 6px 16px; font-size: var(--typography-micro-size)" @click="emit('enroll', r.hn)">นำเข้าคลินิก</button>
+            <button v-if="!r.isEnrolled && authStore.can('enroll_patient')" class="btn btn-primary" style="padding: 6px 16px; font-size: var(--typography-micro-size)" @click="emit('enroll', r.hn)">นำเข้าคลินิก</button>
           </td>
         </tr>
       </tbody>

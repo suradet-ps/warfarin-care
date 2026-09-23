@@ -5,7 +5,8 @@ use tauri::State;
 use warfarin_core::{
   dose::calculator::suggest_dose_from_daily,
   models::{
-    audit::{ACTION_VISIT_SAVED, ACTION_VISIT_UPDATED, AuditLogInput},
+    audit::{ACTION_VISIT_DELETED, ACTION_VISIT_SAVED, ACTION_VISIT_UPDATED, AuditLogInput},
+    auth::Permission,
     visit::{DoseSuggestion, VisitInput, WfVisit},
   },
 };
@@ -37,8 +38,9 @@ pub async fn get_visit_by_id(visit_id: i64, state: State<'_, AppState>) -> Resul
 }
 
 #[tauri::command]
-pub async fn save_visit(visit: VisitInput, state: State<'_, AppState>) -> Result<i64, String> {
-  let user = state.require_auth().await?;
+pub async fn save_visit(mut visit: VisitInput, state: State<'_, AppState>) -> Result<i64, String> {
+  let user = state.require_permission(Permission::WriteVisit).await?;
+  visit.created_by = Some(user.username.clone());
   let visit_id = db_save(&state.pool, &visit, &state.machine_id)
     .await
     .map_err(|e| e.to_string())?;
@@ -67,10 +69,11 @@ pub async fn save_visit(visit: VisitInput, state: State<'_, AppState>) -> Result
 #[tauri::command]
 pub async fn update_visit(
   visit_id: i64,
-  visit: VisitInput,
+  mut visit: VisitInput,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
-  let user = state.require_auth().await?;
+  let user = state.require_permission(Permission::WriteVisit).await?;
+  visit.created_by = Some(user.username.clone());
   db_update_visit(&state.pool, visit_id, &visit, &state.machine_id)
     .await
     .map_err(|e| e.to_string())?;
@@ -116,10 +119,30 @@ pub async fn suggest_dose(
 
 #[tauri::command]
 pub async fn delete_visit(visit_id: i64, state: State<'_, AppState>) -> Result<(), String> {
-  state.require_auth().await?;
+  let user = state.require_permission(Permission::WriteVisit).await?;
+  let visit = db_get_visit_by_id(&state.pool, visit_id)
+    .await
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| format!("visit not found: {visit_id}"))?;
+
   db_delete_visit(&state.pool, visit_id, &state.machine_id)
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+
+  let _ = db_insert_audit(
+    &state.pool,
+    &AuditLogInput {
+      hn: Some(visit.hn),
+      action: ACTION_VISIT_DELETED.to_string(),
+      actor: user.username,
+      old_value: visit.new_dose_mgday.map(|d| format!("{d} mg/day")),
+      new_value: None,
+      detail: Some(serde_json::json!({ "visit_id": visit_id }).to_string()),
+    },
+  )
+  .await;
+
+  Ok(())
 }
 
 #[tauri::command]
@@ -137,13 +160,9 @@ pub async fn get_pending_review_count(state: State<'_, AppState>) -> Result<i64,
 }
 
 #[tauri::command]
-pub async fn approve_visit(
-  visit_id: i64,
-  reviewer: String,
-  state: State<'_, AppState>,
-) -> Result<(), String> {
-  state.require_auth().await?;
-  db_approve_visit(&state.pool, visit_id, &reviewer, &state.machine_id)
+pub async fn approve_visit(visit_id: i64, state: State<'_, AppState>) -> Result<(), String> {
+  let user = state.require_permission(Permission::ApproveVisit).await?;
+  db_approve_visit(&state.pool, visit_id, &user.username, &state.machine_id)
     .await
     .map_err(|e| e.to_string())
 }

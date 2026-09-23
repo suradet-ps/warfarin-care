@@ -286,6 +286,7 @@ pub async fn update_patient_status(
   status: &str,
   reason: Option<&str>,
   effective_date: Option<&str>,
+  changed_by: Option<&str>,
   machine_id: &str,
 ) -> Result<()> {
   let now = Utc::now().to_rfc3339();
@@ -326,13 +327,14 @@ pub async fn update_patient_status(
 
   sqlx::query(
     "INSERT INTO wf_patient_status_history \
-        (hn, status, reason, effective_date, created_at, updated_at, sync_id, machine_id) \
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (hn, status, reason, effective_date, changed_by, created_at, updated_at, sync_id, machine_id) \
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
   )
   .bind(hn)
   .bind(status)
   .bind(reason)
   .bind(&effective_date)
+  .bind(changed_by)
   .bind(&now)
   .bind(&now)
   .bind(new_sync_id())
@@ -422,7 +424,16 @@ pub async fn save_visit(pool: &SqlitePool, input: &VisitInput, machine_id: &str)
   .context("failed to save visit")?
   .last_insert_rowid();
 
-  sync_visit_appointment(&mut tx, input, id, &visit_sync_id, &now, machine_id).await?;
+  sync_visit_appointment(
+    &mut tx,
+    input,
+    id,
+    &visit_sync_id,
+    &now,
+    input.created_by.as_deref(),
+    machine_id,
+  )
+  .await?;
 
   tx.commit()
     .await
@@ -516,7 +527,16 @@ pub async fn update_visit(
 
   unlink_or_delete_visit_appointment(&mut tx, visit_id, existing_link.as_ref(), &now, machine_id)
     .await?;
-  sync_visit_appointment(&mut tx, input, visit_id, &visit_sync_id, &now, machine_id).await?;
+  sync_visit_appointment(
+    &mut tx,
+    input,
+    visit_id,
+    &visit_sync_id,
+    &now,
+    input.created_by.as_deref(),
+    machine_id,
+  )
+  .await?;
 
   tx.commit()
     .await
@@ -804,6 +824,7 @@ async fn sync_visit_appointment(
   visit_id: i64,
   visit_sync_id: &str,
   now: &str,
+  created_by: Option<&str>,
   machine_id: &str,
 ) -> Result<()> {
   let Some(next_appointment) = input
@@ -861,8 +882,8 @@ async fn sync_visit_appointment(
   } else {
     sqlx::query(
       "INSERT INTO wf_appointments \
-        (hn, appt_date, appt_type, status, notes, created_at, updated_at, source_visit_id, source_visit_sync_id, generated_from_visit, sync_id, machine_id) \
-        VALUES (?, ?, 'clinic_visit', 'scheduled', NULL, ?, ?, ?, ?, 1, ?, ?)",
+        (hn, appt_date, appt_type, status, notes, created_at, updated_at, source_visit_id, source_visit_sync_id, generated_from_visit, created_by, sync_id, machine_id) \
+        VALUES (?, ?, 'clinic_visit', 'scheduled', NULL, ?, ?, ?, ?, 1, ?, ?, ?)",
     )
     .bind(&input.hn)
     .bind(next_appointment)
@@ -870,6 +891,7 @@ async fn sync_visit_appointment(
     .bind(now)
     .bind(visit_id)
     .bind(visit_sync_id)
+    .bind(created_by)
     .bind(new_sync_id())
     .bind(machine_id)
     .execute(&mut **tx)
@@ -953,18 +975,20 @@ async fn unlink_or_delete_visit_appointment(
 pub async fn schedule_appointment(
   pool: &SqlitePool,
   input: &AppointmentInput,
+  created_by: Option<&str>,
   machine_id: &str,
 ) -> Result<i64> {
   let now = Utc::now().to_rfc3339();
   let id = sqlx::query(
     "INSERT INTO wf_appointments \
-         (hn, appt_date, appt_type, status, notes, created_at, updated_at, sync_id, machine_id) \
-         VALUES (?, ?, ?, 'scheduled', ?, ?, ?, ?, ?)",
+         (hn, appt_date, appt_type, status, notes, created_by, created_at, updated_at, sync_id, machine_id) \
+         VALUES (?, ?, ?, 'scheduled', ?, ?, ?, ?, ?, ?)",
   )
   .bind(&input.hn)
   .bind(&input.appt_date)
   .bind(&input.appt_type)
   .bind(&input.notes)
+  .bind(created_by)
   .bind(&now)
   .bind(&now)
   .bind(new_sync_id())
@@ -1591,7 +1615,8 @@ pub async fn get_merged_audit_log(
 
   // wf_patient_status_history entries
   qb.push(
-    "SELECT 0 AS id, hn, 'status_changed' AS action, 'system' AS actor, \
+    "SELECT 0 AS id, hn, 'status_changed' AS action, \
+       COALESCE(changed_by, 'system') AS actor, \
        effective_date AS timestamp, NULL AS old_value, status AS new_value, \
        reason AS detail, created_at \
        FROM wf_patient_status_history WHERE 1=1",
@@ -1650,7 +1675,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::auth_service::AuthSessionSlot;
-use warfarin_core::models::auth::PublicUser;
+use warfarin_core::models::auth::{Permission, PublicUser};
 
 /// Application state managed by Tauri, wrapping the `SQLite` connection pool.
 ///
@@ -1701,5 +1726,90 @@ impl AppState {
       .current_user()
       .await
       .ok_or_else(|| "NOT_AUTHENTICATED".to_string())
+  }
+
+  /// Returns the session user, or a Thai authorization error when the user's
+  /// role does not hold `permission`.
+  ///
+  /// This is the single enforcement point at the command boundary; the UI
+  /// gate mirrors the same matrix through `PublicUser::permissions`.
+  pub async fn require_permission(&self, permission: Permission) -> Result<PublicUser, String> {
+    let user = self.require_auth().await?;
+    if user.role.allows(permission) {
+      Ok(user)
+    } else {
+      Err("คุณไม่มีสิทธิ์ดำเนินการนี้".to_string())
+    }
+  }
+}
+
+#[cfg(test)]
+mod actor_tests {
+  use super::*;
+
+  async fn test_pool() -> SqlitePool {
+    let pool = SqlitePoolOptions::new()
+      .max_connections(1)
+      .connect("sqlite::memory:")
+      .await
+      .unwrap();
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+    pool
+  }
+
+  #[tokio::test]
+  async fn appointment_records_the_creating_user() {
+    let pool = test_pool().await;
+    let input = AppointmentInput {
+      hn: "HN0001".to_string(),
+      appt_date: "2026-10-01".to_string(),
+      appt_type: Some("inr_check".to_string()),
+      notes: None,
+    };
+
+    let id = schedule_appointment(&pool, &input, Some("pharm1"), "machine-1")
+      .await
+      .expect("schedule appointment");
+
+    let created_by: Option<String> =
+      sqlx::query_scalar("SELECT created_by FROM wf_appointments WHERE id = ?")
+        .bind(id)
+        .fetch_one(&pool)
+        .await
+        .expect("read created_by");
+    assert_eq!(created_by.as_deref(), Some("pharm1"));
+  }
+
+  #[tokio::test]
+  async fn status_change_records_the_acting_user() {
+    let pool = test_pool().await;
+    sqlx::query(
+      "INSERT INTO wf_patients \
+         (hn, enrolled_at, status, target_inr_low, target_inr_high, created_at, updated_at) \
+         VALUES ('HN0002', '2026-01-01T00:00:00Z', 'active', 2.0, 3.0, \
+                 '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+    )
+    .execute(&pool)
+    .await
+    .expect("insert patient");
+
+    update_patient_status(
+      &pool,
+      "HN0002",
+      "inactive",
+      Some("transferred"),
+      None,
+      Some("nurse1"),
+      "machine-1",
+    )
+    .await
+    .expect("update status");
+
+    let changed_by: Option<String> =
+      sqlx::query_scalar("SELECT changed_by FROM wf_patient_status_history WHERE hn = 'HN0002'")
+        .fetch_one(&pool)
+        .await
+        .expect("read changed_by");
+    assert_eq!(changed_by.as_deref(), Some("nurse1"));
   }
 }

@@ -9,12 +9,14 @@ import {
   Trash2,
   X,
 } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import SyncPanel from '#/components/settings/SyncPanel.vue';
 import SearchBox from '#/components/shared/SearchBox.vue';
+import { useAuthStore } from '#/stores/auth.ts';
 import { useSettingsStore } from '#/stores/settings.ts';
 
 const store = useSettingsStore();
+const authStore = useAuthStore();
 const testResult = ref<boolean | null>(null);
 const testing = ref(false);
 const saving = ref(false);
@@ -27,11 +29,25 @@ const hospitalSaveError = ref<string | null>(null);
 const activeSection = ref<'connection' | 'hospital' | 'interactions' | 'sync'>('connection');
 
 const sections = [
-  { key: 'connection', label: 'การเชื่อมต่อ' },
-  { key: 'hospital', label: 'ข้อมูลโรงพยาบาล' },
-  { key: 'sync', label: 'Cloud Sync' },
-  { key: 'interactions', label: 'Drug interaction' },
+  { key: 'connection', label: 'การเชื่อมต่อ', permission: 'manage_settings' },
+  { key: 'hospital', label: 'ข้อมูลโรงพยาบาล', permission: 'manage_settings' },
+  { key: 'sync', label: 'Cloud Sync', permission: 'manage_settings' },
+  { key: 'interactions', label: 'Drug interaction', permission: 'manage_interactions' },
 ] as const;
+
+// Admins see every tab; a pharmacist sees only the interaction rules. The
+// route guard already blocks users with neither permission.
+const visibleSections = computed(() => sections.filter((s) => authStore.can(s.permission)));
+
+watch(
+  visibleSections,
+  (visible) => {
+    if (visible.length > 0 && !visible.some((s) => s.key === activeSection.value)) {
+      activeSection.value = visible[0].key;
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   void store.loadMysqlConfig();
@@ -180,7 +196,7 @@ function severityConfig(severity: string) {
   <div class="settings-view">
     <div class="section-tabs">
       <button
-        v-for="section in sections"
+        v-for="section in visibleSections"
         :key="section.key"
         :class="['section-tab', { active: activeSection === section.key }]"
         @click="activeSection = section.key"

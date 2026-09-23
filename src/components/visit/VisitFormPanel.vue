@@ -6,6 +6,7 @@ import InteractionChecker from '#/components/patient/InteractionChecker.vue';
 import ConfirmDialog from '#/components/shared/ConfirmDialog.vue';
 import DayDoseTable from '#/components/visit/DayDoseTable.vue';
 import DoseOptionsPanel from '#/components/visit/DoseOptionsPanel.vue';
+import { useAuthStore } from '#/stores/auth.ts';
 import { useVisitStore } from '#/stores/visit.ts';
 import type { AppointmentDayLoad } from '#/types/appointment.ts';
 import type { DispensingRecord } from '#/types/dispensing.ts';
@@ -33,6 +34,7 @@ import { useDoseCalculator } from '@/composables/useDoseCalculator.ts';
 import type { AvailablePills, RegimenOption } from '@/types/dose.ts';
 
 const visitStore = useVisitStore();
+const authStore = useAuthStore();
 const { generateDoseOptions, DEFAULT_AVAILABLE_PILLS } = useDoseCalculator();
 
 const props = defineProps<{
@@ -592,7 +594,7 @@ onUnmounted(() => {
 
         <div class="panel-footer">
           <button class="btn btn-ghost" @click="modelValue = false">ยกเลิก</button>
-          <button class="btn btn-primary" @click="handleSubmit" :disabled="saving || interactionBlocked">
+          <button class="btn btn-primary" @click="handleSubmit" :disabled="saving || interactionBlocked || !authStore.can('write_visit')">
             {{ saving ? 'กำลังบันทึก...' : (interactionBlocked ? 'มียาห้ามใช้ร่วม' : (isEditMode ? 'บันทึกการเปลี่ยนแปลง' : 'บันทึก & เปิดใบพิมพ์')) }}
           </button>
         </div>

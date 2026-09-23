@@ -4,6 +4,7 @@ import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAlertStore } from '#/stores/alerts.ts';
 import { useAuthStore } from '#/stores/auth.ts';
+import { ROLE_LABELS } from '#/types/auth.ts';
 
 const route = useRoute();
 const router = useRouter();
@@ -29,6 +30,9 @@ const pageTitle = computed(() => {
 });
 
 const totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount);
+const roleLabel = computed(() =>
+  authStore.currentUser ? ROLE_LABELS[authStore.currentUser.role] : '',
+);
 
 async function handleLogout() {
   await authStore.logout();
@@ -49,9 +53,9 @@ onMounted(() => {
       <p class="caption header-subtitle">ติดตาม INR, ขนาดยา และนัดหมายอย่างต่อเนื่อง</p>
     </div>
     <div class="header-actions">
-      <div v-if="authStore.currentUser" class="user-pill" :title="`ผู้ใช้: ${authStore.currentUser.username}`" :aria-label="`ผู้ใช้ปัจจุบัน ${authStore.currentUser.username} ตำแหน่ง ${authStore.currentUser.role}`">
+      <div v-if="authStore.currentUser" class="user-pill" :title="`ผู้ใช้: ${authStore.currentUser.username}`" :aria-label="`ผู้ใช้ปัจจุบัน ${authStore.currentUser.username} ตำแหน่ง ${roleLabel}`">
         <span class="user-pill-name">{{ authStore.currentUser.username }}</span>
-        <span class="user-pill-role">{{ authStore.currentUser.role }}</span>
+        <span class="user-pill-role">{{ roleLabel }}</span>
       </div>
       <div v-if="totalAlerts > 0" class="alert-pill" role="status" :aria-label="`${totalAlerts} แจ้งเตือน`"><Bell :size="18" aria-hidden="true" /><span>{{ totalAlerts }} แจ้งเตือน</span></div>
       <button v-if="authStore.currentUser" type="button" class="logout-btn" title="ออกจากระบบ" aria-label="ออกจากระบบ" @click="handleLogout">

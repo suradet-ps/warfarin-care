@@ -11,15 +11,17 @@ import {
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAlertStore } from '#/stores/alerts.ts';
+import { useAuthStore } from '#/stores/auth.ts';
 import { useReviewStore } from '#/stores/review.ts';
 import { useSettingsStore } from '#/stores/settings.ts';
 
 const route = useRoute();
 const alertStore = useAlertStore();
+const authStore = useAuthStore();
 const reviewStore = useReviewStore();
 const settingsStore = useSettingsStore();
 
-const navItems = [
+const baseNavItems = [
   { name: 'screening', label: 'คัดกรอง', icon: Search, path: '/screening' },
   { name: 'active', label: 'ผู้ป่วยทั้งหมด', icon: Users, path: '/active' },
   { name: 'appointments', label: 'การนัดหมาย', icon: CalendarDays, path: '/appointments' },
@@ -28,6 +30,15 @@ const navItems = [
   { name: 'audit', label: 'Audit Trail', icon: FileText, path: '/audit' },
   { name: 'settings', label: 'ตั้งค่า', icon: Settings, path: '/settings' },
 ];
+
+const navItems = computed(() =>
+  baseNavItems.filter(
+    (item) =>
+      item.name !== 'settings' ||
+      authStore.can('manage_settings') ||
+      authStore.can('manage_interactions'),
+  ),
+);
 
 const totalAlerts = computed(() => alertStore.criticalCount + alertStore.warningCount);
 const pendingReviewCount = computed(() => reviewStore.pendingCount);

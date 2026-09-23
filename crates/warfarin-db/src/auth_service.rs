@@ -82,6 +82,7 @@ pub async fn setup_admin(
     id: new_id,
     username,
     role: UserRole::Admin,
+    permissions: UserRole::Admin.permissions().to_vec(),
     created_at: started_at,
   })
 }
@@ -197,6 +198,7 @@ pub async fn login(
     id: user.id,
     username: username.clone(),
     role: user.role,
+    permissions: user.role.permissions().to_vec(),
     created_at: started_at.clone(),
   };
   *session.lock().await = Some(AuthSession {

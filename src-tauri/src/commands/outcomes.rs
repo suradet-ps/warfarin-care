@@ -1,6 +1,9 @@
 use tauri::State;
 
-use warfarin_core::models::outcome::{OutcomeInput, WfOutcome};
+use warfarin_core::models::{
+  auth::Permission,
+  outcome::{OutcomeInput, WfOutcome},
+};
 use warfarin_db::sqlite::{
   AppState, get_outcomes as db_get_outcomes, record_adverse_event as db_record_outcome,
 };
@@ -18,10 +21,11 @@ pub async fn get_outcomes(
 
 #[tauri::command]
 pub async fn record_adverse_event(
-  event: OutcomeInput,
+  mut event: OutcomeInput,
   state: State<'_, AppState>,
 ) -> Result<i64, String> {
-  state.require_auth().await?;
+  let user = state.require_permission(Permission::WriteOutcome).await?;
+  event.created_by = Some(user.username.clone());
   db_record_outcome(&state.pool, &event, &state.machine_id)
     .await
     .map_err(|e| e.to_string())

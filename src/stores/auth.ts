@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { LoginInput, PublicUser, SetupAdminInput } from '#/types/auth.ts';
+import type { LoginInput, Permission, PublicUser, SetupAdminInput } from '#/types/auth.ts';
 
 const BOOTSTRAPPED_KEY = '__warfarin_auth_bootstrap';
 
@@ -14,6 +14,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   function reset() {
     error.value = null;
+  }
+
+  /**
+   * Returns true when the logged-in user holds the permission. The list comes
+   * from the backend, so UI gating always matches command enforcement.
+   */
+  function can(permission: Permission): boolean {
+    return currentUser.value?.permissions.includes(permission) ?? false;
   }
 
   async function bootstrap() {
@@ -83,6 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     setupAdmin,
     logout,
     reset,
+    can,
   };
 });
 

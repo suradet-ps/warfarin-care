@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 
 use encryptman_keyring::Vault;
 use tauri::State;
+use warfarin_core::models::auth::Permission;
 
 use warfarin_db::{
   mysql::{DbConfig, test_mysql_connection as db_test_connection},
@@ -51,7 +52,7 @@ pub async fn save_setting(
   value: String,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
-  state.require_auth().await?;
+  state.require_permission(Permission::ManageSettings).await?;
   set_setting(&state.pool, &key, &value)
     .await
     .map_err(|e| e.to_string())
@@ -66,7 +67,7 @@ pub async fn test_mysql_connection(
   config: DbConfig,
   state: State<'_, AppState>,
 ) -> Result<bool, String> {
-  state.require_auth().await?;
+  state.require_permission(Permission::ManageSettings).await?;
   let merged = merge_with_stored_password(&state.pool, config).await?;
   let ok = db_test_connection(&merged).await;
   if ok {
@@ -81,7 +82,7 @@ pub async fn test_mysql_connection(
 /// password is empty, the existing stored password is preserved.
 #[tauri::command]
 pub async fn save_mysql_config(config: DbConfig, state: State<'_, AppState>) -> Result<(), String> {
-  state.require_auth().await?;
+  state.require_permission(Permission::ManageSettings).await?;
   let merged = merge_with_stored_password(&state.pool, config).await?;
   persist_mysql_config(&state.pool, &merged).await
 }
@@ -122,7 +123,7 @@ async fn persist_mysql_config(pool: &sqlx::SqlitePool, config: &DbConfig) -> Res
 pub async fn get_mysql_config_for_ui(
   state: State<'_, AppState>,
 ) -> Result<Option<DbConfig>, String> {
-  state.require_auth().await?;
+  state.require_permission(Permission::ManageSettings).await?;
   let Some(stored) = get_setting(&state.pool, MYSQL_CONFIG_KEY)
     .await
     .map_err(|e| e.to_string())?

@@ -2,6 +2,7 @@
 import { Check, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import ConfirmDialog from '#/components/shared/ConfirmDialog.vue';
+import { useAuthStore } from '#/stores/auth.ts';
 import { useVisitStore } from '#/stores/visit.ts';
 import type { WfVisit } from '#/types/visit.ts';
 import {
@@ -16,6 +17,7 @@ const props = defineProps<{ visits: WfVisit[]; hn: string }>();
 const emit = defineEmits<{ (e: 'deleted'): void; (e: 'edit', visit: WfVisit): void }>();
 
 const visitStore = useVisitStore();
+const authStore = useAuthStore();
 
 const expandedIds = ref<Set<number>>(new Set());
 const deleteTargetId = ref<number | null>(null);
@@ -89,10 +91,10 @@ function adherenceBadgeClass(a?: string | null) {
           </span>
         </div>
         <div class="visit-actions">
-          <button class="btn-icon" title="แก้ไข" @click.stop="handleEdit(v)">
+          <button v-if="authStore.can('write_visit')" class="btn-icon" title="แก้ไข" @click.stop="handleEdit(v)">
             <Pencil :size="14" />
           </button>
-          <button class="btn-icon" title="ลบ" @click.stop="confirmDelete(v.id)">
+          <button v-if="authStore.can('write_visit')" class="btn-icon" title="ลบ" @click.stop="confirmDelete(v.id)">
             <Trash2 :size="14" />
           </button>
           <component :is="expandedIds.has(v.id) ? ChevronUp : ChevronDown" :size="16" style="color: var(--color-slate); flex-shrink: 0" />
