@@ -146,7 +146,8 @@ CREATE TABLE wf_patients (
     target_inr_high     REAL NOT NULL DEFAULT 3.0,
     notes               TEXT,
     created_at          TEXT NOT NULL,
-    updated_at          TEXT NOT NULL
+    updated_at          TEXT NOT NULL,
+    clinic_id           TEXT    -- from 0016 migration, local-only
 );
 ```
 
@@ -175,7 +176,8 @@ CREATE TABLE wf_visits (
     reviewed_at             TEXT,   -- from 0007 migration
     reviewed_by             TEXT,   -- from 0007 migration
     created_at              TEXT NOT NULL,
-    updated_at              TEXT NOT NULL  -- added for sync (CLOUD-SYNC.md)
+    updated_at              TEXT NOT NULL,  -- added for sync (CLOUD-SYNC.md)
+    clinic_id               TEXT    -- from 0016 migration, local-only
 );
 ```
 
@@ -755,7 +757,7 @@ warfarin-care/
 │   │           └── interaction.rs   # Drug interaction model
 │   └── warfarin-db/                 # sqlx data layer - NO tauri
 │       ├── Cargo.toml
-│       ├── migrations/              # 0001..0010 SQL migrations (sqlx::migrate!)
+│       ├── migrations/              # 0001..0016 SQL migrations (sqlx::migrate!)
 │       └── src/
 │           ├── lib.rs
 │           ├── mysql.rs             # HosXP read-only queries: screening, dispensing, INR
