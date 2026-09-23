@@ -3,10 +3,12 @@ import { invoke } from '@tauri-apps/api/core';
 import { CalendarPlus } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import StatusBadge from '#/components/shared/StatusBadge.vue';
+import { useAuthStore } from '#/stores/auth.ts';
 import type { AppointmentDayLoad, AppointmentInput, WfAppointment } from '#/types/appointment.ts';
 import { dateInputToday, formatThaiDate, sortAppointments } from '#/utils/clinic.ts';
 
 const props = defineProps<{ hn: string }>();
+const authStore = useAuthStore();
 const appointments = ref<WfAppointment[]>([]);
 const loading = ref(false);
 const saving = ref(false);
@@ -87,7 +89,7 @@ onMounted(() => {
         <h3 class="h5">&#x0E15;&#x0E32;&#x0E23;&#x0E32;&#x0E07;&#x0E19;&#x0E31;&#x0E14;&#x0E2B;&#x0E21;&#x0E32;&#x0E22;</h3>
         <p class="caption section-meta">&#x0E19;&#x0E31;&#x0E14;&#x0E17;&#x0E35;&#x0E48;&#x0E1C;&#x0E48;&#x0E32;&#x0E19;&#x0E21;&#x0E32;&#x0E41;&#x0E25;&#x0E30;&#x0E17;&#x0E35;&#x0E48;&#x0E08;&#x0E30;&#x0E16;&#x0E36;&#x0E07;</p>
       </div>
-      <button type="button" class="btn btn-primary" @click="showForm = !showForm"><CalendarPlus :size="16" /> + &#x0E19;&#x0E31;&#x0E14;&#x0E2B;&#x0E21;&#x0E32;&#x0E22;&#x0E43;&#x0E2B;&#x0E21;&#x0E48;</button>
+      <button v-if="authStore.can('write_appointment')" type="button" class="btn btn-primary" @click="showForm = !showForm"><CalendarPlus :size="16" /> + &#x0E19;&#x0E31;&#x0E14;&#x0E2B;&#x0E21;&#x0E32;&#x0E22;&#x0E43;&#x0E2B;&#x0E21;&#x0E48;</button>
     </div>
 
     <form v-if="showForm" class="appointment-form card-feature-yellow" @submit.prevent="submitAppointment">

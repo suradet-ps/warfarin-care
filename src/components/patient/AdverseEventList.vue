@@ -2,10 +2,12 @@
 import { invoke } from '@tauri-apps/api/core';
 import { AlertTriangle } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
+import { useAuthStore } from '#/stores/auth.ts';
 import type { OutcomeInput, OutcomeType, WfOutcome } from '#/types/outcome.ts';
 import { dateInputToday, formatThaiDate, sortOutcomes } from '#/utils/clinic.ts';
 
 const props = defineProps<{ hn: string }>();
+const authStore = useAuthStore();
 const outcomes = ref<WfOutcome[]>([]);
 const loading = ref(false);
 const saving = ref(false);
@@ -73,7 +75,7 @@ onMounted(() => {
   <div class="adverse-section">
     <div class="section-header">
       <h3 class="h5"><AlertTriangle :size="16" /> &#x0E40;&#x0E2B;&#x0E15;&#x0E38;&#x0E01;&#x0E32;&#x0E23;&#x0E13;&#x0E4C;&#x0E44;&#x0E21;&#x0E48;&#x0E1E;&#x0E36;&#x0E07;&#x0E1B;&#x0E23;&#x0E30;&#x0E2A;&#x0E07;&#x0E04;&#x0E4C;</h3>
-      <button class="btn btn-secondary" @click="showForm = !showForm">+ &#x0E1A;&#x0E31;&#x0E19;&#x0E17;&#x0E36;&#x0E01;&#x0E40;&#x0E2B;&#x0E15;&#x0E38;&#x0E01;&#x0E32;&#x0E23;&#x0E13;&#x0E4C;</button>
+      <button v-if="authStore.can('write_outcome')" class="btn btn-secondary" @click="showForm = !showForm">+ &#x0E1A;&#x0E31;&#x0E19;&#x0E17;&#x0E36;&#x0E01;&#x0E40;&#x0E2B;&#x0E15;&#x0E38;&#x0E01;&#x0E32;&#x0E23;&#x0E13;&#x0E4C;</button>
     </div>
 
     <div v-if="error" class="card card-feature-coral body-sm" style="padding: var(--spacing-md)">{{ error }}</div>

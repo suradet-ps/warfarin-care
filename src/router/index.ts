@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '#/stores/auth.ts';
+import type { Permission } from '#/types/auth.ts';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -22,7 +23,12 @@ const router = createRouter({
     { path: '/slip/:visitId', name: 'slip', component: () => import('#/views/SlipView.vue') },
     { path: '/review', name: 'review', component: () => import('#/views/ReviewView.vue') },
     { path: '/reports', name: 'reports', component: () => import('#/views/ReportsView.vue') },
-    { path: '/settings', name: 'settings', component: () => import('#/views/SettingsView.vue') },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('#/views/SettingsView.vue'),
+      meta: { anyPermission: ['manage_settings', 'manage_interactions'] },
+    },
     { path: '/audit', name: 'audit', component: () => import('#/views/AuditView.vue') },
   ],
 });
@@ -58,6 +64,12 @@ router.beforeEach(async (to) => {
   if (!auth.currentUser) {
     return { path: '/login', query: { redirect: to.fullPath } };
   }
+
+  const anyPermission = to.meta.anyPermission as Permission[] | undefined;
+  if (anyPermission && !anyPermission.some((permission) => auth.can(permission))) {
+    return { path: '/' };
+  }
+
   return true;
 });
 

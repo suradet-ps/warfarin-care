@@ -4,10 +4,12 @@ import { ClipboardCheck, Pencil } from 'lucide-vue-next';
 import { onMounted, ref } from 'vue';
 import SearchBox from '#/components/shared/SearchBox.vue';
 import VisitFormPanel from '#/components/visit/VisitFormPanel.vue';
+import { useAuthStore } from '#/stores/auth.ts';
 import { useReviewStore } from '#/stores/review.ts';
 import type { WfVisit } from '#/types/visit.ts';
 import { formatThaiDate } from '#/utils/clinic.ts';
 
+const authStore = useAuthStore();
 const reviewStore = useReviewStore();
 const visits = ref<WfVisit[]>([]);
 const loading = ref(false);
@@ -33,10 +35,7 @@ async function loadVisits() {
 async function approveVisit(visitId: number) {
   approving.value.add(visitId);
   try {
-    await invoke('approve_visit', {
-      visitId,
-      reviewer: 'เภสัชกร',
-    });
+    await invoke('approve_visit', { visitId });
     visits.value = visits.value.filter((v) => v.id !== visitId);
     await reviewStore.fetchPendingCount();
   } catch {
@@ -129,10 +128,11 @@ onMounted(() => {
             <td>{{ visit.nextAppointment ? formatThaiDate(visit.nextAppointment) : '-' }}</td>
             <td>
               <div class="action-buttons">
-                <button class="btn-icon" title="แก้ไข" @click="handleEdit(visit)">
+                <button v-if="authStore.can('write_visit')" class="btn-icon" title="แก้ไข" @click="handleEdit(visit)">
                   <Pencil :size="14" />
                 </button>
                 <button
+                  v-if="authStore.can('approve_visit')"
                   class="btn-approve"
                   :disabled="approving.has(visit.id)"
                   @click="approveVisit(visit.id)"

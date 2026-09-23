@@ -26,6 +26,7 @@ import LoadingState from '#/components/shared/LoadingState.vue';
 import StatusBadge from '#/components/shared/StatusBadge.vue';
 import VisitFormPanel from '#/components/visit/VisitFormPanel.vue';
 import { useAlertStore } from '#/stores/alerts.ts';
+import { useAuthStore } from '#/stores/auth.ts';
 import { useReviewStore } from '#/stores/review.ts';
 import { useSettingsStore } from '#/stores/settings.ts';
 import type { PatientDetail } from '#/types/patient.ts';
@@ -37,6 +38,7 @@ const router = useRouter();
 const hn = route.params.hn as string;
 const settingsStore = useSettingsStore();
 const alertStore = useAlertStore();
+const authStore = useAuthStore();
 const reviewStore = useReviewStore();
 
 type TabKey =
@@ -174,10 +176,20 @@ onMounted(() => {
         </div>
 
         <div class="header-actions">
-          <button type="button" class="btn btn-secondary" @click="statusModalOpen = true">
+          <button
+            v-if="authStore.can('write_patient_status')"
+            type="button"
+            class="btn btn-secondary"
+            @click="statusModalOpen = true"
+          >
             เปลี่ยนสถานะ
           </button>
-          <button type="button" class="btn btn-primary" @click="visitPanelOpen = true">
+          <button
+            v-if="authStore.can('write_visit')"
+            type="button"
+            class="btn btn-primary"
+            @click="visitPanelOpen = true"
+          >
             <FilePenLine :size="16" /> + บันทึกการทำคลินิก
           </button>
         </div>
