@@ -24,6 +24,7 @@
 #![allow(clippy::too_many_lines)]
 
 pub mod commands;
+pub mod session_store;
 
 use anyhow::{Context, Result};
 use commands::{
@@ -33,8 +34,8 @@ use commands::{
   },
   audit::{get_audit_log, get_patient_audit_log, insert_audit_log},
   auth::{
-    create_user, current_user, has_users, is_logged_in, list_users, login, logout,
-    reset_user_password, set_user_active, set_user_role, setup_admin,
+    create_user, current_user, get_last_login_hint, has_users, is_logged_in, list_users, login,
+    logout, reset_user_password, set_user_active, set_user_role, setup_admin,
   },
   inr::{get_inr_history, get_latest_inr},
   interaction::{
@@ -64,6 +65,7 @@ use commands::{
 };
 use sqlx::mysql::MySqlPoolOptions;
 use tauri::{App, Emitter, Manager};
+use warfarin_db::auth_service;
 use warfarin_db::sqlite::{AppState, init_pool};
 
 /// Refuses to start a debug build against the production app data directory.
@@ -122,7 +124,23 @@ fn initialise_app_state(app: &mut App) -> Result<()> {
     );
   });
 
-  app_handle.manage(AppState::new(pool.clone(), machine_id));
+  let state = AppState::new(pool.clone(), machine_id);
+
+  // Restore a persisted session from the keychain. A token that fails to
+  // resume (revoked, expired, idle, inactive user) is removed so the next
+  // launch starts clean.
+  if let Some(token) = session_store::load_token() {
+    let resumed = tauri::async_runtime::block_on(auth_service::resume_session(
+      &pool,
+      &state.auth_session,
+      &token,
+    ));
+    if resumed.is_none() {
+      session_store::clear_token();
+    }
+  }
+
+  app_handle.manage(state);
 
   let app_handle_clone = app_handle.clone();
   let pool_clone = pool.clone();
@@ -236,6 +254,7 @@ pub fn run() -> tauri::Result<()> {
       get_sync_status,
       get_sync_summary,
       has_users,
+      get_last_login_hint,
       setup_admin,
       login,
       logout,

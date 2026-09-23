@@ -5542,6 +5542,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "encryptman-keyring",
+ "keyring",
  "reqwest",
  "serde",
  "serde_json",
