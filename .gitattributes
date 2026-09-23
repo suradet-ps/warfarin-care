@@ -1,0 +1,8 @@
+# sqlx records a SHA-384 checksum over the raw bytes of every migration file
+# at compile time. Line-ending conversion changes those bytes, and an existing
+# database then fails with:
+#   migration N was previously applied but has been modified
+# Pin SQL files to CRLF so every checkout (Windows, Linux, CI) and every
+# release build embeds byte-identical migrations. Do not change the line
+# endings of files under crates/warfarin-db/migrations/ once shipped.
+*.sql text eol=crlf

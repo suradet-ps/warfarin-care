@@ -97,6 +97,13 @@ src-tauri/src/         # Rust backend
 - All clinic data (enrollments, visits, appointments) goes to SQLite
 - Three warfarin drug codes always queried together: `1600014`, `1600013`, `1600024`
 - INR history merges both `lab_order` and `lab_app_order` tables
+- **Never change the line endings of migration files.**
+  `crates/warfarin-db/migrations/*.sql` are pinned to CRLF by
+  `.gitattributes` because sqlx stores a SHA-384 checksum over the raw file
+  bytes. Rewriting an already-shipped migration (even just its line endings)
+  makes existing clinic databases fail at startup with
+  `migration N was previously applied but has been modified`. Add a new
+  numbered migration instead of editing an old one.
 
 ### INR & Dose Logic
 
