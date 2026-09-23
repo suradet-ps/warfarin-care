@@ -217,7 +217,11 @@ mod tests {
       .filter(|entry| entry.file_name().to_string_lossy().contains(".bak-"))
       .count();
     assert_eq!(remaining, MAX_BACKUPS);
-    assert!(!db_path.with_file_name("warfarin.db.bak-20260101-000000").exists());
+    assert!(
+      !db_path
+        .with_file_name("warfarin.db.bak-20260101-000000")
+        .exists()
+    );
     assert!(
       db_path
         .with_file_name(format!("warfarin.db.bak-20260101-00000{}", MAX_BACKUPS + 2))

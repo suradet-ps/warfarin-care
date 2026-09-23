@@ -78,8 +78,7 @@ fn ensure_isolated_data_dir(app: &App) -> Result<()> {
   {
     const PRODUCTION_IDENTIFIER: &str = "warfarin-care";
     const OVERRIDE_ENV: &str = "WARFARIN_ALLOW_PRODUCTION_DATA";
-    if app.config().identifier == PRODUCTION_IDENTIFIER
-      && std::env::var_os(OVERRIDE_ENV).is_none()
+    if app.config().identifier == PRODUCTION_IDENTIFIER && std::env::var_os(OVERRIDE_ENV).is_none()
     {
       anyhow::bail!(
         "debug build refused to open the production app data directory \

@@ -85,10 +85,22 @@ pub async fn init_pool(db_path: PathBuf) -> Result<SqlitePool> {
 /// migration 0013 was recorded as complete but only partially applied.
 async fn ensure_interaction_columns(pool: &SqlitePool) -> Result<()> {
   let columns_to_add = [
-    ("severity", "ALTER TABLE wf_drug_interactions ADD COLUMN severity TEXT NOT NULL DEFAULT 'moderate'"),
-    ("clinical_effect", "ALTER TABLE wf_drug_interactions ADD COLUMN clinical_effect TEXT"),
-    ("management", "ALTER TABLE wf_drug_interactions ADD COLUMN management TEXT"),
-    ("evidence_level", "ALTER TABLE wf_drug_interactions ADD COLUMN evidence_level TEXT"),
+    (
+      "severity",
+      "ALTER TABLE wf_drug_interactions ADD COLUMN severity TEXT NOT NULL DEFAULT 'moderate'",
+    ),
+    (
+      "clinical_effect",
+      "ALTER TABLE wf_drug_interactions ADD COLUMN clinical_effect TEXT",
+    ),
+    (
+      "management",
+      "ALTER TABLE wf_drug_interactions ADD COLUMN management TEXT",
+    ),
+    (
+      "evidence_level",
+      "ALTER TABLE wf_drug_interactions ADD COLUMN evidence_level TEXT",
+    ),
   ];
 
   for (col_name, ddl) in &columns_to_add {
