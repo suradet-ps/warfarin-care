@@ -1,0 +1,111 @@
+name: Bug report
+description: Something is not working as it should
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make Warfarin Care better. Please fill in the fields below.
+
+        A wrong result is a patient-safety event - especially a critical INR
+        that is not flagged, a TTR that does not match the ledger, or a dose
+        recommendation that disagrees with the recorded visit. If that is what
+        you hit, say so up front.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: A short, clear description of the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Search ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the error message shown in the app, if any.
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module affected
+      description: Which screen were you on when this happened?
+      options:
+        - Active patients (dashboard)
+        - Screening and enrollment
+        - Patient detail (INR, dosing, interactions)
+        - Reviews (pending visits)
+        - Appointments
+        - Physician communication slip
+        - Audit trail
+        - Reports
+        - Settings
+        - Setup wizard
+        - Login
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: datasource
+    attributes:
+      label: Suspected data source
+      description: If the bug involves incorrect data, where did it come from?
+      options:
+        - HOSxP MySQL (read-only patient and dispensing data)
+        - Local SQLite (clinic ledger, INR records, visits, doses, audit trail)
+        - Computed result (INR status, TTR, dose calculator, alerts)
+        - Cloud sync (Supabase)
+        - Not sure
+    validations:
+      required: false
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Warfarin Care version
+      description: From the GitHub release or the About screen.
+      placeholder: "e.g. 2.3.0"
+    validations:
+      required: true
+  - type: input
+    id: hosxp
+    attributes:
+      label: HOSxP / MariaDB version
+      description: If known - HOSxP schema and warfarin icodes drift between sites and versions.
+      placeholder: "e.g. HOSxP XE 4.x, MariaDB 10.5"
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or extra context
+      description: Remove patient identifiers (HN, CID, names) and database credentials before pasting anything. Never attach the SQLite database, backups, or cloud exports - they contain patient data.
+      render: text
+    validations:
+      required: false

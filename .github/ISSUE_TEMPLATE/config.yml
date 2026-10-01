@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Development guide
+    url: https://github.com/suradet-ps/warfarin-care/blob/main/docs/AGENTS.md
+    about: Architecture, business rules (target ranges, TTR, alert thresholds), and conventions
+  - name: Contributing guide
+    url: https://github.com/suradet-ps/warfarin-care/blob/main/docs/CONTRIBUTING.md
+    about: Prerequisites, code style, testing, and the CI merge gates
+  - name: Security policy
+    url: https://github.com/suradet-ps/warfarin-care/blob/main/docs/security.md
+    about: Report security vulnerabilities privately - do not open a public issue
